@@ -8,11 +8,11 @@ Usage:
 """
 
 import asyncio
-from pathlib import Path
 from typing import Dict
 
 import httpx
 
+import dfh.api
 import dfh.generate
 import dfh.k8s
 import dfh.watch
@@ -20,23 +20,16 @@ from dfh.generate import watch_key
 from dfh.models import (
     AppMetadata,
     GeneratedManifests,
-    ServerConfig,
     WatchedResource,
 )
 
 
-def get_server_config():
-    return ServerConfig(
-        kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
-        kubecontext="kind-kind",
-        managed_by="dfh",
-        env_label="env",
-    )
-
-
 async def main():
     # Create K8s client.
-    cfg = get_server_config()
+    cfg, err = dfh.api.compile_server_config()
+    assert not err
+    print("Using server config: ", cfg)
+
     k8scfg, err = dfh.watch.create_cluster_config(cfg.kubeconfig, cfg.kubecontext)
     assert not err
 
