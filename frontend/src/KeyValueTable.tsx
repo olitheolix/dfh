@@ -1,28 +1,34 @@
 import { Button, TextField, Grid } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ControlPointIcon from '@mui/icons-material/ControlPoint';
+import { KeyValuePairType } from './BackendInterfaces'
+
+export interface KeyValueTableIfx {
+    pairs: KeyValuePairType[];
+    setPairs: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
+}
 
 
-export default function KeyValueTable({ keyValuePairs, setKeyValuePairs }) {
+export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
     const handleAddRow = () => {
-        setKeyValuePairs([...keyValuePairs, { key: '', value: '' }]);
+        setPairs([...pairs, { key: '', value: '' }]);
     };
 
     const handleRemoveRow = (index: number) => {
-        const updatedPairs = [...keyValuePairs];
+        const updatedPairs = [...pairs];
         updatedPairs.splice(index, 1);
-        setKeyValuePairs(updatedPairs);
+        setPairs(updatedPairs);
     };
 
     const handleChange = (index: number, field: 'key' | 'value', value: string) => {
-        const updatedPairs = [...keyValuePairs];
+        const updatedPairs = [...pairs];
         updatedPairs[index][field] = value;
-        setKeyValuePairs(updatedPairs);
+        setPairs(updatedPairs);
     };
 
     return (
         <div>
-            {keyValuePairs.map((pair, index) => (
+            {pairs.map((pair, index) => (
                 <Grid container key={index} spacing={2} alignItems="center">
                     <Grid item xs={4}>
                         <TextField

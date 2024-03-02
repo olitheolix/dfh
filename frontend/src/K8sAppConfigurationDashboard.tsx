@@ -20,7 +20,7 @@ export default function K8sAppConfigurationDashboard() {
             {/* Show Pods */}
             <Grid item xs={12}>
                 <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-                    <K8sPodList appId={appId} envId={envId} />
+                    <K8sPodList appId={appId as string} envId={envId as string} />
                 </Paper>
             </Grid>
         </Grid>

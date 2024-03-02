@@ -11,8 +11,8 @@ import {
 } from '@mui/material';
 
 // Import Custom components.
-import KeyValueTable from './KeyValueTable';
 import EnvVarTable, { EnvVarTableIfx } from './EnvVarTable';
+import KeyValueTable, { KeyValueTableIfx } from './KeyValueTable';
 import Title from './Title';
 import { Typography, Divider } from '@mui/material';
 import {
@@ -31,8 +31,8 @@ interface AppResourcePropIfx {
 
 
 interface ComponentKeyValuePropIfx {
-    keys: KeyValuePairType[];
-    setKeys: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
+    pairs: KeyValuePairType[];
+    setPairs: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
 }
 
 
@@ -170,7 +170,7 @@ function CanaryConfigComponent({
                     <div><HealthProbeComponent appRes={appRes} probeKind="live" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
                     <div><HealthProbeComponent appRes={appRes} probeKind="ready" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
                     <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
-                    <div><SecretComponent keys={secrets} setKeys={setSecrets} /></div>
+                    <div><SecretComponent pairs={secrets} setPairs={setSecrets} /></div>
                     <div><CanaryTrafficComponent appRes={appRes} setAppRes={setAppRes} /></div>
                 </AccordionDetails>
             </Accordion>
@@ -206,7 +206,7 @@ function PrimaryConfigComponent({
                     <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="live" /></div>
                     <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="ready" /></div>
                     <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
-                    <div><SecretComponent keys={secrets} setKeys={setSecrets} /></div>
+                    <div><SecretComponent pairs={secrets} setPairs={setSecrets} /></div>
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
@@ -340,7 +340,7 @@ function EnvVarsComponent({ pairs, setPairs }: EnvVarTableIfx) {
     )
 }
 
-function SecretComponent({ keys, setKeys }: ComponentKeyValuePropIfx) {
+function SecretComponent({ pairs, setPairs }: KeyValueTableIfx) {
     return (
         <React.Fragment>
             <Accordion variant="elevation">
@@ -352,7 +352,7 @@ function SecretComponent({ keys, setKeys }: ComponentKeyValuePropIfx) {
                     <Typography>Secrets</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                    <KeyValueTable keyValuePairs={keys} setKeyValuePairs={setKeys} />
+                    <KeyValueTable pairs={pairs} setPairs={setPairs} />
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
