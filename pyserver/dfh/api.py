@@ -45,12 +45,21 @@ def compile_server_config():
             kubecontext=os.getenv("KUBECONTEXT", ""),
             managed_by=os.environ["DFH_MANAGED_BY"],
             env_label=os.environ["DFH_ENV_LABEL"],
+            loglevel=os.getenv("DFH_LOGLEVEL", "info"),
+            host=os.getenv("DFH_HOST", "0.0.0.0"),
+            port=int(os.getenv("DFH_PORT", "5001")),
         )
         return cfg, False
-    except KeyError:
+    except (KeyError, ValueError):
         return (
             ServerConfig(
-                kubeconfig=Path(""), kubecontext="", managed_by="", env_label=""
+                kubeconfig=Path(""),
+                kubecontext="",
+                managed_by="",
+                env_label="",
+                host="",
+                port=-1,
+                loglevel="",
             ),
             True,
         )

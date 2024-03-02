@@ -38,24 +38,9 @@ cfg = get_server_config()
 
 class TestBasic:
     def test_compile_server_config(self):
-        new_env = {
-            "KUBECONFIG": "/tmp/kind-kubeconf.yaml",
-            "KUBECONTEXT": "kind-kind",
-            "DFH_MANAGED_BY": "foo",
-            "DFH_ENV_LABEL": "bar",
-        }
-        with mock.patch.dict("os.environ", values=new_env, clear=True):
-            cfg, err = dfh.api.compile_server_config()
-            assert not err
-            assert cfg == ServerConfig(
-                kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
-                kubecontext="kind-kind",
-                managed_by="foo",
-                env_label="bar",
-            )
-
-        # Still valid without K8s config file and context. DFH will then assume
-        # we are inside a pod and try connect to K8s via pod service accounts.
+        # Minimum required environment variables.
+        # NOTE: it is avlid to not specify a Kubeconfig file, most notably when
+        # running inside a Pod.
         new_env = {
             "DFH_MANAGED_BY": "foo",
             "DFH_ENV_LABEL": "bar",
@@ -68,6 +53,32 @@ class TestBasic:
                 kubecontext="",
                 managed_by="foo",
                 env_label="bar",
+                host="0.0.0.0",
+                port=5001,
+                loglevel="info",
+            )
+
+        # Explicit values for everything.
+        new_env = {
+            "KUBECONFIG": "/tmp/kind-kubeconf.yaml",
+            "KUBECONTEXT": "kind-kind",
+            "DFH_MANAGED_BY": "foo",
+            "DFH_ENV_LABEL": "bar",
+            "DFH_LOGLEVEL": "error",
+            "DFH_HOST": "1.2.3.4",
+            "DFH_PORT": "1234",
+        }
+        with mock.patch.dict("os.environ", values=new_env, clear=True):
+            cfg, err = dfh.api.compile_server_config()
+            assert not err
+            assert cfg == ServerConfig(
+                kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
+                kubecontext="kind-kind",
+                managed_by="foo",
+                env_label="bar",
+                host="1.2.3.4",
+                port=1234,
+                loglevel="error",
             )
 
         # Invalid because DFH_MANAGED_BY and DFH_ENV_LABEL are both mandatory.
@@ -83,12 +94,15 @@ class TestBasic:
             kubecontext="kind-kind",
             managed_by="dfh",
             env_label="env",
+            host="0.0.0.0",
+            port=5001,
+            loglevel="info",
         )
 
 
 class TestAPI:
     def test_get_root(self, client):
-        # Must server the webapp on all routes by default.
+        # Must serve the webapp on all routes by default.
         for path in ("/", "/static/index.html", "/anywhere/but/api"):
             response = client.get(path)
             assert response.status_code == 200

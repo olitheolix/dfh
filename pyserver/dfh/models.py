@@ -212,6 +212,10 @@ class ServerConfig(BaseModel):
     # Group applications by environment based on this label.
     env_label: str
 
+    loglevel: str
+    host: str
+    port: int
+
 
 class DeploymentInfo(BaseModel):
     """User configurable values for a deployment."""
