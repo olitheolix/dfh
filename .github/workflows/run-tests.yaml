@@ -59,8 +59,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: olitheolix/dfh
 
-          fail_ci_if_error: true # optional (default = false)
+          fail_ci_if_error: true
           files: pyserver/coverage.xml
           flags: unittests
-          name: codecov-umbrella # optional
-          verbose: true
+          name: codecov-umbrella
+          verbose: false
