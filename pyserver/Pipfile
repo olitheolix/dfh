@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+uvicorn = {extras = ["standard"], version = "*"}
+fastapi = {extras = ["all"], version = "*"}
+faker = "*"
+tenacity = "*"
+h2 = "*"
+respx = "*"
+httpx = "*"
+pyyaml = "*"
+kubernetes-square = "*"
+
+[dev-packages]
+isort = "*"
+mypy = "*"
+pycodestyle = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-cov = "*"
+pytest-dotenv = "*"
+respx = "*"
+types-pyyaml = "*"
+sh = "*"
+
+[requires]
+python_version = "3.12"

@@ -1,0 +1,66 @@
+{
+    "create": [
+        {
+            "meta": {
+                "apiVersion": "v1",
+                "kind": "Namespace",
+                "namespace": null,
+                "name": "foobar"
+            },
+            "url": "https://127.0.0.1:42989/api/v1/namespaces",
+            "manifest": {
+                "apiVersion": "v1",
+                "kind": "Namespace",
+                "metadata": {
+                    "labels": {
+                        "istio-injection": "enabled",
+                        "kubernetes.io/metadata.name": "prod"
+                    },
+                    "name": "foobar"
+                },
+                "spec": {
+                    "finalizers": [
+                        "kubernetes"
+                    ]
+                }
+            }
+        }
+    ],
+    "patch": [
+        {
+            "meta": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "namespace": "default",
+                "name": "demoapp-stg"
+            },
+            "diff": "--- \n+++ \n@@ -5,6 +5,7 @@\n     app: demoapp\n     app.kubernetes.io/name: demoapp\n     env: stg\n+    foo1: bar1\n   name: demoapp-stg\n   namespace: default\n spec:\n@@ -17,7 +18,7 @@\n       env: stg\n   strategy:\n     rollingUpdate:\n-      maxSurge: 25%\n+      maxSurge: 55%\n       maxUnavailable: 25%\n     type: RollingUpdate\n   template:\n@@ -29,7 +30,7 @@\n         tag: v1\n     spec:\n       containers:\n-      - image: nginx:1.25\n+      - image: nginx:1.20\n         imagePullPolicy: IfNotPresent\n         name: main\n         resources: {}"
+        },
+        {
+            "meta": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "namespace": "default",
+                "name": "login-stg"
+            },
+            "diff": "--- \n+++ \n@@ -34,7 +34,7 @@\n         - while true; do wget demoapp -S --spider 2>&1 | grep Server; sleep 1; done\n         image: alpine:latest\n         imagePullPolicy: Always\n-        name: main\n+        name: foobar\n         resources: {}\n         terminationMessagePath: /dev/termination-log\n         terminationMessagePolicy: File"
+        }
+    ],
+    "delete": [
+        {
+            "meta": {
+                "apiVersion": "policy/v1",
+                "kind": "PodDisruptionBudget",
+                "namespace": "default",
+                "name": "demoapp-stg"
+            },
+            "url": "https://127.0.0.1:42989/apis/policy/v1/namespaces/default/poddisruptionbudgets/demoapp-stg",
+            "manifest": {
+                "apiVersion": "v1",
+                "kind": "DeleteOptions",
+                "gracePeriodSeconds": 0,
+                "orphanDependents": false
+            }
+        }
+    ]
+}

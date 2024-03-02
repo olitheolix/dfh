@@ -1,0 +1,13 @@
+.git
+Dockerfile
+**/*~
+
+# Environments
+.env
+
+# Personal files.
+personal/
+delme_*
+/**/__pycache__/
+/.coverage
+/coverage.xml

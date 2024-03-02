@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demoapp
+  namespace: prod
+  labels:
+    app: demoapp
+    app.kubernetes.io/managed-by: dfh
+    app.kubernetes.io/name: demoapp
+    env: stg
+spec:
+  host: demoapp
+  subsets:
+  - name: primary
+    labels:
+      deployment-type: primary
+  - name: canary
+    labels:
+      deployment-type: canary

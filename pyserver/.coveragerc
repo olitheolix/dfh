@@ -1,0 +1,22 @@
+[run]
+branch = True
+
+[report]
+exclude_lines =
+    # Ignore all lines with this comment string.
+    codecov-skip
+
+    # Only runs inside a PyInstaller bundle.
+    _MEIPASS
+
+    # dtypes: code only runs during MyPy check.
+    if TYPE_CHECKING:
+
+omit =
+    # Exclude test files from coverage report.
+    tests/*
+    delme*
+    server/__main__.py
+
+[html]
+directory = htmlcov

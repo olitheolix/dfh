@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: demoapp
+  namespace: prod
+  labels:
+    app: demoapp
+    app.kubernetes.io/managed-by: dfh
+    app.kubernetes.io/name: demoapp
+    env: stg
+spec:
+  hosts:
+  - demoapp
+  http:
+  - route:
+    - destination:
+        host: demoapp
+        subset: primary
+      weight: 10
+    - destination:
+        host: demoapp
+        subset: canary
+      weight: 90
