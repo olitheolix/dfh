@@ -70,9 +70,12 @@ async def main():
     # Try to reconstruct the `AppInfo` from the manifests we have gathered and
     # insert it into DFH.
     for key, app in apps.items():
+        print(f"Adding {key}: ", end="", flush=True)
+
         # Reverse engineer an `DeploymentInfo` from the manifest.
         app_info, err = dfh.generate.appinfo_from_manifests(cfg, app)
-        assert not err
+        if err:
+            print("skipped due to parsing error")
 
         # Reconstruct the AppMetadata for the app.
         meta = AppMetadata(name=key[0], env=key[1], namespace=key[2])
@@ -80,12 +83,11 @@ async def main():
         # Compile a full `AppInfo` model and ask DFH to add it to its database.
         url = f"http://localhost:5001/api/crt/v1/apps/{meta.name}/{meta.env}"
         ret = await httpx.AsyncClient().post(url, json=app_info.model_dump())
-        if ret.status_code == 409:
-            print(f"Skipped: {meta.name}/{meta.env}")
+        if ret.status_code != 200:
+            print(f"rejected with code {ret.status_code}")
             continue
-        assert ret.status_code == 200, ret.status_code
 
-        print(f"Added  : {meta}")
+        print("done")
 
 
 if __name__ == "__main__":
