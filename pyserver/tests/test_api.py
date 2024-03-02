@@ -88,9 +88,16 @@ class TestBasic:
 
 class TestAPI:
     def test_get_root(self, client):
-        response = client.get("/")
+        # Must server the webapp on all routes by default.
+        for path in ("/", "/static/index.html", "/anywhere/but/api"):
+            response = client.get(path)
+            assert response.status_code == 200
+            assert response.text == "Placeholder static/index.html"
+
+        # Assets are also used by static web apps.
+        response = client.get("/assets/index.html")
         assert response.status_code == 200
-        assert response.json() == {"Hello": "World"}
+        assert response.text == "Placeholder assets/index.html"
 
     def test_get_healthz(self, client):
         response = client.get("/healthz")

@@ -2,7 +2,7 @@ import copy
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 import pydantic
 import square
@@ -15,10 +15,10 @@ import dfh.models
 import dfh.square_types
 from dfh.manifest_utilities import get_metainfo
 from dfh.models import (
-    AppInfo,
-    AppPrimary,
     AppCanary,
+    AppInfo,
     AppMetadata,
+    AppPrimary,
     AppService,
     Database,
     DeploymentInfo,

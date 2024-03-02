@@ -17,11 +17,7 @@ import dfh.generate
 import dfh.k8s
 import dfh.watch
 from dfh.generate import watch_key
-from dfh.models import (
-    AppMetadata,
-    GeneratedManifests,
-    WatchedResource,
-)
+from dfh.models import AppMetadata, GeneratedManifests, WatchedResource
 
 
 async def main():
