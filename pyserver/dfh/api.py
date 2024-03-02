@@ -192,9 +192,7 @@ def get_single_app(name: str, env: str, request: Request) -> AppInfo:
 
 
 @app.post("/api/crt/v1/apps/{name}/{env}")
-async def post_single_app(
-    name: str, env: str, app_info: AppInfo, request: Request
-) -> dfh.square_types.DeploymentPlan:
+async def post_single_app(name: str, env: str, app_info: AppInfo, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
     db: Database = request.app.extra["db"]
 
@@ -233,17 +231,6 @@ async def post_single_app(
 
             # Copy the manifest into the app specific database.
             db.apps[name][env].resources[kind].manifests[man_name] = manifest
-
-    # Produce a Square plan and also convert it to a frontend compatible format.
-    sq_plan, err = await dfh.generate.compile_plan(cfg, app_info, db)
-    assert not err
-    fe_plan = dfh.generate.compile_frontend_plan(sq_plan)
-
-    # Add the plan to the jobs database.
-    request.app.extra["jobs"] = request.app.extra.get("jobs", {})
-    request.app.extra["jobs"][fe_plan.jobId] = sq_plan
-
-    return fe_plan
 
 
 @app.patch("/api/crt/v1/apps/{name}/{env}")
