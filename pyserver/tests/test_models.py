@@ -5,7 +5,12 @@ import yaml
 
 import dfh.models
 from dfh.manifest_utilities import is_dfh_manifest
-from dfh.models import K8sDestinationRule, K8sService, K8sVirtualService, K8sPod
+from dfh.models import (
+    K8sDestinationRule,
+    K8sPod,
+    K8sService,
+    K8sVirtualService,
+)
 
 # Convenience: we can re-use it in all tests.
 from .conftest import get_server_config
