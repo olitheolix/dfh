@@ -16,7 +16,7 @@ omit =
     # Exclude test files from coverage report.
     tests/*
     delme*
-    server/__main__.py
+    dfh/__main__.py
 
 [html]
 directory = htmlcov
