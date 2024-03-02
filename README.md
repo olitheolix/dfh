@@ -1,8 +1,9 @@
 [![](https://img.shields.io/badge/license-Apache%202-blue.svg)]()
 [![](https://img.shields.io/badge/3.12-blue.svg)]()
 [![](https://github.com/olitheolix/dfh/workflows/build/badge.svg)]()
-[![](https://img.shields.io/codecov/c/github/olitheolix/dfh.svg?style=flat)]()
-[![codecov](https://codecov.io/gh/olitheolix/dfh/graph/badge.svg?token=17AMIABNND)](https://codecov.io/gh/olitheolix/dfh)
+![Codecov](https://img.shields.io/codecov/c/github/olitheolix/dfh)
+
+
 
 # Deployments For Humans
 
