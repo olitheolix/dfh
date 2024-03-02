@@ -436,10 +436,18 @@ class TestIntegration:
                 ),
             )
 
+            # Insert the App.
             ret = client.post(
                 f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump()
             )
             assert ret.status_code == 200
+
+            # Request a plan based on the supplied AppInfo.
+            ret = client.patch(
+                f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump()
+            )
+            assert ret.status_code == 200
+
             plan = DeploymentPlan.model_validate(ret.json())
             assert len(plan.create) == 2
             assert plan.jobId != ""
