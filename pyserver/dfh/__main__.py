@@ -9,6 +9,7 @@ import dfh.api
 import dfh.logstreams
 
 if __name__ == "__main__":  # codecov-skip
+    square.square.setup_logging(2)
     cfg, err = dfh.api.compile_server_config()
     assert not err
     try:
