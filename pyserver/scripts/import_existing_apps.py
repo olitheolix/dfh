@@ -77,7 +77,7 @@ async def main():
         meta = AppMetadata(name=key[0], env=key[1], namespace=key[2])
 
         # Compile a full `AppInfo` model and ask DFH to add it to its database.
-        url = f"http://localhost:5001/api/crt/v1/apps/{meta.name}/{meta.env}"
+        url = f"http://{cfg.host}:{cfg.port}/api/crt/v1/apps/{meta.name}/{meta.env}"
         ret = await httpx.AsyncClient().post(url, json=app_info.model_dump())
         if ret.status_code != 200:
             print(f"rejected with code {ret.status_code}")

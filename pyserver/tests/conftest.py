@@ -23,6 +23,9 @@ def get_server_config():
         kubecontext="kind-kind",
         managed_by="dfh",
         env_label="env",
+        host="0.0.0.0",
+        port=5001,
+        loglevel="info",
     )
 
 

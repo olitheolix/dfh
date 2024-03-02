@@ -3,6 +3,7 @@ from typing import Dict
 
 import pytest
 
+import dfh.api
 import dfh.generate as gen
 import dfh.watch
 from dfh.manifest_utilities import is_dfh_manifest
@@ -787,12 +788,10 @@ class TestBasic:
         assert app_src == app_dst
 
     def test_square_config(self):
-        srv_cfg = ServerConfig(
-            kubeconfig=Path("/foo/bar.yaml"),
-            kubecontext="blah",
-            managed_by="me",
-            env_label="env",
-        )
+        srv_cfg, err = dfh.api.compile_server_config()
+        assert not err
+        srv_cfg.kubeconfig = Path("/foo/bar.yaml")
+        srv_cfg.kubecontext = "blah"
 
         sq_cfg = gen.square_config(srv_cfg, "myapp", "myns", "stg")
         assert sq_cfg.selectors.namespaces == ["myns"]
