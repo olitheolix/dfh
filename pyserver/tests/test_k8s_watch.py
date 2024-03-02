@@ -570,7 +570,7 @@ class TestResourceTracking:
 
         # Generate test manifests.
         manifests = {}
-        app_infos = {}
+        app_infos: Dict[str, Dict[str, AppInfo]] = {}
         for name in ("demo-1", "demo-2"):
             app_infos[name] = {}
             for env in ("stg", "prod"):
