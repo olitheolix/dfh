@@ -140,7 +140,7 @@ def add_app(
                 useLivenessProbe=True,
                 readinessProbe=K8sProbe(httpGet=K8sProbeHttp(path="/ready", port=80)),
                 useReadinessProbe=True,
-                envVars=[dfh.generate.KeyValue(key="key", value="value")],
+                envVars=[dfh.generate.K8sEnvVar(name="key", value="value")],
                 image="nginx:1.25",
                 name="main",
             )

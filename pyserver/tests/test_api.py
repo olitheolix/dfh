@@ -23,7 +23,7 @@ from dfh.models import (
     DeploymentInfo,
     JobDescription,
     JobStatus,
-    KeyValue,
+    K8sEnvVar,
     PodList,
     ServerConfig,
     WatchedResource,
@@ -429,7 +429,7 @@ class TestIntegration:
                         isFlux=False,
                         name="main",
                         image="nginx:1.11",
-                        envVars=[KeyValue(key="create", value="app")],
+                        envVars=[K8sEnvVar(name="create", value="app")],
                     ),
                     useService=True,
                     service=AppService(port=90, targetPort=9090),
@@ -511,7 +511,7 @@ class TestIntegration:
             # --- Modify the app and request a plan from the jobs endpoint ---
             assert app.primary.deployment
             assert len(app.primary.deployment.envVars) == 0
-            app.primary.deployment.envVars.append(KeyValue(key="foo", value="bar"))
+            app.primary.deployment.envVars.append(K8sEnvVar(name="foo", value="bar"))
 
             ret = client.patch(f"/api/crt/v1/apps/{name}/{env}", json=app.model_dump())
             assert ret.status_code == 200
@@ -541,7 +541,7 @@ class TestIntegration:
             app = AppInfo.model_validate(ret.json())
             assert app.primary.deployment
             assert app.primary.deployment.envVars == [
-                dfh.generate.KeyValue(key="foo", value="bar")
+                K8sEnvVar(name="foo", value="bar")
             ]
 
             # --- Query K8s to get the information from the horse's mouth ---

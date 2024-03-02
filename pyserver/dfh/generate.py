@@ -23,14 +23,13 @@ from dfh.models import (
     GeneratedManifests,
     K8sDeployment,
     K8sDestinationRule,
+    K8sEnvVar,
     K8sMetadata,
     K8sProbe,
     K8sRequestLimit,
     K8sService,
     K8sServicePort,
     K8sVirtualService,
-    KeyValue,
-    NameValue,
     ServerConfig,
     WatchedResource,
 )
@@ -113,7 +112,7 @@ def deployment_manifest(
     container.livenessProbe = (
         dply.livenessProbe if dply.useLivenessProbe else K8sProbe()
     )
-    container.env = [NameValue(name=el.key, value=el.value) for el in dply.envVars]
+    container.env = dply.envVars
 
     # Dump the model.
     out = manifest.model_dump(exclude_defaults=True)
@@ -360,7 +359,7 @@ def appinfo_from_manifests(
     for manifest in k8s_resources["Deployment"].manifests.values():
         model = K8sDeployment.model_validate(manifest)
         container = model.spec.template.spec.containers[0]
-        envVars = [KeyValue(key=el.name, value=el.value) for el in container.env]
+        envVars = [K8sEnvVar(name=el.name, value=el.value) for el in container.env]
 
         deploy_info = DeploymentInfo(
             isFlux=False,

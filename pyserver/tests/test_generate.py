@@ -15,6 +15,7 @@ from dfh.models import (
     Database,
     DatabaseAppEntry,
     DeploymentInfo,
+    K8sEnvVar,
     K8sProbe,
     K8sProbeHttp,
     K8sRequestLimit,
@@ -161,7 +162,15 @@ class TestBasic:
                     livenessProbe=K8sProbe(httpGet=K8sProbeHttp(path="/live", port=81)),
                     useLivenessProbe=True,
                     useReadinessProbe=True,
-                    envVars=[gen.KeyValue(key="key", value="value")],
+                    envVars=[
+                        K8sEnvVar(name="key", value="value"),
+                        K8sEnvVar(
+                            name="fieldref",
+                            valueFrom={
+                                "fieldRef": {"apiVersion": "v1", "fieldPath": "blah"}
+                            },
+                        ),
+                    ],
                     image="image:tag",
                     name="container-name",
                 )
@@ -191,7 +200,13 @@ class TestBasic:
             "requests": {"cpu": "100m", "memory": "110M"},
             "limits": {"cpu": "200m", "memory": "220M"},
         }
-        assert container["env"] == [{"name": "key", "value": "value"}]
+        assert container["env"] == [
+            {"name": "key", "value": "value"},
+            dict(
+                name="fieldref",
+                valueFrom={"fieldRef": {"apiVersion": "v1", "fieldPath": "blah"}},
+            ),
+        ]
         assert container["image"] == "image:tag"
         assert container["name"] == "container-name"
 
@@ -577,7 +592,7 @@ class TestBasic:
                         httpGet=K8sProbeHttp(path="/ready", port=80)
                     ),
                     useReadinessProbe=True,
-                    envVars=[KeyValue(key="key", value="value")],
+                    envVars=[K8sEnvVar(name="key", value="value")],
                 ),
                 useService=True,
                 service=AppService(port=100, targetPort=200),
@@ -615,7 +630,7 @@ class TestBasic:
                         httpGet=K8sProbeHttp(path="/ready", port=80)
                     ),
                     useReadinessProbe=True,
-                    envVars=[KeyValue(key="key", value="value")],
+                    envVars=[K8sEnvVar(name="key", value="value")],
                 )
             ),
             canary=AppCanary(
@@ -632,7 +647,7 @@ class TestBasic:
                         httpGet=K8sProbeHttp(path="/ready", port=90)
                     ),
                     useReadinessProbe=True,
-                    envVars=[KeyValue(key="key", value="value")],
+                    envVars=[K8sEnvVar(name="key", value="value")],
                 )
             ),
             hasCanary=True,
@@ -807,7 +822,7 @@ class TestGenerateIntegration:
                     readinessProbe=K8sProbe(
                         httpGet=K8sProbeHttp(path="/ready", port=80)
                     ),
-                    envVars=[KeyValue(key="key", value="value")],
+                    envVars=[K8sEnvVar(name="key", value="value")],
                 )
             ),
         )
