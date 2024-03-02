@@ -448,7 +448,7 @@ async def compile_plan(
         for manifest in new_manifests.resources[kind].manifests.values():
             local_manifests[square.manio.make_meta(manifest)] = manifest
 
-    # Get a handle the app resources assuming the already exists in DFH.
+    # Get a handle the app's resources assuming the app exists in DFH.
     server_manifests: square.dtypes.SquareManifests = {}
     try:
         server_res = db.apps[name][env].resources
