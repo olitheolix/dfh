@@ -2,9 +2,7 @@ import { Button, TextField, Grid } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ControlPointIcon from '@mui/icons-material/ControlPoint';
 
-import {
-    K8sEnvVar
-} from './BackendInterfaces'
+import { K8sEnvVar } from './BackendInterfaces'
 
 
 export interface EnvVarTableIfx {
