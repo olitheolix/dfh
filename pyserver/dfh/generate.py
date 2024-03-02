@@ -2,7 +2,7 @@ import copy
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import pydantic
 import square
@@ -16,6 +16,8 @@ import dfh.square_types
 from dfh.manifest_utilities import get_metainfo
 from dfh.models import (
     AppInfo,
+    AppPrimary,
+    AppCanary,
     AppMetadata,
     AppService,
     Database,
@@ -23,14 +25,13 @@ from dfh.models import (
     GeneratedManifests,
     K8sDeployment,
     K8sDestinationRule,
+    K8sEnvVar,
     K8sMetadata,
     K8sProbe,
     K8sRequestLimit,
     K8sService,
     K8sServicePort,
     K8sVirtualService,
-    KeyValue,
-    NameValue,
     ServerConfig,
     WatchedResource,
 )
@@ -113,7 +114,7 @@ def deployment_manifest(
     container.livenessProbe = (
         dply.livenessProbe if dply.useLivenessProbe else K8sProbe()
     )
-    container.env = [NameValue(name=el.key, value=el.value) for el in dply.envVars]
+    container.env = dply.envVars
 
     # Dump the model.
     out = manifest.model_dump(exclude_defaults=True)
@@ -139,12 +140,12 @@ def service_manifests(
     out: Dict[str, dict] = {}
     meta = app_info.metadata
 
-    prim_canary = [
+    prim_canary: List[Tuple[AppPrimary | AppCanary, bool]] = [
         (app_info.primary, False),
         (app_info.canary, True),
     ]
 
-    for svc_info, is_canary in prim_canary:
+    for svc_info, is_canary in prim_canary:  # type: ignore
         if not svc_info.useService:
             continue
 
@@ -326,7 +327,7 @@ def appinfo_from_manifests(
 
             # Return unless the model compiles.
             try:
-                model = Model.model_validate(manifest)
+                model = Model.model_validate(manifest)  # type: ignore
             except pydantic.ValidationError as err:
                 logit.error(f"Invalid {kind} manifest: {err}")
                 return AppInfo(), True
@@ -335,8 +336,8 @@ def appinfo_from_manifests(
             try:
                 assert model.kind == kind
                 assert model.apiVersion == factory[kind].apiVersion
-                meta, err = get_metainfo(cfg, manifest)
-                assert not err
+                meta, err2 = get_metainfo(cfg, manifest)
+                assert not err2
             except AssertionError:
                 logit.error(f"Invalid {kind} manifest: cannot extract metadata")
                 return AppInfo(), True
@@ -360,7 +361,7 @@ def appinfo_from_manifests(
     for manifest in k8s_resources["Deployment"].manifests.values():
         model = K8sDeployment.model_validate(manifest)
         container = model.spec.template.spec.containers[0]
-        envVars = [KeyValue(key=el.name, value=el.value) for el in container.env]
+        envVars = [K8sEnvVar(name=el.name, value=el.value) for el in container.env]
 
         deploy_info = DeploymentInfo(
             isFlux=False,

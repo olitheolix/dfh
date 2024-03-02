@@ -5,8 +5,9 @@ metadata:
   generateName: demoapp-6b979c9c65-
   labels:
     app: demoapp
-    pod-template-hash: 6b979c9c65
-    tag: v1
+    app.kubernetes.io/managed-by: dfh
+    app.kubernetes.io/name: demoapp
+    env: stg
   name: demoapp-6b979c9c65-mx8gp
   namespace: default
   ownerReferences:
@@ -22,6 +23,14 @@ spec:
   containers:
   - image: nginx:1.25
     imagePullPolicy: IfNotPresent
+    env:
+      - name: foo
+        value: bar
+      - name: from-label
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.uid
     name: main
     resources: {}
     terminationMessagePath: /dev/termination-log

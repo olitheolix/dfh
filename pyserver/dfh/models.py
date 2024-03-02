@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, TypedDict
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict
 
@@ -119,10 +119,16 @@ class K8sSecurityContext(BaseModel):
     capabilities: List[str]
 
 
+class K8sEnvVar(BaseModel):
+    name: str
+    value: str = ""
+    valueFrom: Any = None
+
+
 class K8sContainer(BaseModel):
     name: str = ""
     image: str = ""
-    env: List[NameValue] = []
+    env: List[K8sEnvVar] = []
     ports: List[dict] = []
     resources: K8sRequestLimit = K8sRequestLimit()
     livenessProbe: K8sProbe = K8sProbe()
@@ -219,7 +225,7 @@ class DeploymentInfo(BaseModel):
     useLivenessProbe: bool = False
     readinessProbe: K8sProbe = K8sProbe()
     useReadinessProbe: bool = False
-    envVars: List[KeyValue] = []
+    envVars: List[K8sEnvVar] = []
     secrets: List[KeyValue] = []
     image: str = ""
     name: str = ""

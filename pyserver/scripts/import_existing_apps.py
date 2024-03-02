@@ -79,11 +79,11 @@ async def main():
 
         # Compile a full `AppInfo` model and ask DFH to add it to its database.
         url = f"http://localhost:5001/api/crt/v1/apps/{meta.name}/{meta.env}"
-        resp = await httpx.AsyncClient().post(url, json=app_info.model_dump())
-        if resp.status_code == 409:
+        ret = await httpx.AsyncClient().post(url, json=app_info.model_dump())
+        if ret.status_code == 409:
             print(f"Skipped: {meta.name}/{meta.env}")
             continue
-        assert resp.status_code == 200, resp.status_code
+        assert ret.status_code == 200, ret.status_code
 
         print(f"Added  : {meta}")
 

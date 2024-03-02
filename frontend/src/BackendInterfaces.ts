@@ -37,6 +37,12 @@ export interface K8sProbe {
     periodSeconds: number
 }
 
+export interface K8sEnvVar {
+    name: string
+    value: string
+    valueFrom: any
+}
+
 export interface DeploymentInfo {
     isFlux: boolean
     resources: K8sRequestLimit
@@ -45,7 +51,7 @@ export interface DeploymentInfo {
     useLivenessProbe: boolean
     readinessProbe: K8sProbe
     useReadinessProbe: boolean
-    envVars: KeyValuePairType[]
+    envVars: K8sEnvVar[]
     secrets: KeyValuePairType[]
     image: string
     name: string

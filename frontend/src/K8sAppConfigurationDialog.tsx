@@ -12,11 +12,12 @@ import {
 
 // Import Custom components.
 import KeyValueTable from './KeyValueTable';
+import EnvVarTable, { EnvVarTableIfx } from './EnvVarTable';
 import Title from './Title';
 import { Typography, Divider } from '@mui/material';
 import {
     DeltaPatch, DeltaCreate, DeltaDelete, DeploymentPlan, AppPrimary, AppCanary,
-    AppMetadata, AppSpec, KeyValuePairType, JobStatus
+    AppMetadata, AppSpec, KeyValuePairType, JobStatus, K8sEnvVar
 } from './BackendInterfaces'
 
 
@@ -151,8 +152,8 @@ function CanaryConfigComponent({
 }: {
     appRes: AppCanary;
     setAppRes: React.Dispatch<React.SetStateAction<AppCanary>>;
-    envars: KeyValuePairType[];
-    setEnvars: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
+    envars: K8sEnvVar[];
+    setEnvars: React.Dispatch<React.SetStateAction<K8sEnvVar[]>>;
     secrets: KeyValuePairType[];
     setSecrets: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
 }) {
@@ -168,7 +169,7 @@ function CanaryConfigComponent({
                     <div><ServiceConfigComponent appRes={appRes} setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
                     <div><HealthProbeComponent appRes={appRes} probeKind="live" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
                     <div><HealthProbeComponent appRes={appRes} probeKind="ready" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><EnvVarsComponent keys={envars} setKeys={setEnvars} /></div>
+                    <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
                     <div><SecretComponent keys={secrets} setKeys={setSecrets} /></div>
                     <div><CanaryTrafficComponent appRes={appRes} setAppRes={setAppRes} /></div>
                 </AccordionDetails>
@@ -187,8 +188,8 @@ function PrimaryConfigComponent({
 }: {
     appRes: AppPrimary;
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary>>;
-    envars: KeyValuePairType[];
-    setEnvars: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
+    envars: K8sEnvVar[];
+    setEnvars: React.Dispatch<React.SetStateAction<K8sEnvVar[]>>;
     secrets: KeyValuePairType[];
     setSecrets: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
 }) {
@@ -204,7 +205,7 @@ function PrimaryConfigComponent({
                     <div><ServiceConfigComponent appRes={appRes} setAppRes={setAppRes} /></div>
                     <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="live" /></div>
                     <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="ready" /></div>
-                    <div><EnvVarsComponent keys={envars} setKeys={setEnvars} /></div>
+                    <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
                     <div><SecretComponent keys={secrets} setKeys={setSecrets} /></div>
                 </AccordionDetails>
             </Accordion>
@@ -320,7 +321,7 @@ function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
     )
 }
 
-function EnvVarsComponent({ keys, setKeys }: ComponentKeyValuePropIfx) {
+function EnvVarsComponent({ pairs, setPairs }: EnvVarTableIfx) {
     return (
         <React.Fragment>
             <Accordion variant="elevation">
@@ -332,7 +333,7 @@ function EnvVarsComponent({ keys, setKeys }: ComponentKeyValuePropIfx) {
                     <Typography>Environment Variables</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                    <KeyValueTable keyValuePairs={keys} setKeyValuePairs={setKeys} />
+                    <EnvVarTable pairs={pairs} setPairs={setPairs} />
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
@@ -682,8 +683,8 @@ const initDeploymentPlan = {
 export default function K8sAppConfigurationDialog() {
     const { appId, envId } = useParams();
 
-    const [primaryEnvars, setPrimaryEnvars] = useState<KeyValuePairType[]>([]);
-    const [canaryEnvars, setCanaryEnvars] = useState<KeyValuePairType[]>([]);
+    const [primaryEnvars, setPrimaryEnvars] = useState<K8sEnvVar[]>([]);
+    const [canaryEnvars, setCanaryEnvars] = useState<K8sEnvVar[]>([]);
 
     const [primarySecrets, setPrimarySecrets] = useState<KeyValuePairType[]>([]);
     const [canarySecrets, setCanarySecrets] = useState<KeyValuePairType[]>([]);
