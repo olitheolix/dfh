@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: dfh
+    istio-injection: enabled
+  name: dfh
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dfh
+  namespace: dfh
+  labels:
+    app: dfh
+    env: dev
+    app.kubernetes.io/name: dfh
+    app.kubernetes.io/managed-by: dfh
+
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps", "extensions"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["virtualservices", "destinationrules"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dfh
+  namespace: dfh
+  labels:
+    app: dfh
+    env: dev
+    app.kubernetes.io/name: dfh
+    app.kubernetes.io/managed-by: dfh
+subjects:
+- kind: ServiceAccount
+  name: dfh
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: dfh
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dfh
+  namespace: dfh
+  labels:
+    app: dfh
+    env: dev
+    app.kubernetes.io/name: dfh
+    app.kubernetes.io/managed-by: dfh
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dfh
+  namespace: dfh
+  labels:
+    app: dfh
+    env: dev
+    app.kubernetes.io/name: dfh
+    app.kubernetes.io/managed-by: dfh
+spec:
+  ports:
+  - name: http2
+    appProtocol: http
+    port: 80
+    protocol: TCP
+    targetPort: 5001
+  selector:
+    app: dfh
+  type: ClusterIP
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfh
+  namespace: dfh
+  labels:
+    app: dfh
+    env: dev
+    app.kubernetes.io/name: dfh
+    app.kubernetes.io/managed-by: dfh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dfh
+      env: dev
+      app.kubernetes.io/name: dfh
+      app.kubernetes.io/managed-by: dfh
+  template:
+    metadata:
+      labels:
+        app: dfh
+        env: dev
+        app.kubernetes.io/managed-by: dfh
+        app.kubernetes.io/name: dfh
+    spec:
+      containers:
+        - name: main
+          image: delme:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DFH_MANAGED_BY
+              value: dfh
+            - name: DFH_ENV_LABEL
+              value: env
+            - name: DFH_port
+              value: "5001"
+            - name: DFH_LOGLEVEL
+              value: info
+      serviceAccount: dfh
