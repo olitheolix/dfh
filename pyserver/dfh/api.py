@@ -11,7 +11,8 @@ import square.k8s
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 import dfh.generate
 import dfh.k8s
@@ -93,6 +94,15 @@ app = FastAPI(
     db={},
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
+
+
+# Serve static app.
+@app.get("/")
+async def get_index():
+    return FileResponse("static/index.html")
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -107,11 +117,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # ----------------------------------------------------------------------
 # Setup Routes.
 # ----------------------------------------------------------------------
-
-
-@app.get("/")
-def read_root() -> JSONResponse:
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"Hello": "World"})
 
 
 @app.get("/healthz")
@@ -310,3 +315,9 @@ async def post_jobs(job: JobDescription, request: Request):
     plan = request.app.extra["jobs"][job.jobId]
     err = await square.apply_plan(sq_config, plan)
     assert not err
+
+
+# Serve static web app on all paths that have not been defined already.
+@app.get("/{path:path}")
+async def catch_all(path: str, request: Request):
+    return FileResponse("static/index.html")
