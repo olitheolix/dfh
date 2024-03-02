@@ -17,6 +17,7 @@ omit =
     tests/*
     delme*
     dfh/__main__.py
+    hello/__main__.py
 
 [html]
 directory = htmlcov
