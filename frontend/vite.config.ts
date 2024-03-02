@@ -9,13 +9,13 @@ export default defineConfig({
     server: {
         port: 5000,
         proxy: {
-            // Proxy all API requests to your backend
-            '/data': {
+            // Proxy all API requests to the backend.
+            '/api': {
                 target: 'http://localhost:5001',
                 changeOrigin: true,
             },
-            '/api': {
-                target: 'http://localhost:5001',
+            '/data': {
+                target: 'http://localhost:5002',
                 changeOrigin: true,
             }
         }
