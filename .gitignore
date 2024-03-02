@@ -32,6 +32,7 @@ frontend/*.sw?
 # Python backend.
 /pyserver/.mypy_cache/
 /pyserver/.coverage
+/pyserver/coverage.xml
 
 # Misc.
 private/
