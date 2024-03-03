@@ -1,13 +1,13 @@
 from unittest import mock
 
-import main
+import hello.main
 import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 def client():
-    with TestClient(main.app) as tc:
+    with TestClient(hello.main.app) as tc:
         yield tc
 
 
