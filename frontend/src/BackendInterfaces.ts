@@ -35,6 +35,9 @@ export interface K8sProbe {
     httpGet: K8sProbeHttp
     initialDelaySeconds: number
     periodSeconds: number
+    timeoutSeconds: number
+    successThreshold: number
+    failureThreshold: number
 }
 
 export interface K8sEnvVar {
