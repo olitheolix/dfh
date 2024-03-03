@@ -4,6 +4,7 @@ from typing import Dict
 import pytest
 
 import dfh.api
+import dfh.defaults
 import dfh.generate as gen
 import dfh.watch
 from dfh.manifest_utilities import is_dfh_manifest
@@ -222,6 +223,9 @@ class TestBasic:
                 name="fieldref",
                 valueFrom={"fieldRef": {"apiVersion": "v1", "fieldPath": "blah"}},
             ),
+        ] + [
+            _.model_dump(exclude_defaults=True)
+            for _ in dfh.defaults.pod_fieldref_envs()
         ]
         assert container["image"] == "image:tag"
         assert container["name"] == "container-name"
@@ -817,6 +821,9 @@ class TestBasic:
         assert not err
 
         # Compare JSON models (easier to read when test fails.)
+        app_src = app_src.primary.deployment
+        app_dst = app_dst.primary.deployment
+
         assert app_src.model_dump_json(indent=4) == app_dst.model_dump_json(indent=4)
 
         # Compare the full Pydantic models.

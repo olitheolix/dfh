@@ -11,6 +11,7 @@ import square.k8s
 import square.manio
 import yaml
 
+import dfh.defaults
 import dfh.models
 import dfh.square_types
 from dfh.manifest_utilities import get_metainfo
@@ -116,7 +117,7 @@ def deployment_manifest(
     container.livenessProbe = (
         dply.livenessProbe if dply.useLivenessProbe else K8sProbe()
     )
-    container.env = dply.envVars
+    container.env = dply.envVars + dfh.defaults.pod_fieldref_envs()
 
     # Dump the model.
     out = manifest.model_dump(exclude_defaults=True)
@@ -360,10 +361,14 @@ def appinfo_from_manifests(
     del all_metadata
 
     # Compile the primary/canary deployment info.
+    reseved_envs = set(dfh.defaults.RESERVED_FIELDREF_ENVS)
     for manifest in k8s_resources["Deployment"].manifests.values():
         model = K8sDeployment.model_validate(manifest)
         container = model.spec.template.spec.containers[0]
         envVars = [K8sEnvVar(name=el.name, value=el.value) for el in container.env]
+
+        # Remove all the reserved env vars that the user cannot control
+        envVars = [_ for _ in envVars if _.name not in reseved_envs]
 
         deploy_info = DeploymentInfo(
             isFlux=False,
