@@ -1,8 +1,9 @@
 from unittest import mock
 
-import hello.main
 import pytest
 from fastapi.testclient import TestClient
+
+import hello.main
 
 
 @pytest.fixture
