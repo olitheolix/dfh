@@ -760,6 +760,10 @@ export default function K8sAppConfigurationDialog() {
             hasCanary: hasCanary,
         }
 
+        // Merge the state variables for the environment variable back into the payload.
+        primary.deployment.envVars = primaryEnvars
+        canary.deployment.envVars = canaryEnvars
+
         console.log("To backend: ", data)
         try {
             const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
