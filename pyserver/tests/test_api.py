@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dfh.api
+import dfh.defaults
 import dfh.generate
 import dfh.k8s
 import dfh.watch
@@ -497,7 +498,11 @@ class TestIntegration:
             )
             assert not err
             env_vars = resp["spec"]["template"]["spec"]["containers"][0]["env"]
-            assert env_vars == [{"name": "create", "value": "app"}]
+            default_envs = [
+                _.model_dump(exclude_defaults=True)
+                for _ in dfh.defaults.pod_fieldref_envs()
+            ]
+            assert env_vars == [{"name": "create", "value": "app"}] + default_envs
 
             # Service.
             resp, err = await dfh.k8s.get(
@@ -581,7 +586,11 @@ class TestIntegration:
             assert not err
 
             env_vars = resp["spec"]["template"]["spec"]["containers"][0]["env"]
-            assert env_vars == [{"name": "foo", "value": "bar"}]
+            default_envs = [
+                _.model_dump(exclude_defaults=True)
+                for _ in dfh.defaults.pod_fieldref_envs()
+            ]
+            assert env_vars == [{"name": "foo", "value": "bar"}] + default_envs
 
 
 class TestIntegrationCanary:
