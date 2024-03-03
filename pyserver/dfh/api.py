@@ -317,7 +317,6 @@ async def post_jobs(job: JobDescription, request: Request):
     sq_config = square.dtypes.Config(
         kubeconfig=cfg.kubeconfig,
         kubecontext=cfg.kubecontext,
-        # Store manifests in this folder.
         folder=Path("/tmp"),
     )
 
@@ -328,5 +327,5 @@ async def post_jobs(job: JobDescription, request: Request):
 
 # Serve static web app on all paths that have not been defined already.
 @app.get("/{path:path}")
-async def catch_all(path: str, request: Request):
+async def catch_all(path: str):
     return FileResponse("static/index.html")
