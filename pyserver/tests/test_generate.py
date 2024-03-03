@@ -22,8 +22,6 @@ from dfh.models import (
     K8sRequestLimit,
     K8sResourceCpuMem,
     K8sService,
-    KeyValue,
-    ServerConfig,
     WatchedResource,
 )
 
@@ -37,7 +35,7 @@ def convert_manifest(manifest: dict) -> Dict[str, WatchedResource]:
     key, kind, err = dfh.watch.get_resource_key(manifest)
     assert not err
 
-    # Copy the manifest into a Dict[str, WatchedResource] format for `info_from_manifests`.
+    # Copy the manifest into `WatchedResource`.
     watched_res = WatchedResource(apiVersion="apps/v1", kind="Deployment", path="")
     watched_res.manifests[key] = manifest
     k8s_res = {kind: watched_res}
@@ -745,7 +743,8 @@ class TestBasic:
     ):
         """Ensure that we can reverse engineer `AppInfo` from the generated manifests.
 
-        This is DFH is crucial for importing applications albeit superfluous for DFH itself.
+        This is DFH is crucial for importing applications albeit superfluous
+        for DFH itself.
 
         """
         db = Database()

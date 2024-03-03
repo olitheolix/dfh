@@ -54,11 +54,11 @@ jobs:
           cd pyserver
           pipenv install --system --deploy --dev
 
-      # - name: Linting and Static Analysis
-      #   run: |
-      #     cd pyserver
-      #     pycodestyle .
-      #     mypy .
+      - name: Linting and Static Analysis
+        run: |
+          cd pyserver
+          pycodestyle .
+          mypy .
 
       # Break if coverage drops below 100%.
       - name: Unit and Integration Tests
