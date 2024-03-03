@@ -144,7 +144,8 @@ class TestBasic:
         _, err = gen.appinfo_from_manifests(cfg, convert_manifest(manifest))
         assert err
 
-    def test_generate_deployment_new(self):
+    @pytest.mark.parametrize("cmd_args", [False, True])
+    def test_generate_deployment_new(self, cmd_args):
         # Input.
         ns, name, env = "default", "fooapp", "stg"
         app_info = AppInfo(
@@ -178,6 +179,10 @@ class TestBasic:
             ),
         )
 
+        if cmd_args:
+            app_info.primary.deployment.command = "ls -l"
+            app_info.primary.deployment.args = "-h -r"
+
         # Generate a brand new deployment manifest.
         obj = gen.deployment_manifest(cfg, app_info, canary=False, base=None)
         assert obj["apiVersion"] == "apps/v1"
@@ -210,6 +215,12 @@ class TestBasic:
         ]
         assert container["image"] == "image:tag"
         assert container["name"] == "container-name"
+        if cmd_args:
+            assert container["command"] == ["ls", "-l"]
+            assert container["args"] == ["-h", "-r"]
+        else:
+            assert "command" not in container
+            assert "args" not in container
 
         # Must not specify apiVersion and kind of Pod.
         assert "apiVersion" not in obj["spec"]["template"]
@@ -716,8 +727,9 @@ class TestBasic:
     @pytest.mark.parametrize("has_canary", [False, True])
     @pytest.mark.parametrize("use_service", [False, True])
     @pytest.mark.parametrize("has_virtsvc", [False, True])
+    @pytest.mark.parametrize("has_cmdargs", [False, True])
     def test_app_info_to_manifests_and_back(
-        self, has_virtsvc: bool, use_service: bool, has_canary: bool
+        self, has_cmdargs: bool, has_virtsvc: bool, use_service: bool, has_canary: bool
     ):
         """Ensure that we can reverse engineer `AppInfo` from the generated manifests.
 
@@ -744,6 +756,9 @@ class TestBasic:
             ),
         )
 
+        app_src.primary.deployment.command = "ls -l" if has_cmdargs else ""
+        app_src.primary.deployment.args = "-h -r" if has_cmdargs else ""
+
         # Optional: add Canary deployment.
         if has_canary:
             app_src.hasCanary = True
@@ -760,6 +775,9 @@ class TestBasic:
                 ),
                 trafficPercent=20,
             )
+
+            app_src.canary.deployment.command = "ls -l" if has_cmdargs else ""
+            app_src.canary.deployment.args = "-h -r" if has_cmdargs else ""
 
         # Optional: add a K8s service.
         if use_service:

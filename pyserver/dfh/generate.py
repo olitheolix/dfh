@@ -107,6 +107,8 @@ def deployment_manifest(
     container = manifest.spec.template.spec.containers[0]
     container.name = dply.name
     container.image = dply.image
+    container.command = dply.command.split()
+    container.args = dply.args.split()
     container.resources = dply.resources if dply.useResources else K8sRequestLimit()
     container.readinessProbe = (
         dply.readinessProbe if dply.useReadinessProbe else K8sProbe()
@@ -374,6 +376,8 @@ def appinfo_from_manifests(
             useReadinessProbe=(container.readinessProbe != K8sProbe()),
             image=container.image,
             name=container.name,
+            command=str.join(" ", container.command),
+            args=str.join(" ", container.args),
         )
 
         if model.metadata.labels.get("deployment-type", "") == "canary":

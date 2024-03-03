@@ -55,6 +55,8 @@ export interface DeploymentInfo {
     secrets: KeyValuePairType[]
     image: string
     name: string
+    command: string
+    args: string
 }
 
 export interface AppMetadata {

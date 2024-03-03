@@ -128,6 +128,8 @@ class K8sEnvVar(BaseModel):
 class K8sContainer(BaseModel):
     name: str = ""
     image: str = ""
+    command: List[str] = []
+    args: List[str] = []
     env: List[K8sEnvVar] = []
     ports: List[dict] = []
     resources: K8sRequestLimit = K8sRequestLimit()
@@ -233,6 +235,8 @@ class DeploymentInfo(BaseModel):
     secrets: List[KeyValue] = []
     image: str = ""
     name: str = ""
+    command: str = ""
+    args: str = ""
 
 
 class WatchedResource(BaseModel):

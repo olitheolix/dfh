@@ -30,12 +30,6 @@ interface AppResourcePropIfx {
 }
 
 
-interface ComponentKeyValuePropIfx {
-    pairs: KeyValuePairType[];
-    setPairs: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
-}
-
-
 // ----------------------------------------------------------------------
 // Components
 // ----------------------------------------------------------------------
@@ -217,12 +211,10 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
     const onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary) => {
-            let out = { ...prevObject }
-            if (name == "image") {
-                out.deployment.image = value
-            } else {
-                out.deployment.name = value
-            }
+            let out: AppPrimary = { ...prevObject }
+
+            // @ts-ignore
+            out.deployment[name] = value
             return out
         });
     };
@@ -231,17 +223,31 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
         <React.Fragment>
             <Grid container spacing={3} alignItems="center">
                 <Grid item xs={1} /> {/* Spacer to push text fields to the right */}
-                <Grid item style={{ width: '40%' }}>
+                <Grid item style={{ width: '20%' }}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.name} renderInput={(params) => (
                             <TextField {...params} id="name" label="Container Name" variant="standard" name="name" onChange={onChange} />
                         )}
                     />
                 </Grid>
-                <Grid item style={{ width: '40%' }}>
+                <Grid item style={{ width: '20%' }}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.image} renderInput={(params) => (
                             <TextField {...params} id="image" label="Image:Tag" variant="standard" name="image" onChange={onChange} />
+                        )}
+                    />
+                </Grid>
+                <Grid item style={{ width: '20%' }}>
+                    <Autocomplete
+                        freeSolo options={["v1", "v2"]} value={appRes.deployment.command} renderInput={(params) => (
+                            <TextField {...params} id="command" label="Command" variant="standard" name="command" onChange={onChange} />
+                        )}
+                    />
+                </Grid>
+                <Grid item style={{ width: '20%' }}>
+                    <Autocomplete
+                        freeSolo options={["v1", "v2"]} value={appRes.deployment.args} renderInput={(params) => (
+                            <TextField {...params} id="args" label="Args" variant="standard" name="args" onChange={onChange} />
                         )}
                     />
                 </Grid>
@@ -619,6 +625,8 @@ const initialAppPrimary: AppPrimary = {
         envVars: [],
         image: "",
         name: "",
+        command: "",
+        args: "",
     },
     service: {
         port: 0,
@@ -660,6 +668,8 @@ const initialAppCanary: AppCanary = {
         envVars: [],
         image: "",
         name: "",
+        command: "",
+        args: "",
     },
     service: {
         port: 0,
