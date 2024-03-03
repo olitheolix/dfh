@@ -23,15 +23,15 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
-- apiGroups: ["apps", "extensions"]
-  resources: ["deployments"]
-  verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["services"]
-  verbs: ["get", "list", "watch", "create", "update", "delete"]
+  verbs: ["*"]
+- apiGroups: ["apps", "extensions"]
+  resources: ["deployments"]
+  verbs: ["*"]
 - apiGroups: ["networking.istio.io"]
   resources: ["virtualservices", "destinationrules"]
-  verbs: ["get", "list", "watch", "create", "update", "delete"]
+  verbs: ["*"]
 
 ---
 
@@ -48,7 +48,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: dfh
-  namespace: default
+  namespace: dfh
 roleRef:
   kind: ClusterRole
   name: dfh
@@ -82,7 +82,7 @@ metadata:
 spec:
   ports:
   - name: http2
-    appProtocol: http
+    appProtocol: http2
     port: 80
     protocol: TCP
     targetPort: 5001
@@ -120,15 +120,76 @@ spec:
     spec:
       containers:
         - name: main
-          image: delme:latest
+          image: dfh:v1
           imagePullPolicy: IfNotPresent
           env:
             - name: DFH_MANAGED_BY
               value: dfh
             - name: DFH_ENV_LABEL
               value: env
-            - name: DFH_port
+            - name: DFH_PORT
               value: "5001"
             - name: DFH_LOGLEVEL
               value: info
       serviceAccount: dfh
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+  namespace: dfh
+  labels:
+    app: hello
+    env: dev
+    app.kubernetes.io/name: hello
+    app.kubernetes.io/managed-by: dfh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello
+      env: dev
+      app.kubernetes.io/name: hello
+      app.kubernetes.io/managed-by: dfh
+  template:
+    metadata:
+      labels:
+        app: hello
+        env: dev
+        app.kubernetes.io/managed-by: dfh
+        app.kubernetes.io/name: hello
+    spec:
+      containers:
+        - name: main
+          image: dfh:v1
+          command: ["python", "-m", "hello"]
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: hello
+              value: world
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello
+  namespace: dfh
+  labels:
+    app: hello
+    env: dev
+    app.kubernetes.io/name: hello
+    app.kubernetes.io/managed-by: dfh
+spec:
+  ports:
+  - name: http2
+    appProtocol: http2
+    port: 80
+    protocol: TCP
+    targetPort: 6000
+  selector:
+    app: hello
+  type: ClusterIP
+
