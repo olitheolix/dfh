@@ -159,7 +159,12 @@ class TestBasic:
                         limits=K8sResourceCpuMem(cpu="200m", memory="220M"),
                     ),
                     readinessProbe=K8sProbe(
-                        httpGet=K8sProbeHttp(path="/ready", port=80)
+                        httpGet=K8sProbeHttp(path="/ready", port=80),
+                        initialDelaySeconds=1,
+                        timeoutSeconds=2,
+                        successThreshold=3,
+                        failureThreshold=4,
+                        periodSeconds=5,
                     ),
                     livenessProbe=K8sProbe(httpGet=K8sProbeHttp(path="/live", port=81)),
                     useLivenessProbe=True,
@@ -198,9 +203,16 @@ class TestBasic:
         assert container["readinessProbe"] and container["readinessProbe"]["httpGet"]
         assert container["readinessProbe"]["httpGet"]["path"] == "/ready"
         assert container["readinessProbe"]["httpGet"]["port"] == 80
+        assert container["readinessProbe"]["timeoutSeconds"] == 2
+        assert container["readinessProbe"]["successThreshold"] == 3
+        assert container["readinessProbe"]["failureThreshold"] == 4
+
         assert container["livenessProbe"] and container["livenessProbe"]["httpGet"]
         assert container["livenessProbe"]["httpGet"]["path"] == "/live"
         assert container["livenessProbe"]["httpGet"]["port"] == 81
+        assert "timeoutSeconds" not in container["livenessProbe"]
+        assert "successThreshold" not in container["livenessProbe"]
+        assert "failureThreshold" not in container["livenessProbe"]
 
         assert container["resources"] == {
             "requests": {"cpu": "100m", "memory": "110M"},
@@ -747,7 +759,10 @@ class TestBasic:
                     readinessProbe=K8sProbe(
                         httpGet=K8sProbeHttp(path="/foo", port=100),
                         initialDelaySeconds=1,
-                        periodSeconds=2,
+                        timeoutSeconds=2,
+                        successThreshold=3,
+                        failureThreshold=4,
+                        periodSeconds=5,
                     ),
                     useReadinessProbe=True,
                     name="main",
@@ -766,8 +781,11 @@ class TestBasic:
                 deployment=DeploymentInfo(
                     livenessProbe=K8sProbe(
                         httpGet=K8sProbeHttp(path="/foo", port=200),
-                        initialDelaySeconds=2,
-                        periodSeconds=4,
+                        initialDelaySeconds=10,
+                        timeoutSeconds=20,
+                        successThreshold=30,
+                        failureThreshold=40,
+                        periodSeconds=50,
                     ),
                     useLivenessProbe=True,
                     name="main",

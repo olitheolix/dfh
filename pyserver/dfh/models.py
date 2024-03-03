@@ -102,6 +102,9 @@ class K8sProbe(BaseModel):
     httpGet: K8sProbeHttp = K8sProbeHttp()
     initialDelaySeconds: int = -1
     periodSeconds: int = -1
+    timeoutSeconds: int = -1
+    successThreshold: int = -1
+    failureThreshold: int = -1
 
 
 class K8sResourceCpuMem(BaseModel):
