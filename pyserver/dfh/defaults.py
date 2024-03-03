@@ -32,3 +32,17 @@ def pod_fieldref_envs() -> List[K8sEnvVar]:
             )
         )
     return env_vars
+
+
+def pod_security_context() -> dict:
+    ctx = dict(
+        allowPrivilegeEscalation=False,
+        capabilities=dict(drop=["ALL"]),
+        privileged=False,
+        readOnlyRootFilesystem=True,
+        runAsGroup=3000,
+        runAsNonRoot=True,
+        runAsUser=1000,
+    )
+
+    return ctx

@@ -227,6 +227,9 @@ class TestBasic:
             _.model_dump(exclude_defaults=True)
             for _ in dfh.defaults.pod_fieldref_envs()
         ]
+
+        assert container["securityContext"] == dfh.defaults.pod_security_context()
+
         assert container["image"] == "image:tag"
         assert container["name"] == "container-name"
         if cmd_args:
