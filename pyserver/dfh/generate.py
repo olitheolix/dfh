@@ -118,6 +118,7 @@ def deployment_manifest(
         dply.livenessProbe if dply.useLivenessProbe else K8sProbe()
     )
     container.env = dply.envVars + dfh.defaults.pod_fieldref_envs()
+    container.securityContext = dfh.defaults.pod_security_context()
 
     # Dump the model.
     out = manifest.model_dump(exclude_defaults=True)

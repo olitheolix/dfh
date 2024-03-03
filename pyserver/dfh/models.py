@@ -139,6 +139,7 @@ class K8sContainer(BaseModel):
     livenessProbe: K8sProbe = K8sProbe()
     readinessProbe: K8sProbe = K8sProbe()
     imagePullPolicy: Any = None
+    securityContext: dict = {}
     terminationMessagePath: Any = None
     terminationMessagePolicy: Any = None
 
