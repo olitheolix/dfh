@@ -11,7 +11,7 @@ export default function K8sAppConfigurationDashboard() {
     return (
         <Grid container spacing={3}>
             {/* Configure App */}
-            <Grid item xs={12} md={8} lg={9}>
+            <Grid item xs={12}>
                 <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', }}>
                     <K8sAppConfigurationDialog />
                 </Paper>
