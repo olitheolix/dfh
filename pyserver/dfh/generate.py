@@ -61,7 +61,9 @@ def watch_key(meta: AppMetadata, canary: bool):
     return f"{meta.namespace}/{k8s_name}"
 
 
-def resource_labels(cfg: ServerConfig, meta: AppMetadata, is_canary: bool):
+def resource_labels(
+    cfg: ServerConfig, meta: AppMetadata, is_canary: bool
+) -> Dict[str, str]:
     labels = {
         "app": meta.name,
         cfg.env_label: meta.env,
@@ -100,7 +102,9 @@ def deployment_manifest(
         namespace=app.metadata.namespace,
         labels=labels,
     )
-    manifest.spec.selector = {"matchLabels": labels}
+
+    if not manifest.spec.selector:
+        manifest.spec.selector = {"matchLabels": labels}
     manifest.spec.template.metadata = K8sMetadata(labels=labels)
 
     # Spec the application container of the Pod.

@@ -400,6 +400,29 @@ class TestBasic:
         obj = gen.deployment_manifest(cfg, app_info, canary=False, base=existing)
         assert "readinessProbe" not in obj["spec"]["template"]["spec"]["containers"][0]
 
+    def test_generate_deployment_update_existing_label_selectors(self):
+        name, ns, env = "demo", "default", "stg"
+        app_info = AppInfo(
+            metadata=AppMetadata(name=name, env=env, namespace=ns),
+            primary=AppPrimary(deployment=DeploymentInfo()),
+        )
+
+        # Sanity check: has the expected labels.
+        existing = gen.deployment_manifest(cfg, app_info, canary=False, base=None)
+        expected_labels = gen.resource_labels(cfg, app_info.metadata, False)
+        assert existing["spec"]["selector"]["matchLabels"] == expected_labels
+
+        # Replace the labels with custom ones.
+        new_selectors = {
+            "foo": "foo1",
+            "bar1": "foo2",
+        }
+        existing["spec"]["selector"]["matchLabels"] = new_selectors
+
+        # Must not touch the label selectors on the deployment.
+        obj = gen.deployment_manifest(cfg, app_info, canary=False, base=existing)
+        assert obj["spec"]["selector"]["matchLabels"] == new_selectors
+
     @pytest.mark.parametrize("has_canary", [False, True])
     def test_generate_service_manifests_new(self, has_canary: bool):
         # Input.
