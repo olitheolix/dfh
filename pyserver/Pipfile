@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-uvicorn = {extras = ["standard"], version = "*"}
 fastapi = {extras = ["all"], version = "*"}
 faker = "*"
 tenacity = "*"
@@ -13,6 +12,7 @@ respx = "*"
 httpx = "*"
 pyyaml = "*"
 kubernetes-square = "*"
+hypercorn = "*"
 
 [dev-packages]
 isort = "*"

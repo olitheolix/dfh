@@ -347,7 +347,7 @@ async def setup_k8s_watch(
     cfg: ServerConfig, k8scfg: K8sConfig, db: Database, res: WatchedResource
 ):
     # Setup log stream with INFO severity.
-    logit.info("watch started")
+    logit.info(f"watch started for {res.apiVersion}/{res.kind}")
 
     # Watch NAMESPACE resource.
     try:
