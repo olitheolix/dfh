@@ -133,6 +133,10 @@ def deployment_manifest(
         else:
             container["resources"] = {}
 
+    out["spec"]["template"]["spec"]["topologySpreadConstraints"] = (
+        dfh.defaults.topology_spread({"app": app.metadata.name})
+    )
+
     return out
 
 

@@ -198,6 +198,10 @@ class TestBasic:
         assert obj["metadata"]["labels"] == expected_labels
         assert obj["spec"]["template"]["metadata"]["labels"] == expected_labels
 
+        top = obj["spec"]["template"]["spec"]["topologySpreadConstraints"]
+        assert top == dfh.defaults.topology_spread({"app": name})
+        del top
+
         container = obj["spec"]["template"]["spec"]["containers"][0]
         assert container["readinessProbe"] and container["readinessProbe"]["httpGet"]
         assert container["readinessProbe"]["httpGet"]["path"] == "/ready"
