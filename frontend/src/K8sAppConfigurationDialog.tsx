@@ -276,13 +276,25 @@ function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
         });
     };
 
-    const onResourceChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const onHttpGetChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary | AppCanary) => {
             let out = { ...prevObject }
 
             // @ts-ignore
             out.deployment[probeType].httpGet[name] = value
+
+            return out
+        });
+    };
+
+    const onProbeChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = event.target;
+        setAppRes((prevObject: AppPrimary | AppCanary) => {
+            let out = { ...prevObject }
+
+            // @ts-ignore
+            out.deployment[probeType][name] = value
 
             return out
         });
@@ -297,18 +309,36 @@ function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
                 {/* Spacer to push text fields to the right */}
                 <Grid item xs={2} />
 
-                <Grid item>
+                <Grid item style={{ width: '20%' }}>
                     <TextField
                         label="path" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.path}
-                        name="path" onChange={onResourceChange} />
+                        name="path" onChange={onHttpGetChange} />
                 </Grid>
-                <Grid item>
+                <Grid item style={{ width: '20%' }}>
                     <TextField label="port" type="number" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.port}
-                        name="port" onChange={onResourceChange} />
+                        name="port" onChange={onHttpGetChange} />
+                </Grid>
+                <Grid item style={{ width: '10%' }}>
+                    <TextField label="successThreshold" type="number" variant="standard"
+                        // @ts-ignore
+                        value={appRes.deployment[probeType].successThreshold}
+                        name="successThreshold" onChange={onProbeChange} />
+                </Grid>
+                <Grid item style={{ width: '10%' }}>
+                    <TextField label="failureThreshold" type="number" variant="standard"
+                        // @ts-ignore
+                        value={appRes.deployment[probeType].failureThreshold}
+                        name="failureThreshold" onChange={onProbeChange} />
+                </Grid>
+                <Grid item style={{ width: '10%' }}>
+                    <TextField label="timeoutSeconds" type="number" variant="standard"
+                        // @ts-ignore
+                        value={appRes.deployment[probeType].timeoutSeconds}
+                        name="timeoutSeconds" onChange={onProbeChange} />
                 </Grid>
             </Grid>
         )
@@ -612,13 +642,19 @@ const initialAppPrimary: AppPrimary = {
         readinessProbe: {
             httpGet: { path: "/ready", port: 8080 },
             initialDelaySeconds: 10,
-            periodSeconds: 20
+            periodSeconds: 20,
+            timeoutSeconds: 1,
+            successThreshold: 1,
+            failureThreshold: 1,
         },
         useReadinessProbe: true,
         livenessProbe: {
             httpGet: { path: "/live", port: 8080 },
             initialDelaySeconds: 10,
-            periodSeconds: 20
+            periodSeconds: 20,
+            timeoutSeconds: 1,
+            successThreshold: 1,
+            failureThreshold: 1,
         },
         useLivenessProbe: true,
         secrets: [],
@@ -655,13 +691,19 @@ const initialAppCanary: AppCanary = {
         readinessProbe: {
             httpGet: { path: "/ready", port: 8080 },
             initialDelaySeconds: 10,
-            periodSeconds: 20
+            periodSeconds: 20,
+            timeoutSeconds: 1,
+            successThreshold: 1,
+            failureThreshold: 1,
         },
         useReadinessProbe: true,
         livenessProbe: {
             httpGet: { path: "/live", port: 8080 },
             initialDelaySeconds: 10,
-            periodSeconds: 20
+            periodSeconds: 20,
+            timeoutSeconds: 1,
+            successThreshold: 1,
+            failureThreshold: 1,
         },
         useLivenessProbe: true,
         secrets: [],
