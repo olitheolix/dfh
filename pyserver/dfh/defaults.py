@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from dfh.models import K8sEnvVar
 
@@ -35,6 +35,7 @@ def pod_fieldref_envs() -> List[K8sEnvVar]:
 
 
 def pod_security_context() -> dict:
+    """Return a generic pod security context."""
     ctx = dict(
         allowPrivilegeEscalation=False,
         capabilities=dict(drop=["ALL"]),
@@ -46,3 +47,18 @@ def pod_security_context() -> dict:
     )
 
     return ctx
+
+
+def topology_spread(label_selectors: Dict[str, str]) -> List[dict]:
+    """Return a generic topology spread."""
+    out = []
+    topology_keys = ("topology.kubernetes.io/zone", "kubernetes.io/hostname")
+    for key in topology_keys:
+        constraint = dict(
+            labelSelector=dict(matchLabels=label_selectors.copy()),
+            maxSkew=1,
+            topologyKey=key,
+            whenUnsatisfiable="ScheduleAnyway",
+        )
+        out.append(constraint)
+    return out
