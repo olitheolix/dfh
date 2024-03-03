@@ -514,6 +514,8 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
             scroll="paper"
             aria-labelledby="scroll-dialog-title"
             aria-describedby="scroll-dialog-description"
+            fullWidth={true}
+            maxWidth="xl"
         >
             <DialogTitle id="scroll-dialog-title">Diff</DialogTitle>
             <DialogContent
