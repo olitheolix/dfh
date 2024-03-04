@@ -294,15 +294,20 @@ class WatchResource:
         url = self.construct_watch_path(self.last_rv)
 
         # Open the long lived connection.
-        async with self.k8scfg.client.stream("GET", url) as stream:
-            if stream.status_code != 200:
-                meta_log = self.get_logging_metadata()
-                self.logit.warning("Cannot start watch", meta_log)
-                return True
+        try:
+            async with self.k8scfg.client.stream("GET", url) as stream:
+                if stream.status_code != 200:
+                    meta_log = self.get_logging_metadata()
+                    self.logit.warning("Cannot start watch", meta_log)
+                    return True
 
-            # Feed the K8s events into our local iterator queue.
-            async for line_raw in stream.aiter_lines():
-                await self.parse_line(line_raw)
+                # Feed the K8s events into our local iterator queue.
+                async for line_raw in stream.aiter_lines():
+                    await self.parse_line(line_raw)
+        except dfh.k8s.WEB_EXCEPTIONS:
+            meta_log = self.get_logging_metadata()
+            self.logit.exception("Watch aborted due to an web exception", meta_log)
+            return True
         return False
 
     async def background_runner(self) -> None:

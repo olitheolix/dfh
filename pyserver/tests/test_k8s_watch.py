@@ -1,3 +1,4 @@
+import httpx
 import asyncio
 import json
 import logging
@@ -357,7 +358,7 @@ class TestWatchMockedBackgroundTask:
 
         watch = dfh.watch.WatchResource(k8scfg, path, rv=rv)
         watch.last_rv = initial_rv
-        m_list.return_value = (10, status != 200)
+        m_list.return_value = (10, False)
 
         # Setup a mock to return a multi-line text response.
         m_http = respx.get(watch.construct_watch_path(rv))
@@ -371,6 +372,26 @@ class TestWatchMockedBackgroundTask:
         else:
             # Must return with an error not have parsed any messages.
             assert ret is True and m_parse.call_count == 0
+
+    @mock.patch.object(dfh.watch.WatchResource, "parse_line")
+    @mock.patch.object(dfh.watch.WatchResource, "list_resource")
+    async def test_read_k8s_stream_restart_bugfix(
+        self, m_list, m_parse, k8scfg: K8sConfig
+    ):
+        """Simulate watch restart because resource version was negative."""
+        path, rv = "/api/crt/v1/namespaces", 10
+
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=rv)
+        watch.last_rv = 10
+        m_list.return_value = (10, False)
+
+        # Setup a mock to return a multi-line text response.
+        m_http = respx.get(watch.construct_watch_path(rv))
+        m_http.side_effect = httpx.RequestError
+
+        # Consume the stream and verify the function processes the events.
+        err = await watch.read_k8s_stream()
+        assert err
 
     async def test_read_k8s_stream_list_error(self, k8scfg: K8sConfig):
         """Gracefully abort if LIST operations fails."""
