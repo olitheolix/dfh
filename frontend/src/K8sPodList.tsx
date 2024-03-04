@@ -40,7 +40,7 @@ export default function K8sPodList({ appId, envId }: { appId: string, envId: str
         };
 
         fetchData();
-        const intervalId = setInterval(fetchData, 5000);
+        const intervalId = setInterval(fetchData, 2000);
         return () => clearInterval(intervalId);
     }, []);
 

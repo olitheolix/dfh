@@ -223,28 +223,28 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
         <React.Fragment>
             <Grid container spacing={3} alignItems="center">
                 <Grid item xs={1} /> {/* Spacer to push text fields to the right */}
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={2}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.name} renderInput={(params) => (
                             <TextField {...params} id="name" label="Container Name" variant="standard" name="name" onChange={onChange} />
                         )}
                     />
                 </Grid>
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={4}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.image} renderInput={(params) => (
                             <TextField {...params} id="image" label="Image:Tag" variant="standard" name="image" onChange={onChange} />
                         )}
                     />
                 </Grid>
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={2}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.command} renderInput={(params) => (
                             <TextField {...params} id="command" label="Command" variant="standard" name="command" onChange={onChange} />
                         )}
                     />
                 </Grid>
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={2}>
                     <Autocomplete
                         freeSolo options={["v1", "v2"]} value={appRes.deployment.args} renderInput={(params) => (
                             <TextField {...params} id="args" label="Args" variant="standard" name="args" onChange={onChange} />
@@ -252,7 +252,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                     />
                 </Grid>
             </Grid>
-        </React.Fragment>
+        </React.Fragment >
     )
 }
 
@@ -309,32 +309,32 @@ function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
                 {/* Spacer to push text fields to the right */}
                 <Grid item xs={2} />
 
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={2}>
                     <TextField
                         label="path" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.path}
                         name="path" onChange={onHttpGetChange} />
                 </Grid>
-                <Grid item style={{ width: '20%' }}>
+                <Grid item xs={1}>
                     <TextField label="port" type="number" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.port}
                         name="port" onChange={onHttpGetChange} />
                 </Grid>
-                <Grid item style={{ width: '10%' }}>
+                <Grid item xs={2}>
                     <TextField label="successThreshold" type="number" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].successThreshold}
                         name="successThreshold" onChange={onProbeChange} />
                 </Grid>
-                <Grid item style={{ width: '10%' }}>
+                <Grid item xs={2}>
                     <TextField label="failureThreshold" type="number" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].failureThreshold}
                         name="failureThreshold" onChange={onProbeChange} />
                 </Grid>
-                <Grid item style={{ width: '10%' }}>
+                <Grid item xs={2}>
                     <TextField label="timeoutSeconds" type="number" variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].timeoutSeconds}
@@ -425,10 +425,10 @@ function ServiceConfigComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                     {/* Spacer to push text fields to the right */}
                     <Grid item xs={2} />
 
-                    <Grid item>
+                    <Grid item xs={1}>
                         <TextField label="Port" variant="standard" value={appRes.service.port} fullWidth name="port" onChange={onServicesChange} />
                     </Grid>
-                    <Grid item>
+                    <Grid item xs={1}>
                         <TextField label="Target Port" variant="standard" value={appRes.service.targetPort} fullWidth name="targetPort" onChange={onServicesChange} />
                     </Grid>
                 </Grid>
@@ -514,6 +514,8 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
             scroll="paper"
             aria-labelledby="scroll-dialog-title"
             aria-describedby="scroll-dialog-description"
+            fullWidth={true}
+            maxWidth="xl"
         >
             <DialogTitle id="scroll-dialog-title">Diff</DialogTitle>
             <DialogContent
