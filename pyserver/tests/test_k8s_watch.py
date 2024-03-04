@@ -61,11 +61,10 @@ class TestWatchMockedBackgroundTask:
 
     async def test_ctor(self, k8scfg: K8sConfig):
         path = "/api/crt/v1/namespaces"
-        client = k8scfg.client
 
         # Default values.
-        watch = dfh.watch.WatchResource(client, path)
-        assert watch.client == client
+        watch = dfh.watch.WatchResource(k8scfg, path)
+        assert watch.k8scfg == k8scfg
         assert watch.last_rv == -1
         assert watch.queue.qsize() == 0
         assert watch.list_path == path
@@ -76,9 +75,9 @@ class TestWatchMockedBackgroundTask:
         # Custom values.
         custom_logger = logging.getLogger("default")
         watch = dfh.watch.WatchResource(
-            client, path, rv=10, timeout=20, logger=custom_logger
+            k8scfg, path, rv=10, timeout=20, logger=custom_logger
         )
-        assert watch.client == client
+        assert watch.k8scfg == k8scfg
         assert watch.last_rv == 10
         assert watch.queue.qsize() == 0
         assert watch.list_path == path
@@ -88,35 +87,34 @@ class TestWatchMockedBackgroundTask:
         assert watch.logit == custom_logger
         assert len(watch.tasks) == 1
 
-    async def test_get_logging_metadata(self):
+    async def test_get_logging_metadata(self, k8scfg):
         """Basic test to validate the logging metadata."""
         path = "/api/crt/v1/namespaces"
 
         # Session without explicit host.
-        async with httpx.AsyncClient() as client:
-            watch = dfh.watch.WatchResource(client, path)
-            ret = watch.get_logging_metadata()
-            assert ret == {
-                "component": "k8s-watch",
-                "path": path,
-                "host": "",
-            }
+        watch = dfh.watch.WatchResource(k8scfg, path)
+        ret = watch.get_logging_metadata()
+        assert ret == {
+            "component": "k8s-watch",
+            "path": path,
+            "host": "https:",
+        }
 
         # Session with explicit host.
-        async with httpx.AsyncClient(base_url="http://10.1.2.3:8080") as client:
-            watch = dfh.watch.WatchResource(client, path)
-            ret = watch.get_logging_metadata()
-            assert ret == {
-                "component": "k8s-watch",
-                "path": path,
-                "host": "http://10.1.2.3:8080",
-            }
+        k8scfg.client.base_url = "http://10.1.2.3:8080"
+        watch = dfh.watch.WatchResource(k8scfg, path)
+        ret = watch.get_logging_metadata()
+        assert ret == {
+            "component": "k8s-watch",
+            "path": path,
+            "host": "http://10.1.2.3:8080",
+        }
 
     async def test_context_manager(self, k8scfg: K8sConfig):
         """Context manager must `cancel` all tasks."""
         path = "/api/crt/v1/namespaces"
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert not watch.tasks[0].cancel.called
         async with watch:
             pass
@@ -126,7 +124,7 @@ class TestWatchMockedBackgroundTask:
         """The class must yield the content of the queue."""
         path = "/api/crt/v1/namespaces"
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         # Pretend K8s sent us one line before the task was cancelled.
         await watch.queue.put("k8s-line-1")
@@ -154,7 +152,7 @@ class TestWatchMockedBackgroundTask:
 
         # Function must return the resource version as an *integer*. This
         # is because K8s encodes the resource version as a string.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.state == {}
         ret = await watch.list_resource()
         assert watch.state == {uid: obj}
@@ -170,7 +168,7 @@ class TestWatchMockedBackgroundTask:
         m_http.return_value = Response(404, json={})
 
         # The `list_resource` method must return with an error.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert await watch.list_resource() == (-1, True)
 
     async def test_update_state_inconsistent(self, k8scfg: K8sConfig):
@@ -195,7 +193,7 @@ class TestWatchMockedBackgroundTask:
 
         # Create the `WatchResource` instance and ensure it reads the lines
         # and puts them into the queue before returning successfully.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.state == {}
         assert watch.last_rv == -1
         assert watch.queue.qsize() == 0
@@ -242,7 +240,7 @@ class TestWatchMockedBackgroundTask:
 
         # Create the `WatchResource` instance and ensure it reads the lines
         # and puts them into the queue before returning successfully.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.state == {}
         assert watch.last_rv == -1
         assert watch.queue.qsize() == 0
@@ -281,7 +279,7 @@ class TestWatchMockedBackgroundTask:
         line = json.dumps({"type": "ADDED", "object": obj1})
 
         # Setup Watch.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.state == {}
         assert watch.last_rv == -1
 
@@ -326,7 +324,7 @@ class TestWatchMockedBackgroundTask:
             }
         )
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.last_rv == -1
 
         # All errors except 410 must signal an error.
@@ -339,7 +337,7 @@ class TestWatchMockedBackgroundTask:
         """Gracefully abort if we receive a corrupt JSON line."""
         path = "/api/crt/v1/namespaces"
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.last_rv == -1
 
         # Must return with an error and not do anything else.
@@ -358,7 +356,7 @@ class TestWatchMockedBackgroundTask:
         """Simulate watch restart because resource version was negative."""
         path, rv = "/api/crt/v1/namespaces", 10
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path, rv=rv)
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=rv)
         watch.last_rv = initial_rv
         m_list.return_value = (10, status != 200)
 
@@ -383,7 +381,7 @@ class TestWatchMockedBackgroundTask:
         m_http.return_value = Response(404, json={})
 
         # Create watch.
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.last_rv == -1
 
         # Stream reader must return with an error and not update the latest
@@ -407,7 +405,7 @@ class TestWatchMockedBackgroundTask:
         # after it queued the __CANCELLED__ message.
         m_bgs.side_effect = [False, True, asyncio.CancelledError]
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path, rv=-1)
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         await watch.background_runner()
         m_sleep.assert_called_once_with(30)
 
@@ -420,7 +418,7 @@ class TestWatchMockedBackgroundTask:
         # after it queued the __CANCELLED__ message.
         m_bgs.side_effect = asyncio.CancelledError
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path, rv=-1)
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         await watch.background_runner()
         assert await watch.queue.get() == "__CANCELLED__"
         assert watch.queue.qsize() == 0
@@ -437,7 +435,7 @@ class TestWatchMockedBackgroundTask:
 
         # The background function must raise the unhandled exception but only
         # after it queued the __EXCEPTION__ message.
-        watch = dfh.watch.WatchResource(k8scfg.client, path, rv=-1)
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
 
         try:
             await watch.background_runner()
@@ -450,7 +448,7 @@ class TestWatchMockedBackgroundTask:
     async def test_reset_state_no_op(self, k8scfg: K8sConfig):
         """The old state matches the new state."""
         path = "/api/crt/v1/namespaces"
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         # No existing state and no new manifests. This must do nothing.
         state: Dict[str, dict] = {}
@@ -467,7 +465,7 @@ class TestWatchMockedBackgroundTask:
         """Add new objects to the state."""
         path = "/api/crt/v1/namespaces"
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         # Must add one document to the state and fake the corresponding event.
         state: Dict[str, dict] = {}
@@ -486,7 +484,7 @@ class TestWatchMockedBackgroundTask:
         obj1_a = {"metadata": {"uid": "1", "foo": "bar_a"}}
         obj1_b = {"metadata": {"uid": "1", "foo": "bar_b"}}
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         # Same object but different content. Function must update the state
         # and emit the corresponding MODIFIED event.
@@ -506,7 +504,7 @@ class TestWatchMockedBackgroundTask:
         obj1_a = {"metadata": {"uid": "1", "foo": "bar_a"}}
         obj2_a = {"metadata": {"uid": "2", "foo": "bar_a"}}
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         state = {"1": obj1_a, "2": obj2_a}
         await watch.reset_state([obj1_a], state)
@@ -525,7 +523,7 @@ class TestWatchMockedBackgroundTask:
         obj3_a = {"metadata": {"uid": "3", "foo": "bar_a"}}
         obj4_b = {"metadata": {"uid": "4", "foo": "bar_b"}}
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path)
+        watch = dfh.watch.WatchResource(k8scfg, path)
 
         # Current state knows of three objects but the new manifests add,
         # remove and modify one.
@@ -554,7 +552,7 @@ class TestWatchWithBackgroundTask:
 
         m_bgs.side_effect = asyncio.CancelledError
 
-        watch = dfh.watch.WatchResource(k8scfg.client, path, rv=-1)
+        watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         results = [_ async for _ in watch]
         assert len(results) == 0
 
