@@ -536,14 +536,11 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
 
 
 function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, jobId: number }) {
-    const [loading, setLoading] = useState<boolean>(false);
-    const [content, setContent] = useState<string[]>([]);
-    const [done, setDone] = useState<boolean>(false);
+    const [success, setSuccess] = useState<boolean>(false);
 
     const onClose = () => setIsOpen(false);
 
     const sendData = () => {
-        setLoading(true); // Set loading to true before making the POST request
         const data = { jobId: jobId }
         fetch(`/api/crt/v1/jobs`, {
             method: 'POST',
@@ -551,27 +548,19 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(data)
-        }) // Make a POST request
-            .then(response => response.json())
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then((_) => {
-                setDone(true);
-                setLoading(false);
+                setSuccess(true);
             })
             .catch(error => {
                 console.error('Error fetching job data:', error);
-                setLoading(false);
-            });
-    };
-
-    const fetchData = () => {
-        fetch(`/api/crt/v1/jobs/${jobId}`)
-            .then(response => response.json())
-            .then((data: JobStatus) => {
-                setContent(data.logs);
-                setDone(data.done);
-            })
-            .catch(error => {
-                console.error('Error fetching job data:', error);
+                setSuccess(false);
             });
     };
 
@@ -580,16 +569,14 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             sendData(); // Make initial POST request if the dialog is open and the job is not done
         }
 
-    }, [isOpen, done, jobId]);
-
-    useEffect(() => {
-        const intervalId = setInterval(fetchData, 5000); // Start periodic GET requests
-        return () => clearInterval(intervalId); // Clean up interval
-
-    }, [jobId]); // Re-run useEffect when jobId changes
+    }, [isOpen, jobId]);
 
     const formatContent = () => {
-        return content.map((line, index) => (<Typography key={index}>{line}</Typography>))
+        if (success) {
+            return (<Typography key="jobid" sx={{ color: green[500] }}>Success</Typography>)
+        } else {
+            return (<Typography key="jobid" sx={{ color: red[500] }}>Error</Typography>)
+        }
     }
 
     return (
@@ -601,23 +588,15 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             aria-describedby="scroll-dialog-description"
             sx={{ minWidth: '400px' }}
         >
-            <DialogTitle id="scroll-dialog-title" sx={{ minWidth: '600px' }}>Progress</DialogTitle>
+            <DialogTitle id="scroll-dialog-title">Job</DialogTitle>
             <DialogContent
                 sx={{
                     overflowY: 'auto',
                     maxHeight: '300px', // Max height before we get scroll bars.
                 }}
             >
-                {loading ? ( // Show spinner while loading
-                    <CircularProgress />
-                ) : (
-                    <>
-                        JobID: {jobId}
-                        Done: {done ? "true" : "false"}
-                        <div style={{ width: '100%', height: '1px', backgroundColor: 'black' }} />
-                        {formatContent()}
-                    </>
-                )}
+                <Typography key={jobId}>ID: {jobId}</Typography>
+                {formatContent()}
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
