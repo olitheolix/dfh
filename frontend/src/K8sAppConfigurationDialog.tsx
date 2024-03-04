@@ -5,8 +5,8 @@ import { useParams } from 'react-router-dom';
 import { green, red, amber } from '@mui/material/colors';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
-    Accordion, AccordionDetails, AccordionSummary, TextField, Box,
-    CircularProgress, Grid, Switch, Slider, Autocomplete, Button, Dialog,
+    Accordion, AccordionDetails, AccordionSummary, TextField,
+    Grid, Switch, Slider, Autocomplete, Button, Dialog,
     DialogActions, DialogContent, DialogTitle, FormControlLabel
 } from '@mui/material';
 
@@ -555,11 +555,11 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             .then(response => response.json())
             .then((_) => {
                 setDone(true);
-                setLoading(false); // Set loading to false once the POST request completes
+                setLoading(false);
             })
             .catch(error => {
                 console.error('Error fetching job data:', error);
-                setLoading(false); // Set loading to false if there's an error
+                setLoading(false);
             });
     };
 
@@ -734,7 +734,7 @@ const initDeploymentPlan = {
 }
 
 
-export default function K8sAppConfigurationDialog() {
+export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: React.Dispatch<React.SetStateAction<boolean>> }) {
     const { appId, envId } = useParams();
 
     const [primaryEnvars, setPrimaryEnvars] = useState<K8sEnvVar[]>([]);
@@ -753,7 +753,6 @@ export default function K8sAppConfigurationDialog() {
     const [jobId, setJobId] = useState(0);
     const [deploymentPlan, setDeploymentPlan] = useState(initDeploymentPlan)
 
-    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [hasCanary, setHasCanary] = useState<boolean>(false);
 
     const onUpdateFlux = () => {
@@ -770,6 +769,7 @@ export default function K8sAppConfigurationDialog() {
 
     useEffect(() => {
         const fetchData = async () => {
+            // setIsLoading(true)
             try {
                 const response = await fetch(`/api/crt/v1/apps/${appId}/${envId}`);
                 const data: AppSpec = await response.json();
@@ -797,6 +797,7 @@ export default function K8sAppConfigurationDialog() {
     // Send the current app configuration to the backend and request a plan. Then insert the plan
     // into the `setDeploymentPlan` state variable and activate the modal that shows it.
     const onClickApply = async () => {
+        setIsLoading(true)
         let data: AppSpec = {
             primary: primary,
             canary: canary,
@@ -828,6 +829,7 @@ export default function K8sAppConfigurationDialog() {
         } catch (error) {
             console.error('Error posting data:', error);
         }
+        setIsLoading(false)
     };
 
     // Close the Plan confirmation dialog and open the progress dialog.
@@ -837,40 +839,30 @@ export default function K8sAppConfigurationDialog() {
         setIsProgressModalOpen(true)
     }
 
-    if (isLoading) {
-        return (
-            <React.Fragment>
-                <Box sx={{ display: 'flex' }}>
-                    <CircularProgress />
-                </Box>
-            </React.Fragment>
-        );
-    } else {
-        return (
-            <React.Fragment>
-                <Title>{appId} ({envId})</Title>
+    return (
+        <React.Fragment>
+            <Title>{appId} ({envId})</Title>
 
-                {/* Flux */}
-                <FormControlLabel control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />} label="Flux" />
-                <FormControlLabel control={<Switch checked={hasCanary} onChange={onAddCanary} />} label="Canary" />
+            {/* Flux */}
+            <FormControlLabel control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />} label="Flux" />
+            <FormControlLabel control={<Switch checked={hasCanary} onChange={onAddCanary} />} label="Canary" />
 
-                <PrimaryConfigComponent appRes={primary} setAppRes={setPrimary} envars={primaryEnvars} setEnvars={setPrimaryEnvars} secrets={primarySecrets} setSecrets={setPrimarySecrets} />
-                {hasCanary && (
-                    <CanaryConfigComponent appRes={canary} setAppRes={setCanary} envars={canaryEnvars} setEnvars={setCanaryEnvars} secrets={canarySecrets} setSecrets={setCanarySecrets} />
-                )}
+            <PrimaryConfigComponent appRes={primary} setAppRes={setPrimary} envars={primaryEnvars} setEnvars={setPrimaryEnvars} secrets={primarySecrets} setSecrets={setPrimarySecrets} />
+            {hasCanary && (
+                <CanaryConfigComponent appRes={canary} setAppRes={setCanary} envars={canaryEnvars} setEnvars={setCanaryEnvars} secrets={canarySecrets} setSecrets={setCanarySecrets} />
+            )}
 
-                <ShowPlanComponent isOpen={isPlanModalOpen} setIsOpen={setIsPlanModalOpen} deploymentPlan={deploymentPlan} showJobProgress={showJobProgress} />
-                <JobStatusComponent isOpen={isProgressModalOpen} setIsOpen={setIsProgressModalOpen} jobId={jobId} />
+            <ShowPlanComponent isOpen={isPlanModalOpen} setIsOpen={setIsPlanModalOpen} deploymentPlan={deploymentPlan} showJobProgress={showJobProgress} />
+            <JobStatusComponent isOpen={isProgressModalOpen} setIsOpen={setIsProgressModalOpen} jobId={jobId} />
 
-                {/* Cancel/Apply button to request a plan from the backend.*/}
-                <p />
-                <Grid container alignItems="center" justifyContent="right">
-                    <Grid item>
-                        <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
-                    </Grid>
+            {/* Cancel/Apply button to request a plan from the backend.*/}
+            <p />
+            <Grid container alignItems="center" justifyContent="right">
+                <Grid item>
+                    <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
                 </Grid>
+            </Grid>
 
-            </React.Fragment>
-        );
-    }
+        </React.Fragment>
+    );
 }
