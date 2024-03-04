@@ -324,9 +324,18 @@ async def post_jobs(job: JobDescription, request: Request):
         folder=Path("/tmp"),
     )
 
-    plan = request.app.extra["jobs"][job.jobId]
+    try:
+        plan = request.app.extra["jobs"].pop(job.jobId)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED, detail="Job not found"
+        )
+
     err = await square.apply_plan(sq_config, plan)
-    assert not err
+    if err:
+        raise HTTPException(
+            status_code=status.HTTP_418_IM_A_TEAPOT, detail="Job failed"
+        )
 
 
 # Serve static web app on all paths that have not been defined already.
