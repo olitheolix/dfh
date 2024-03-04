@@ -145,7 +145,7 @@ export interface DeltaPatch {
     diff: string
 }
 
-export interface DeploymentPlan {
+export interface FrontendDeploymentPlan {
     jobId: number
     create: DeltaCreate[]
     patch: DeltaPatch[]

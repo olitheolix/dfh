@@ -30,7 +30,7 @@ from dfh.models import (
     ServerConfig,
     WatchedResource,
 )
-from dfh.square_types import DeploymentPlan
+from dfh.square_types import FrontendDeploymentPlan
 
 from .conftest import K8sConfig, get_server_config
 from .test_helpers import create_temporary_k8s_namespace, deploy_test_app
@@ -123,7 +123,7 @@ class TestAPI:
     def test_crud_apps(self, m_plan, client: TestClient):
         # Mock plan.
         m_plan.return_value = (
-            DeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
+            FrontendDeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
             False,
         )
 
@@ -224,7 +224,7 @@ class TestAPI:
     def test_post_app_sane_payload(self, m_plan, client: TestClient):
         # Mock plan.
         m_plan.return_value = (
-            DeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
+            FrontendDeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
             False,
         )
 
@@ -257,7 +257,7 @@ class TestAPI:
         """
         # Mock plan.
         m_plan.return_value = (
-            DeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
+            FrontendDeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
             False,
         )
 
@@ -302,7 +302,7 @@ class TestAPI:
     def test_patch_app(self, m_plan, client: TestClient):
         # Mock plan.
         m_plan.return_value = (
-            DeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
+            FrontendDeploymentPlan(jobId="foo", create=[], patch=[], delete=[]),
             False,
         )
 
@@ -496,7 +496,7 @@ class TestIntegration:
             )
             assert ret.status_code == 200
 
-            plan = DeploymentPlan.model_validate(ret.json())
+            plan = FrontendDeploymentPlan.model_validate(ret.json())
             assert len(plan.create) == 2
             assert plan.jobId != ""
 
@@ -575,7 +575,7 @@ class TestIntegration:
 
             ret = client.patch(f"/api/crt/v1/apps/{name}/{env}", json=app.model_dump())
             assert ret.status_code == 200
-            plan = DeploymentPlan.model_validate(ret.json())
+            plan = FrontendDeploymentPlan.model_validate(ret.json())
             assert plan.jobId != ""
 
             # --- Request to implement the plan ---
@@ -659,7 +659,7 @@ class TestIntegrationCanary:
 
             ret = client.patch(f"/api/crt/v1/apps/{name}/{env}", json=app.model_dump())
             assert ret.status_code == 200
-            plan = DeploymentPlan.model_validate(ret.json())
+            plan = FrontendDeploymentPlan.model_validate(ret.json())
             assert plan.jobId != ""
 
             # Must create one Deployment, VirtualService and DestinationRule.

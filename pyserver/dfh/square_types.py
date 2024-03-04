@@ -46,7 +46,7 @@ class DeltaPatch(BaseModel):
     diff: str
 
 
-class DeploymentPlan(BaseModel):
+class FrontendDeploymentPlan(BaseModel):
     """Describe Square plan.
 
     Collects all resources manifests to add/delete as well as the JSON
