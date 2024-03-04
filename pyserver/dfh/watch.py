@@ -354,9 +354,10 @@ async def setup_k8s_watch(
     # Setup log stream with INFO severity.
     logit.info(f"watch started for {res.apiVersion}/{res.kind}")
 
-    # Watch NAMESPACE resource.
+    # Watch the specified resource `res` and re-establish the watch every ~2min.
     try:
-        watch = WatchResource(k8scfg, res.path, timeout=30, logger=logit)
+        timeout = 120 + int(random.uniform(-10, 10))
+        watch = WatchResource(k8scfg, res.path, timeout=timeout, logger=logit)
         async with k8scfg.client, watch:
             async for data in watch:  # codecov-skip
                 track_resource(cfg, db, res, data)
