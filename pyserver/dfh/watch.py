@@ -18,6 +18,7 @@ ID and starts over.
 import asyncio
 import json
 import logging
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -319,7 +320,7 @@ class WatchResource:
                 self.logit.info("Reconnect", meta_log)
                 if await self.read_k8s_stream():
                     # Wait a bit before we try to resume the watch.
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(5 + random.uniform(-2, 2))
         except asyncio.CancelledError:
             self.logit.info("Background task was cancelled", meta_log)
             await self.queue.put("__CANCELLED__")

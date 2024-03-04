@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Dict
 from unittest import mock
 
-import httpx
 import pytest
 import respx
 import yaml
@@ -390,15 +389,19 @@ class TestWatchMockedBackgroundTask:
         assert watch.last_rv == -1
         assert watch.queue.qsize() == 0
 
+    @mock.patch.object(dfh.watch.random, "uniform")
     @mock.patch.object(dfh.watch.WatchResource, "read_k8s_stream")
     @mock.patch.object(dfh.watch.asyncio, "sleep")
-    async def test_background_runner_loop(self, m_sleep, m_bgs, k8scfg: K8sConfig):
+    async def test_background_runner_loop(
+        self, m_sleep, m_bgs, m_rand, k8scfg: K8sConfig
+    ):
         """Runner must restart the `read_k8s_stream`.
 
-        If `read_k8s_stream` returns an error it must wait 30s before
-        it tries again.
+        If `read_k8s_stream` returns an error it must wait 5s (plus jitter)
+        before it tries again.
 
         """
+        m_rand.return_value = 1.5
         path = "/api/crt/v1/namespaces"
 
         # The background function must raise the unhandled exception but only
@@ -407,7 +410,9 @@ class TestWatchMockedBackgroundTask:
 
         watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         await watch.background_runner()
-        m_sleep.assert_called_once_with(30)
+
+        m_sleep.assert_called_once_with(5 + 1.5)
+        m_rand.assert_called_once_with(-2, 2)
 
     @mock.patch.object(dfh.watch.WatchResource, "read_k8s_stream")
     async def test_background_runner_cancelled(self, m_bgs, k8scfg: K8sConfig):
