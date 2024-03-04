@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple
 
+from square.dtypes import FiltersKind
+
 from dfh.models import K8sEnvVar
 
 # Convenience: these are the automatically injected environment variables based
@@ -62,3 +64,61 @@ def topology_spread(label_selectors: Dict[str, str]) -> List[dict]:
         )
         out.append(constraint)
     return out
+
+
+def square_filters() -> Dict[str, FiltersKind]:
+    filters = {
+        "Deployment": [
+            {
+                "metadata": [
+                    {
+                        "annotations": [
+                            "autoscaling.alpha.kubernetes.io/conditions",
+                            "deployment.kubernetes.io/revision",
+                            "kubectl.kubernetes.io/last-applied-configuration",
+                            "kubernetes.io/change-cause",
+                        ]
+                    },
+                    "creationTimestamp",
+                    "generation",
+                    "managedFields",
+                    "resourceVersion",
+                    "selfLink",
+                    "uid",
+                ]
+            },
+            {"spec": [{"template": [{"metadata": ["creationTimestamp"]}]}]},
+            "status",
+        ],
+        "Service": [
+            {
+                "metadata": [
+                    {
+                        "annotations": [
+                            "kubectl.kubernetes.io/last-applied-configuration",
+                            "kubernetes.io/change-cause",
+                        ]
+                    },
+                    "creationTimestamp",
+                    "generation",
+                    "managedFields",
+                    "resourceVersion",
+                    "selfLink",
+                    "uid",
+                ]
+            },
+            {
+                "spec": [
+                    "clusterIP",
+                    "clusterIPs",
+                    "internalTrafficPolicy",
+                    "ipFamilies",
+                    "ipFamilyPolicy",
+                    "sessionAffinity",
+                    "type",
+                ]
+            },
+            "status",
+        ],
+    }
+    return filters

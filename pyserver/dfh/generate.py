@@ -525,69 +525,13 @@ def square_config(
     sq_cfg = square.dtypes.Config(
         kubeconfig=cfg.kubeconfig,
         kubecontext=cfg.kubecontext,
-        # Store manifests in this folder.
         folder=Path("/tmp/foo"),
-        # Group the downloaded manifests by namespace, label and kind.
         groupby=square.dtypes.GroupBy(label="app", order=["ns", "label", "kind"]),
-        # Specify the resource types to operate on.
         selectors=square.dtypes.Selectors(
             kinds={"Deployment", "Service"},
             labels=[f"app.kubernetes.io/name={name}", f"{cfg.env_label}={env}"],
             namespaces=[namespace],
         ),
-        filters={
-            "Deployment": [
-                {
-                    "metadata": [
-                        {
-                            "annotations": [
-                                "autoscaling.alpha.kubernetes.io/conditions",
-                                "deployment.kubernetes.io/revision",
-                                "kubectl.kubernetes.io/last-applied-configuration",
-                                "kubernetes.io/change-cause",
-                            ]
-                        },
-                        "creationTimestamp",
-                        "generation",
-                        "managedFields",
-                        "resourceVersion",
-                        "selfLink",
-                        "uid",
-                    ]
-                },
-                {"spec": [{"template": [{"metadata": ["creationTimestamp"]}]}]},
-                "status",
-            ],
-            "Service": [
-                {
-                    "metadata": [
-                        {
-                            "annotations": [
-                                "kubectl.kubernetes.io/last-applied-configuration",
-                                "kubernetes.io/change-cause",
-                            ]
-                        },
-                        "creationTimestamp",
-                        "generation",
-                        "managedFields",
-                        "resourceVersion",
-                        "selfLink",
-                        "uid",
-                    ]
-                },
-                {
-                    "spec": [
-                        "clusterIP",
-                        "clusterIPs",
-                        "internalTrafficPolicy",
-                        "ipFamilies",
-                        "ipFamilyPolicy",
-                        "sessionAffinity",
-                        "type",
-                    ]
-                },
-                "status",
-            ],
-        },
+        filters=dfh.defaults.square_filters(),
     )
     return sq_cfg
