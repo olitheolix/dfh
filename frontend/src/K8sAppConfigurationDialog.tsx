@@ -5,8 +5,8 @@ import { useParams } from 'react-router-dom';
 import { green, red, amber } from '@mui/material/colors';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
-    Accordion, AccordionDetails, AccordionSummary, TextField, Box,
-    CircularProgress, Grid, Switch, Slider, Autocomplete, Button, Dialog,
+    Accordion, AccordionDetails, AccordionSummary, TextField,
+    Grid, Switch, Slider, Autocomplete, Button, Dialog,
     DialogActions, DialogContent, DialogTitle, FormControlLabel
 } from '@mui/material';
 
@@ -536,14 +536,11 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
 
 
 function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, jobId: number }) {
-    const [loading, setLoading] = useState<boolean>(false);
-    const [content, setContent] = useState<string[]>([]);
-    const [done, setDone] = useState<boolean>(false);
+    const [success, setSuccess] = useState<boolean>(false);
 
     const onClose = () => setIsOpen(false);
 
     const sendData = () => {
-        setLoading(true); // Set loading to true before making the POST request
         const data = { jobId: jobId }
         fetch(`/api/crt/v1/jobs`, {
             method: 'POST',
@@ -551,27 +548,19 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(data)
-        }) // Make a POST request
-            .then(response => response.json())
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then((_) => {
-                setDone(true);
-                setLoading(false); // Set loading to false once the POST request completes
+                setSuccess(true);
             })
             .catch(error => {
                 console.error('Error fetching job data:', error);
-                setLoading(false); // Set loading to false if there's an error
-            });
-    };
-
-    const fetchData = () => {
-        fetch(`/api/crt/v1/jobs/${jobId}`)
-            .then(response => response.json())
-            .then((data: JobStatus) => {
-                setContent(data.logs);
-                setDone(data.done);
-            })
-            .catch(error => {
-                console.error('Error fetching job data:', error);
+                setSuccess(false);
             });
     };
 
@@ -580,16 +569,14 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             sendData(); // Make initial POST request if the dialog is open and the job is not done
         }
 
-    }, [isOpen, done, jobId]);
-
-    useEffect(() => {
-        const intervalId = setInterval(fetchData, 5000); // Start periodic GET requests
-        return () => clearInterval(intervalId); // Clean up interval
-
-    }, [jobId]); // Re-run useEffect when jobId changes
+    }, [isOpen, jobId]);
 
     const formatContent = () => {
-        return content.map((line, index) => (<Typography key={index}>{line}</Typography>))
+        if (success) {
+            return (<Typography key="jobid" sx={{ color: green[500] }}>Success</Typography>)
+        } else {
+            return (<Typography key="jobid" sx={{ color: red[500] }}>Error</Typography>)
+        }
     }
 
     return (
@@ -601,23 +588,15 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             aria-describedby="scroll-dialog-description"
             sx={{ minWidth: '400px' }}
         >
-            <DialogTitle id="scroll-dialog-title" sx={{ minWidth: '600px' }}>Progress</DialogTitle>
+            <DialogTitle id="scroll-dialog-title">Job</DialogTitle>
             <DialogContent
                 sx={{
                     overflowY: 'auto',
                     maxHeight: '300px', // Max height before we get scroll bars.
                 }}
             >
-                {loading ? ( // Show spinner while loading
-                    <CircularProgress />
-                ) : (
-                    <>
-                        JobID: {jobId}
-                        Done: {done ? "true" : "false"}
-                        <div style={{ width: '100%', height: '1px', backgroundColor: 'black' }} />
-                        {formatContent()}
-                    </>
-                )}
+                <Typography key={jobId}>ID: {jobId}</Typography>
+                {formatContent()}
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
@@ -734,7 +713,7 @@ const initDeploymentPlan = {
 }
 
 
-export default function K8sAppConfigurationDialog() {
+export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: React.Dispatch<React.SetStateAction<boolean>> }) {
     const { appId, envId } = useParams();
 
     const [primaryEnvars, setPrimaryEnvars] = useState<K8sEnvVar[]>([]);
@@ -753,7 +732,6 @@ export default function K8sAppConfigurationDialog() {
     const [jobId, setJobId] = useState(0);
     const [deploymentPlan, setDeploymentPlan] = useState(initDeploymentPlan)
 
-    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [hasCanary, setHasCanary] = useState<boolean>(false);
 
     const onUpdateFlux = () => {
@@ -770,6 +748,7 @@ export default function K8sAppConfigurationDialog() {
 
     useEffect(() => {
         const fetchData = async () => {
+            // setIsLoading(true)
             try {
                 const response = await fetch(`/api/crt/v1/apps/${appId}/${envId}`);
                 const data: AppSpec = await response.json();
@@ -797,6 +776,7 @@ export default function K8sAppConfigurationDialog() {
     // Send the current app configuration to the backend and request a plan. Then insert the plan
     // into the `setDeploymentPlan` state variable and activate the modal that shows it.
     const onClickApply = async () => {
+        setIsLoading(true)
         let data: AppSpec = {
             primary: primary,
             canary: canary,
@@ -828,6 +808,7 @@ export default function K8sAppConfigurationDialog() {
         } catch (error) {
             console.error('Error posting data:', error);
         }
+        setIsLoading(false)
     };
 
     // Close the Plan confirmation dialog and open the progress dialog.
@@ -837,40 +818,30 @@ export default function K8sAppConfigurationDialog() {
         setIsProgressModalOpen(true)
     }
 
-    if (isLoading) {
-        return (
-            <React.Fragment>
-                <Box sx={{ display: 'flex' }}>
-                    <CircularProgress />
-                </Box>
-            </React.Fragment>
-        );
-    } else {
-        return (
-            <React.Fragment>
-                <Title>{appId} ({envId})</Title>
+    return (
+        <React.Fragment>
+            <Title>{appId} ({envId})</Title>
 
-                {/* Flux */}
-                <FormControlLabel control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />} label="Flux" />
-                <FormControlLabel control={<Switch checked={hasCanary} onChange={onAddCanary} />} label="Canary" />
+            {/* Flux */}
+            <FormControlLabel control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />} label="Flux" />
+            <FormControlLabel control={<Switch checked={hasCanary} onChange={onAddCanary} />} label="Canary" />
 
-                <PrimaryConfigComponent appRes={primary} setAppRes={setPrimary} envars={primaryEnvars} setEnvars={setPrimaryEnvars} secrets={primarySecrets} setSecrets={setPrimarySecrets} />
-                {hasCanary && (
-                    <CanaryConfigComponent appRes={canary} setAppRes={setCanary} envars={canaryEnvars} setEnvars={setCanaryEnvars} secrets={canarySecrets} setSecrets={setCanarySecrets} />
-                )}
+            <PrimaryConfigComponent appRes={primary} setAppRes={setPrimary} envars={primaryEnvars} setEnvars={setPrimaryEnvars} secrets={primarySecrets} setSecrets={setPrimarySecrets} />
+            {hasCanary && (
+                <CanaryConfigComponent appRes={canary} setAppRes={setCanary} envars={canaryEnvars} setEnvars={setCanaryEnvars} secrets={canarySecrets} setSecrets={setCanarySecrets} />
+            )}
 
-                <ShowPlanComponent isOpen={isPlanModalOpen} setIsOpen={setIsPlanModalOpen} deploymentPlan={deploymentPlan} showJobProgress={showJobProgress} />
-                <JobStatusComponent isOpen={isProgressModalOpen} setIsOpen={setIsProgressModalOpen} jobId={jobId} />
+            <ShowPlanComponent isOpen={isPlanModalOpen} setIsOpen={setIsPlanModalOpen} deploymentPlan={deploymentPlan} showJobProgress={showJobProgress} />
+            <JobStatusComponent isOpen={isProgressModalOpen} setIsOpen={setIsProgressModalOpen} jobId={jobId} />
 
-                {/* Cancel/Apply button to request a plan from the backend.*/}
-                <p />
-                <Grid container alignItems="center" justifyContent="right">
-                    <Grid item>
-                        <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
-                    </Grid>
+            {/* Cancel/Apply button to request a plan from the backend.*/}
+            <p />
+            <Grid container alignItems="center" justifyContent="right">
+                <Grid item>
+                    <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
                 </Grid>
+            </Grid>
 
-            </React.Fragment>
-        );
-    }
+        </React.Fragment>
+    );
 }
