@@ -461,7 +461,7 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
         let out: JSX.Element[] = []
         out.push(<Typography key={key} sx={{ color: amber[500] }}>Patch {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}</Typography>)
         out.push(...el.diff.split("\n").map(renderDiff))
-        out.push(<Divider key={key + "sep"} sx={{ m: 2 }} />)
+        out.push(<Divider key={key + "sep"} />)
         return out
     }
 
@@ -476,7 +476,7 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
         const jsManifest = JSON.stringify(el.manifest, null, 4)
         const tmp = jsManifest.split("\n").map((line, index) => (<Typography key={key + index} sx={{ color: green[500], whiteSpace: 'pre-wrap' }}>   {line}</Typography>))
         out.push(...tmp)
-        out.push(<Divider key={key + "sep"} sx={{ m: 2 }} />)
+        out.push(<Divider key={key + "sep"} />)
 
         return out
     }
@@ -503,9 +503,24 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
             out.push(renderDelete(el))
         }
 
+        const toAdd = `${deploymentPlan.create.length} to add`
+        const toMod = `${deploymentPlan.patch.length} to modify`
+        const toDel = `${deploymentPlan.delete.length} to delete`
+
+        out.push(<Divider key={"summary-sep-1"} style={{ marginBottom: '20px' }} />)
+        out.push(
+            <Typography component="div" variant="body1" key="summary">
+                <span style={{ color: 'inherit', marginRight: '25px' }}>Plan:</span>
+                <span style={{ color: deploymentPlan.create.length ? 'green' : 'inherit', marginRight: '25px' }}>{toAdd}</span>
+                <span style={{ color: deploymentPlan.patch.length ? 'orange' : 'inherit', marginRight: '25px' }}>{toMod}</span>
+                <span style={{ color: deploymentPlan.delete.length ? 'red' : 'inherit', marginRight: '25px' }}>{toDel}</span>
+            </Typography>
+        )
         return out
     }
     const formattedDiffText = formatDiff()
+
+
 
     return (
         <Dialog
