@@ -671,19 +671,6 @@ class TestResourceTracking:
         assert key in res.manifests
         assert res.manifests[key] == manifest
 
-    def test_track_resource_clusterrole(self):
-        """Non-namespaced resources are slightly special and deserve a dedicated test."""
-        db: Database = Database()
-        res = db.resources["ClusterRole"]
-        manifest = yaml.safe_load(Path("tests/support/clusterrole.yaml").read_text())
-
-        key = "/cluster-admin"
-        data = {"type": "ADDED", "object": manifest}
-        assert not dfh.watch.track_resource(cfg, db, res, data)
-        assert len(res.manifests) == 1
-        assert key in res.manifests
-        assert res.manifests[key] == manifest
-
     def test_track_resource_err(self):
         db: Database = Database()
         res = db.resources["Deployment"]

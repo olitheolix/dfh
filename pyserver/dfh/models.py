@@ -270,11 +270,6 @@ def factory_WatchedResource() -> Dict[str, WatchedResource]:
         Deployment=WatchedResource(
             kind="Deployment", apiVersion="apps/v1", path="/apis/apps/v1/deployments"
         ),
-        ClusterRole=WatchedResource(
-            apiVersion="rbac.authorization.k8s.io/v1",
-            kind="ClusterRole",
-            path="/apis/rbac.authorization.k8s.io/v1/clusterroles",
-        ),
         VirtualService=WatchedResource(
             apiVersion="networking.istio.io/v1beta1",
             kind="VirtualService",
