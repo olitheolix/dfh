@@ -308,11 +308,7 @@ async def delete_single_app(
 
 @app.get("/api/crt/v1/jobs/{jobId}")
 def get_jobs(jobId: str) -> JobStatus:
-    import faker
-
-    return JobStatus(
-        jobId=jobId, logs=[faker.Faker().name(), faker.Faker().name()], done=True
-    )
+    return JobStatus(jobId=jobId, logs=["line 1", "line 2"], done=True)
 
 
 @app.post("/api/crt/v1/jobs")
