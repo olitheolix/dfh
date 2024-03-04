@@ -17,7 +17,7 @@ import Title from './Title';
 import { Typography, Divider } from '@mui/material';
 import {
     DeltaPatch, DeltaCreate, DeltaDelete, FrontendDeploymentPlan, AppPrimary, AppCanary,
-    AppMetadata, AppSpec, KeyValuePairType, JobStatus, K8sEnvVar
+    AppMetadata, AppSpec, KeyValuePairType, K8sEnvVar
 } from './BackendInterfaces'
 
 
