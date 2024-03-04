@@ -256,7 +256,7 @@ async def queue_job(app, jobId: str, sq_plan: DeploymentPlan):
 @app.patch("/api/crt/v1/apps/{name}/{env}")
 async def patch_single_app(
     name: str, env: str, app_info: AppInfo, request: Request
-) -> dfh.square_types.DeploymentPlan:
+) -> dfh.square_types.FrontendDeploymentPlan:
     cfg: ServerConfig = request.app.extra["config"]
     db: Database = request.app.extra["db"]
 
@@ -287,7 +287,7 @@ async def patch_single_app(
 @app.delete("/api/crt/v1/apps/{name}/{env}")
 async def delete_single_app(
     name: str, env: str, request: Request
-) -> dfh.square_types.DeploymentPlan:
+) -> dfh.square_types.FrontendDeploymentPlan:
     db: Database = request.app.extra["db"]
 
     # FIXME: how to delete with Square?

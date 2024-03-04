@@ -489,7 +489,7 @@ async def compile_plan(
 
 def compile_frontend_plan(
     sq_plan: square.dtypes.DeploymentPlan,
-) -> dfh.square_types.DeploymentPlan:
+) -> dfh.square_types.FrontendDeploymentPlan:
     dc = []
     for delta in sq_plan.create:
         meta = dfh.square_types.MetaManifest.model_validate(delta.meta._asdict())
@@ -513,7 +513,7 @@ def compile_frontend_plan(
             )
         )
 
-    plan = dfh.square_types.DeploymentPlan(
+    plan = dfh.square_types.FrontendDeploymentPlan(
         jobId=str(uuid.uuid4()), create=dc, patch=dp, delete=dd
     )
     return plan

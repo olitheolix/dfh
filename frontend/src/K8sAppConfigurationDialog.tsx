@@ -16,7 +16,7 @@ import KeyValueTable, { KeyValueTableIfx } from './KeyValueTable';
 import Title from './Title';
 import { Typography, Divider } from '@mui/material';
 import {
-    DeltaPatch, DeltaCreate, DeltaDelete, DeploymentPlan, AppPrimary, AppCanary,
+    DeltaPatch, DeltaCreate, DeltaDelete, FrontendDeploymentPlan, AppPrimary, AppCanary,
     AppMetadata, AppSpec, KeyValuePairType, JobStatus, K8sEnvVar
 } from './BackendInterfaces'
 
@@ -438,7 +438,7 @@ function ServiceConfigComponent({ appRes, setAppRes }: AppResourcePropIfx) {
 }
 
 
-function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, deploymentPlan: DeploymentPlan, showJobProgress: Function }) {
+function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, deploymentPlan: FrontendDeploymentPlan, showJobProgress: Function }) {
     const onCancel = () => setIsOpen(false);
     const onSubmit = () => {
         showJobProgress(deploymentPlan.jobId)
