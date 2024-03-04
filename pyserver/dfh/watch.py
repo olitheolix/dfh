@@ -18,6 +18,7 @@ ID and starts over.
 import asyncio
 import json
 import logging
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -319,7 +320,7 @@ class WatchResource:
                 self.logit.info("Reconnect", meta_log)
                 if await self.read_k8s_stream():
                     # Wait a bit before we try to resume the watch.
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(5 + random.uniform(-2, 2))
         except asyncio.CancelledError:
             self.logit.info("Background task was cancelled", meta_log)
             await self.queue.put("__CANCELLED__")
@@ -353,9 +354,10 @@ async def setup_k8s_watch(
     # Setup log stream with INFO severity.
     logit.info(f"watch started for {res.apiVersion}/{res.kind}")
 
-    # Watch NAMESPACE resource.
+    # Watch the specified resource `res` and re-establish the watch every ~2min.
     try:
-        watch = WatchResource(k8scfg, res.path, timeout=30, logger=logit)
+        timeout = 120 + int(random.uniform(-10, 10))
+        watch = WatchResource(k8scfg, res.path, timeout=timeout, logger=logit)
         async with k8scfg.client, watch:
             async for data in watch:  # codecov-skip
                 track_resource(cfg, db, res, data)

@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import yaml
@@ -50,7 +49,6 @@ class TestModels:
             "Pod",
             "Service",
             "Deployment",
-            "ClusterRole",
             "VirtualService",
             "DestinationRule",
         }

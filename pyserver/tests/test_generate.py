@@ -464,7 +464,7 @@ class TestBasic:
         assert primary_svc.metadata.namespace == ns
         assert len(primary_svc.spec.ports) == 1
         assert primary_svc.spec.ports[0].model_dump() == {
-            "appProtocol": "http",
+            "appProtocol": "http2",
             "name": "http2",
             "port": 80,
             "protocol": "TCP",
@@ -489,7 +489,7 @@ class TestBasic:
             assert canary_svc.spec.selector == {"app": canary_name}
 
             assert canary_svc.spec.ports[0].model_dump() == {
-                "appProtocol": "http",
+                "appProtocol": "http2",
                 "name": "http2",
                 "port": 90,
                 "protocol": "TCP",

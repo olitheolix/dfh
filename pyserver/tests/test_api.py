@@ -5,6 +5,7 @@ from typing import List
 from unittest import mock
 
 import pytest
+import square.dtypes
 from fastapi.testclient import TestClient
 
 import dfh.api
@@ -411,6 +412,31 @@ class TestAPI:
     def test_get_jobs(self, client: TestClient):
         ret = client.get(f"/api/crt/v1/jobs/123")
         assert ret.status_code == 200
+
+    @mock.patch.object(dfh.api.square, "apply_plan")
+    async def test_post_jobs(self, m_plan, client: TestClient):
+        m_plan.return_value = False
+        job = JobDescription(jobId="jobid")
+        plan = square.dtypes.DeploymentPlan(create=[], patch=[], delete=[])
+
+        # Queue a fake job.
+        await dfh.api.queue_job(client.app, job.jobId, plan)
+
+        # Must return 200 because the job exists.
+        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        assert ret.status_code == 200
+
+        # Must return 412 because the job does not exist anymore.
+        job = JobDescription(jobId="jobid")
+        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        assert ret.status_code == 412
+
+        # Must return 418 because the job failed.
+        await dfh.api.queue_job(client.app, job.jobId, plan)
+        m_plan.return_value = True
+        job = JobDescription(jobId="jobid")
+        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        assert ret.status_code == 418
 
 
 class TestIntegration:

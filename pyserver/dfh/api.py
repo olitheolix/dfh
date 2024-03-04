@@ -13,6 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from square.square import DeploymentPlan
 
 import dfh.generate
 import dfh.k8s
@@ -247,6 +248,11 @@ async def post_single_app(name: str, env: str, app_info: AppInfo, request: Reque
             db.apps[name][env].resources[kind].manifests[man_name] = manifest
 
 
+async def queue_job(app, jobId: str, sq_plan: DeploymentPlan):
+    app.extra["jobs"] = app.extra.get("jobs", {})
+    app.extra["jobs"][jobId] = sq_plan
+
+
 @app.patch("/api/crt/v1/apps/{name}/{env}")
 async def patch_single_app(
     name: str, env: str, app_info: AppInfo, request: Request
@@ -273,8 +279,7 @@ async def patch_single_app(
     assert not err
     plan = dfh.generate.compile_frontend_plan(sq_plan)
 
-    request.app.extra["jobs"] = request.app.extra.get("jobs", {})
-    request.app.extra["jobs"][plan.jobId] = sq_plan
+    await queue_job(request.app, plan.jobId, sq_plan)
 
     return plan
 
@@ -296,8 +301,7 @@ async def delete_single_app(
             status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
         )
 
-    request.app.extra["jobs"] = request.app.extra.get("jobs", {})
-    request.app.extra["jobs"][plan.jobId] = sq_plan
+    await queue_job(request.app, plan.jobId, sq_plan)
 
     return plan
 
@@ -320,9 +324,18 @@ async def post_jobs(job: JobDescription, request: Request):
         folder=Path("/tmp"),
     )
 
-    plan = request.app.extra["jobs"][job.jobId]
+    try:
+        plan = request.app.extra["jobs"].pop(job.jobId)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED, detail="Job not found"
+        )
+
     err = await square.apply_plan(sq_config, plan)
-    assert not err
+    if err:
+        raise HTTPException(
+            status_code=status.HTTP_418_IM_A_TEAPOT, detail="Job failed"
+        )
 
 
 # Serve static web app on all paths that have not been defined already.
