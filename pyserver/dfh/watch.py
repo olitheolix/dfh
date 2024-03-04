@@ -22,10 +22,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import square.k8s
-from httpx import AsyncClient
 from square.dtypes import ConnectionParameters, K8sConfig
 
 import dfh.generate
+import dfh.k8s
 from dfh.manifest_utilities import get_metainfo
 from dfh.models import AppMetadata, Database, ServerConfig, WatchedResource
 
@@ -38,23 +38,27 @@ class WatchResource:
 
     Usage:
 
-      client = dfh.api.create_session(k8s_cacrt, k8s_token, k8s_host, timeout=0)
-      watch = dfh.watch.WatchResource(client, "/api/crt/v1/namespaces")
-      async for data in watch:
+    kubeconfig = Path("/tmp/kind-kubeconf.yaml")
+    kubecontext = "kind-kind"
+    k8scfg, err = dfh.watch.create_cluster_config(kubeconfig, kubecontext)
+    assert not err
+    watch = dfh.watch.WatchResource(k8scfg, "/api/v1/namespaces")
+    async for data in watch:
         evt, manifest = data["type"], data["object"]
+        print(evt, manifest["metadata"]["name"])
 
     """
 
     def __init__(
         self,
-        client: AsyncClient,
+        k8scfg: K8sConfig,
         path: str,
         rv: int = -1,
         timeout: int = 5,
         logger: logging.Logger = logging.getLogger("Watch"),
     ):
         self.logit = logger
-        self.client = client
+        self.k8scfg = k8scfg
 
         self.last_rv: int = rv  # Last seen resource version.
         self.list_path: str = path  # Resource path, eg "/api/crt/v1/namespaces"
@@ -98,7 +102,7 @@ class WatchResource:
         self.stop_tasks()
 
     def get_logging_metadata(self) -> dict:
-        url = self.client._base_url
+        url = self.k8scfg.client._base_url
         host = str(url) if url else ""
         meta_log = {
             "component": "k8s-watch",
@@ -118,15 +122,15 @@ class WatchResource:
 
         """
         # Fetch the current set of manifests.
-        ret = await self.client.get(self.list_path)
-        if ret.status_code != 200:
+        ret, err = await dfh.k8s.get(self.k8scfg, self.list_path)
+        if err:
             return (-1, True)
 
         # Sync the current state with the new manifests.
-        await self.reset_state(ret.json()["items"], self.state)
+        await self.reset_state(ret["items"], self.state)
 
         # Return the resource version as an integer.
-        last_resver = int(ret.json()["metadata"]["resourceVersion"])
+        last_resver = int(ret["metadata"]["resourceVersion"])
         return last_resver, False
 
     async def reset_state(
@@ -289,7 +293,7 @@ class WatchResource:
         url = self.construct_watch_path(self.last_rv)
 
         # Open the long lived connection.
-        async with self.client.stream("GET", url) as stream:
+        async with self.k8scfg.client.stream("GET", url) as stream:
             if stream.status_code != 200:
                 meta_log = self.get_logging_metadata()
                 self.logit.warning("Cannot start watch", meta_log)
@@ -351,7 +355,7 @@ async def setup_k8s_watch(
 
     # Watch NAMESPACE resource.
     try:
-        watch = WatchResource(k8scfg.client, res.path, timeout=30, logger=logit)
+        watch = WatchResource(k8scfg, res.path, timeout=30, logger=logit)
         async with k8scfg.client, watch:
             async for data in watch:  # codecov-skip
                 track_resource(cfg, db, res, data)
