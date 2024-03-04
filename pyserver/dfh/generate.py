@@ -173,7 +173,7 @@ def service_manifests(
 
         port = K8sServicePort(
             name="http2",
-            appProtocol="http",
+            appProtocol="http2",
             port=svc_info.service.port,
             targetPort=svc_info.service.targetPort,
             protocol="TCP",
