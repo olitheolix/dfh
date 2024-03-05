@@ -2,7 +2,10 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useState, ChangeEvent } from 'react';
 import { MenuItem, Select } from '@mui/material';
-import { TextField, Grid, Button, } from '@mui/material';
+import {
+    TextField, Grid, Button, Dialog,
+    DialogActions, DialogContent, DialogTitle,
+} from '@mui/material';
 
 // Import Custom components.
 import Title from './Title';
@@ -189,6 +192,11 @@ export default function K8sNewAppDialog() {
     const navigate = useNavigate();
 
     const [meta, setMeta] = useState<AppMetadata>({ name: "", namespace: "", env: "" });
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+    };
 
     // Send the current app configuration to the backend and request a plan. Then insert the plan
     // into the `setDeploymentPlan` state variable and activate the modal that shows it.
@@ -211,11 +219,12 @@ export default function K8sNewAppDialog() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to fetch');
+                throw new Error('Failed to make DELETE request');
             }
             navigate(`/app/${meta.name}/${meta.env}`)
         } catch (error) {
-            console.error('Error posting data:', error);
+            setDialogOpen(true);
+            console.error('App already exists:', error);
         }
     };
 
@@ -243,9 +252,20 @@ export default function K8sNewAppDialog() {
                         <Button variant="contained" color="primary" onClick={onClickApply}>Create</Button>
                     </Grid>
                 </Grid>
+
+                {/* Display Error Dialog for when the app could not be created. */}
+                <Dialog open={dialogOpen} onClose={handleCloseDialog}>
+                    <DialogTitle>Error</DialogTitle>
+                    <DialogContent>
+                        <p>Failed to fetch data. Please try again later.</p>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleCloseDialog} color="primary">
+                            Close
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Paper>
-
-
         </React.Fragment >
     );
 }

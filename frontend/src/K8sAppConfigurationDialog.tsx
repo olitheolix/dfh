@@ -788,6 +788,31 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
     }, []);
 
 
+    const onClickDelete = async () => {
+        setIsLoading(true)
+
+        try {
+            const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+
+            setDeploymentPlan(await response.json());
+            setIsPlanModalOpen(true)
+
+        } catch (error) {
+            console.error('Error posting data:', error);
+        }
+        setIsLoading(false)
+    }
+
+
     // Send the current app configuration to the backend and request a plan. Then insert the plan
     // into the `setDeploymentPlan` state variable and activate the modal that shows it.
     const onClickApply = async () => {
@@ -851,7 +876,10 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
 
             {/* Cancel/Apply button to request a plan from the backend.*/}
             <p />
-            <Grid container alignItems="center" justifyContent="right">
+            <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+                <Grid item>
+                    <Button variant="contained" style={{ backgroundColor: '#ff0000', color: '#fff' }} onClick={onClickDelete}>Delete</Button>
+                </Grid>
                 <Grid item>
                     <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
                 </Grid>

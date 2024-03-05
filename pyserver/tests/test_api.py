@@ -539,6 +539,44 @@ class TestIntegration:
             env_vars = resp["spec"]["ports"][0]["port"] = 90
             env_vars = resp["spec"]["ports"][0]["targetPort"] = 90900
 
+            # --- Remove the app ---
+            # Request a plan to delete the resources.
+            ret = client.delete(f"/api/crt/v1/apps/{name}/{env}")
+            assert ret.status_code == 200
+
+            plan = FrontendDeploymentPlan.model_validate(ret.json())
+            assert len(plan.delete) == 2 and plan.jobId != ""
+
+            # Implement the plan.
+            jd = JobDescription(jobId=plan.jobId)
+            ret = client.post(f"/api/crt/v1/jobs", json=jd.model_dump())
+            assert ret.status_code == 200
+
+            for _ in range(10):
+                time.sleep(0.5)
+
+                ret = client.get(f"/api/crt/v1/jobs/{plan.jobId}")
+                assert ret.status_code == 200
+                job = JobStatus.model_validate(ret.json())
+                if job.done:
+                    break
+            else:
+                assert False, "job did not complete"
+
+            # Deployment.
+            resp, err = await dfh.k8s.get(
+                realK8sCfg,
+                f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}",
+            )
+            assert err
+
+            # Service.
+            resp, err = await dfh.k8s.get(
+                realK8sCfg,
+                f"/api/v1/namespaces/{namespace}/services/{name}",
+            )
+            assert err
+
     async def test_get_patch(self, clientls: TestClient, realK8sCfg: K8sConfig):
         client = clientls
 
