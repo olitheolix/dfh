@@ -8,6 +8,7 @@ import Dashboard from "./Dashboard";
 
 import ClusterOverview from './ClusterOverview';
 import K8sAppConfigurationDashboard from './K8sAppConfigurationDashboard';
+import K8sNewAppDialog from './K8sNewAppDialog';
 
 
 import {
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
             {
                 path: "app/:appId/:envId",
                 element: <K8sAppConfigurationDashboard />,
+            },
+            {
+                path: "new/",
+                element: <K8sNewAppDialog />,
             }
         ]
     },

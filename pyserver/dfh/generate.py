@@ -433,9 +433,7 @@ def appinfo_from_manifests(
 
 
 async def compile_plan(
-    cfg: ServerConfig,
-    new_app: AppInfo,
-    db: Database,
+    cfg: ServerConfig, new_app: AppInfo, db: Database, remove: bool = False
 ) -> Tuple[square.dtypes.DeploymentPlan, bool]:
 
     # Convenience.
@@ -453,18 +451,19 @@ async def compile_plan(
     )
     assert not err
 
-    # Generate the deployment manifests (primary and canary).
-    new_manifests, err = manifests_from_appinfo(cfg, new_app, db)
-    assert not err
-
     # Compile the manifests into Square data structures and treat
     # them as the `local` ones.
     local_manifests: square.dtypes.SquareManifests = {}
-    for kind in new_manifests.resources:
-        if kind == "Pod":
-            continue
-        for manifest in new_manifests.resources[kind].manifests.values():
-            local_manifests[square.manio.make_meta(manifest)] = manifest
+    if not remove:
+        # Generate the deployment manifests (primary and canary).
+        new_manifests, err = manifests_from_appinfo(cfg, new_app, db)
+        assert not err
+
+        for kind in new_manifests.resources:
+            if kind == "Pod":
+                continue
+            for manifest in new_manifests.resources[kind].manifests.values():
+                local_manifests[square.manio.make_meta(manifest)] = manifest
 
     # Get a handle the app's resources assuming the app exists in DFH.
     server_manifests: square.dtypes.SquareManifests = {}

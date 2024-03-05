@@ -90,8 +90,8 @@ export default function Dashboard() {
         setOpen(!open);
     };
     const navigate = useNavigate();
-    const gotoK8sAppDashboard = () => {
-        navigate('/app/myapp/stg');
+    const gotoCreateApp = () => {
+        navigate('/new');
     };
     const gotoK8sOverviewDashboard = () => {
         navigate('/');
@@ -105,11 +105,11 @@ export default function Dashboard() {
                 </ListItemIcon>
                 <ListItemText primary="Dashboard" />
             </ListItemButton>
-            <ListItemButton onClick={gotoK8sAppDashboard}>
+            <ListItemButton onClick={gotoCreateApp}>
                 <ListItemIcon>
                     <ShoppingCartIcon />
                 </ListItemIcon>
-                <ListItemText primary="Application" />
+                <ListItemText primary="New Application" />
             </ListItemButton>
         </React.Fragment >
     );

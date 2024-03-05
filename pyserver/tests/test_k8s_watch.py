@@ -1,4 +1,3 @@
-import httpx
 import asyncio
 import json
 import logging
@@ -6,6 +5,7 @@ from pathlib import Path
 from typing import Dict
 from unittest import mock
 
+import httpx
 import pytest
 import respx
 import yaml

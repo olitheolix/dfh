@@ -289,19 +289,21 @@ async def delete_single_app(
     name: str, env: str, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
     db: Database = request.app.extra["db"]
-
-    # FIXME: how to delete with Square?
-    sq_plan = square.dtypes.DeploymentPlan(create=[], patch=[], delete=[])
-    plan = dfh.generate.compile_frontend_plan(sq_plan)
+    cfg: ServerConfig = request.app.extra["config"]
 
     try:
-        del db.apps[name][env]
+        app_info = db.apps[name][env].appInfo
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
         )
 
+    sq_plan, err = await dfh.generate.compile_plan(cfg, app_info, db, remove=True)
+    assert not err
+    plan = dfh.generate.compile_frontend_plan(sq_plan)
+
     await queue_job(request.app, plan.jobId, sq_plan)
+    db.apps[name].pop(env, None)
 
     return plan
 
