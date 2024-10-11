@@ -1,10 +1,10 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
-import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
-import { DataGrid, GridRowsProp, GridColDef } from '@mui/x-data-grid';
-import { GridToolbar } from '@mui/x-data-grid';
-import { AppEnvOverview } from './BackendInterfaces'
+import * as React from "react";
+import { useState, useEffect } from "react";
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import { GridToolbar } from "@mui/x-data-grid";
+import { AppEnvOverview } from "./BackendInterfaces";
 
 interface RowWithId {
     id: string;
@@ -19,24 +19,28 @@ interface EnvLink {
 
 export default function K8sAppList() {
     const columnDefs: GridColDef[] = [
-        { field: 'name', headerName: 'Name', width: 350 },
+        { field: "name", headerName: "Name", width: 350 },
         {
-            field: 'envs',
-            headerName: 'Environments',
+            field: "envs",
+            headerName: "Environments",
             width: 150,
             renderCell: (params) => (
                 <div>
                     {params.value.map((envLink: EnvLink, index: number) => (
                         <React.Fragment key={envLink.url}>
-                            <Link key={envLink.url} href={envLink.url}>{envLink.label}</Link>
+                            <Link key={envLink.url} href={envLink.url}>
+                                {envLink.label}
+                            </Link>
 
                             {/*Add some white space after each Link except the last one*/}
-                            {index !== params.value.length - 1 && <span>&nbsp;&nbsp;</span>}
+                            {index !== params.value.length - 1 && (
+                                <span>&nbsp;&nbsp;</span>
+                            )}
                         </React.Fragment>
                     ))}
                 </div>
-            )
-        }
+            ),
+        },
     ];
 
     const [rows, setRows] = useState<GridRowsProp>([]);
@@ -44,29 +48,32 @@ export default function K8sAppList() {
     // Populate the Pod list when mounting the component and the periodically refresh it.
     useEffect(() => {
         const fetchData = () => {
-            fetch('/api/crt/v1/apps')
-                .then(response => response.json())
-                .then(jsonData => {
-                    const appList: AppEnvOverview[] = jsonData as AppEnvOverview[];
+            fetch("/demo/api/crt/v1/apps")
+                .then((response) => response.json())
+                .then((jsonData) => {
+                    const appList: AppEnvOverview[] =
+                        jsonData as AppEnvOverview[];
 
                     // Augment each row with a third column that houses a Switch.
                     const rowsWithId: RowWithId[] = appList.map((row) => {
-                        const envLinks: EnvLink[] = row.envs.map((env: string) => ({
-                            url: `/app/${row.name}/${env}`,
-                            label: env
-                        }));
+                        const envLinks: EnvLink[] = row.envs.map(
+                            (env: string) => ({
+                                url: `/demo/app/${row.name}/${env}`,
+                                label: env,
+                            }),
+                        );
 
                         return {
                             id: row.id,
                             name: row.name,
-                            envs: envLinks
+                            envs: envLinks,
                         };
                     });
 
                     setRows(rowsWithId);
                 })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
+                .catch((error) => {
+                    console.error("Error fetching data:", error);
                 });
         };
 

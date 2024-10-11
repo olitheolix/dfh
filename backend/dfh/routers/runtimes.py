@@ -1,20 +1,13 @@
-import asyncio
-import logging
-import os
 from collections import defaultdict
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
 import square.dtypes
 import square.k8s
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import APIRouter, HTTPException, Request, status
 from square.square import DeploymentPlan
 
+import dfh
 import dfh.generate
 import dfh.k8s
 import dfh.square_types
@@ -32,109 +25,10 @@ from dfh.models import (
     WatchedResource,
 )
 
-# Convenience.
-logit = logging.getLogger("app")
+router = APIRouter()
 
 
-# ----------------------------------------------------------------------
-# Setup Server.
-# ----------------------------------------------------------------------
-def compile_server_config():
-    try:
-        cfg = ServerConfig(
-            kubeconfig=Path(os.getenv("KUBECONFIG", "")),
-            kubecontext=os.getenv("KUBECONTEXT", ""),
-            managed_by=os.environ["DFH_MANAGED_BY"],
-            env_label=os.environ["DFH_ENV_LABEL"],
-            loglevel=os.getenv("DFH_LOGLEVEL", "info"),
-            host=os.getenv("DFH_HOST", "0.0.0.0"),
-            port=int(os.getenv("DFH_PORT", "5001")),
-        )
-        return cfg, False
-    except (KeyError, ValueError):
-        return (
-            ServerConfig(
-                kubeconfig=Path(""),
-                kubecontext="",
-                managed_by="",
-                env_label="",
-                host="",
-                port=-1,
-                loglevel="",
-            ),
-            True,
-        )
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Create client for one K8s cluster.
-    cfg, err = compile_server_config()
-    assert not err
-
-    db = Database()
-    app.extra.clear()
-    app.extra["db"] = db
-    app.extra["config"] = cfg
-
-    # Create Database entry for Namespaces and a watcher.
-    tasks = []
-    for res in db.resources.values():
-        k8scfg, err = dfh.watch.create_cluster_config(cfg.kubeconfig, cfg.kubecontext)
-        assert not err
-        tasks.append(
-            asyncio.create_task(dfh.watch.setup_k8s_watch(cfg, k8scfg, db, res))
-        )
-
-    logit.info("server startup complete")
-    yield
-
-    for task in tasks:
-        task.cancel()
-        await task
-    logit.info("server shutdown complete")
-
-
-app = FastAPI(
-    lifespan=lifespan,
-    title="Deployments for Humans",
-    summary="",
-    description="",
-    version="0.1.0",
-    db={},
-)
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-
-
-# Serve static app.
-@app.get("/")
-async def get_index():
-    return FileResponse("static/index.html")
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    print(exc.errors())
-    print(exc.body)
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
-    )
-
-
-# ----------------------------------------------------------------------
-# Setup Routes.
-# ----------------------------------------------------------------------
-
-
-@app.get("/healthz")
-def get_healthz() -> int:
-    return status.HTTP_200_OK
-
-
-@app.get("/api/crt/v1/pods")
+@router.get("/v1/pods")
 def get_pods(request: Request) -> PodList:
     db: Database = request.app.extra["db"]
 
@@ -147,7 +41,7 @@ def get_pods(request: Request) -> PodList:
     return ret
 
 
-@app.get("/api/crt/v1/pods/{name}/{env}")
+@router.get("/v1/pods/{name}/{env}")
 def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
     db: Database = request.app.extra["db"]
 
@@ -169,13 +63,13 @@ def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
     return ret
 
 
-@app.get("/api/crt/v1/namespaces")
+@router.get("/v1/namespaces")
 def get_namespaces(request: Request) -> WatchedResource:
     db: Database = request.app.extra["db"]
     return db.resources["Namespace"]
 
 
-@app.get("/api/crt/v1/apps")
+@router.get("/v1/apps")
 def get_apps(request: Request) -> List[AppEnvOverview]:
     db: Database = request.app.extra["db"]
 
@@ -195,7 +89,7 @@ def get_apps(request: Request) -> List[AppEnvOverview]:
     return resp
 
 
-@app.get("/api/crt/v1/apps/{name}/{env}")
+@router.get("/v1/apps/{name}/{env}")
 def get_single_app(name: str, env: str, request: Request) -> AppInfo:
     db: Database = request.app.extra["db"]
     try:
@@ -206,7 +100,7 @@ def get_single_app(name: str, env: str, request: Request) -> AppInfo:
         )
 
 
-@app.post("/api/crt/v1/apps/{name}/{env}")
+@router.post("/v1/apps/{name}/{env}")
 async def post_single_app(name: str, env: str, app_info: AppInfo, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
     db: Database = request.app.extra["db"]
@@ -253,7 +147,7 @@ async def queue_job(app, jobId: str, sq_plan: DeploymentPlan):
     app.extra["jobs"][jobId] = sq_plan
 
 
-@app.patch("/api/crt/v1/apps/{name}/{env}")
+@router.patch("/v1/apps/{name}/{env}")
 async def patch_single_app(
     name: str, env: str, app_info: AppInfo, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
@@ -284,7 +178,7 @@ async def patch_single_app(
     return plan
 
 
-@app.delete("/api/crt/v1/apps/{name}/{env}")
+@router.delete("/v1/apps/{name}/{env}")
 async def delete_single_app(
     name: str, env: str, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
@@ -308,12 +202,12 @@ async def delete_single_app(
     return plan
 
 
-@app.get("/api/crt/v1/jobs/{jobId}")
+@router.get("/v1/jobs/{jobId}")
 def get_jobs(jobId: str) -> JobStatus:
     return JobStatus(jobId=jobId, logs=["line 1", "line 2"], done=True)
 
 
-@app.post("/api/crt/v1/jobs")
+@router.post("/v1/jobs")
 async def post_jobs(job: JobDescription, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
     sq_config = square.dtypes.Config(
@@ -334,9 +228,3 @@ async def post_jobs(job: JobDescription, request: Request):
         raise HTTPException(
             status_code=status.HTTP_418_IM_A_TEAPOT, detail="Job failed"
         )
-
-
-# Serve static web app on all paths that have not been defined already.
-@app.get("/{path:path}")
-async def catch_all(path: str):
-    return FileResponse("static/index.html")

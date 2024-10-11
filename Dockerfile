@@ -16,11 +16,11 @@ FROM python:3.12-slim
 # Copy Pipfile and install dependencies.
 WORKDIR /src
 RUN pip install pipenv
-COPY pyserver/Pipfile pyserver/Pipfile.lock .
+COPY backend/Pipfile backend/Pipfile.lock .
 RUN pipenv install --system
 
 # Copy everything else.
-COPY pyserver .
+COPY backend .
 
 # Copy the frontend assets.
 COPY --from=builder /src/dist static/

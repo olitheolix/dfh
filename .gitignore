@@ -30,9 +30,9 @@ frontend/*.sw?
 /goserver/*.out
 
 # Python backend.
-/pyserver/.mypy_cache/
-/pyserver/.coverage
-/pyserver/coverage.xml
+/backend/.mypy_cache/
+/backend/.coverage
+**/coverage.xml
 
 # Misc.
 private/

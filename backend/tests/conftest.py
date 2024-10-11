@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -8,13 +9,18 @@ from square.dtypes import K8sConfig
 import dfh.api
 import dfh.logstreams
 import dfh.watch
-from dfh.models import Database, ServerConfig
+from dfh.models import ServerConfig
 
 
 def pytest_configure(*args, **kwargs):
     """Pytest calls this hook on startup."""
     # Set log level to DEBUG for all unit tests.
     dfh.logstreams.setup("DEBUG")
+
+    # Create a dummy Google Client Secrets file.
+    dummy = Path("/tmp/dummy-client-secret.txt")
+    dummy.write_text("Google Client Secret")
+    os.environ["GOOGLE_CLIENT_SECRETS_FILE"] = str(dummy)
 
 
 def get_server_config():
@@ -26,6 +32,7 @@ def get_server_config():
         host="0.0.0.0",
         port=5001,
         loglevel="info",
+        google_client_secrets_file=Path("."),
     )
 
 
@@ -47,15 +54,12 @@ async def k8scfg(respx_mock):
 
 @pytest.fixture
 async def clientls():
-    with TestClient(dfh.api.app) as client:
+    # Invoke the lifespan handler (use `client` if you do not need that.)
+    with TestClient(dfh.api.make_app()) as client:
         yield client
 
 
 @pytest.fixture
 async def client():
-    c = TestClient(dfh.api.app)
-    c.app.extra = {  # type: ignore
-        "db": Database(),
-        "config": get_server_config(),
-    }
+    c = TestClient(dfh.api.make_app())
     yield c

@@ -131,6 +131,8 @@ spec:
               value: "5001"
             - name: DFH_LOGLEVEL
               value: info
+            - name: GOOGLE_CLIENT_SECRETS_FILE
+              value: "client_secret.json"
       serviceAccount: dfh
 
 ---

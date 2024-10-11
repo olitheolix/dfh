@@ -1,49 +1,62 @@
-import * as React from 'react';
-import * as ReactDOM from 'react-dom/client';
-import { ThemeProvider } from '@emotion/react';
-import { CssBaseline } from '@mui/material';
-import theme from './theme';
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
+import { ThemeProvider } from "@emotion/react";
+import { CssBaseline } from "@mui/material";
+import theme from "./theme";
 import ErrorPage from "./error-page";
 import Dashboard from "./Dashboard";
 
-import ClusterOverview from './ClusterOverview';
-import K8sAppConfigurationDashboard from './K8sAppConfigurationDashboard';
-import K8sNewAppDialog from './K8sNewAppDialog';
+import ClusterOverview from "./ClusterOverview";
+import K8sAppConfigurationDashboard from "./K8sAppConfigurationDashboard";
+import K8sNewAppDialog from "./K8sNewAppDialog";
+import UAMHierarchy from "./UAMHierarchy";
+import UAMGroups from "./UAMGroups";
+import { HTTPErrorProvider } from "./WebRequests";
 
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-import {
-    createBrowserRouter,
-    RouterProvider,
-} from "react-router-dom";
-
-
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+    [
+        {
+            path: "/",
+            element: <Dashboard />,
+            errorElement: <ErrorPage />,
+            children: [
+                {
+                    path: "/",
+                    element: <ClusterOverview />,
+                },
+                {
+                    path: "app/:appId/:envId",
+                    element: <K8sAppConfigurationDashboard />,
+                },
+                {
+                    path: "new/",
+                    element: <K8sNewAppDialog />,
+                },
+                {
+                    path: "uam/",
+                    element: <UAMHierarchy />,
+                },
+                {
+                    path: "uamgroups/",
+                    element: <UAMGroups />,
+                },
+            ],
+        },
+    ],
     {
-        path: "/",
-        element: <Dashboard />,
-        errorElement: <ErrorPage />,
-        children: [
-            {
-                path: "/",
-                element: <ClusterOverview />,
-            },
-            {
-                path: "app/:appId/:envId",
-                element: <K8sAppConfigurationDashboard />,
-            },
-            {
-                path: "new/",
-                element: <K8sNewAppDialog />,
-            }
-        ]
+        basename: "/demo",
     },
-]);
+);
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <RouterProvider router={router} />
-        </ThemeProvider>
+        <HTTPErrorProvider>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <RouterProvider router={router} />
+            </ThemeProvider>
+        </HTTPErrorProvider>
     </React.StrictMode>,
 );

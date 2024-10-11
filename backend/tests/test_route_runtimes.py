@@ -1,6 +1,5 @@
 import asyncio
 import time
-from pathlib import Path
 from typing import List
 from unittest import mock
 
@@ -8,12 +7,14 @@ import pytest
 import square.dtypes
 from fastapi.testclient import TestClient
 
+import dfh
 import dfh.api
 import dfh.defaults
 import dfh.generate
 import dfh.k8s
+import dfh.routers.runtimes as runtimes
 import dfh.watch
-import tests.test_helpers as test_helpers
+import tests.test_runtime_helpers as test_helpers
 from dfh.models import (
     AppCanary,
     AppEnvOverview,
@@ -27,98 +28,34 @@ from dfh.models import (
     JobStatus,
     K8sEnvVar,
     PodList,
-    ServerConfig,
     WatchedResource,
 )
 from dfh.square_types import FrontendDeploymentPlan
 
 from .conftest import K8sConfig, get_server_config
-from .test_helpers import create_temporary_k8s_namespace, deploy_test_app
+from .test_helpers import create_authenticated_client
+from .test_runtime_helpers import (
+    create_temporary_k8s_namespace,
+    deploy_test_app,
+)
 
 cfg = get_server_config()
 
 
-class TestBasic:
-    def test_compile_server_config(self):
-        # Minimum required environment variables.
-        # NOTE: it is avlid to not specify a Kubeconfig file, most notably when
-        # running inside a Pod.
-        new_env = {
-            "DFH_MANAGED_BY": "foo",
-            "DFH_ENV_LABEL": "bar",
-        }
-        with mock.patch.dict("os.environ", values=new_env, clear=True):
-            cfg, err = dfh.api.compile_server_config()
-            assert not err
-            assert cfg == ServerConfig(
-                kubeconfig=Path(""),
-                kubecontext="",
-                managed_by="foo",
-                env_label="bar",
-                host="0.0.0.0",
-                port=5001,
-                loglevel="info",
-            )
-
-        # Explicit values for everything.
-        new_env = {
-            "KUBECONFIG": "/tmp/kind-kubeconf.yaml",
-            "KUBECONTEXT": "kind-kind",
-            "DFH_MANAGED_BY": "foo",
-            "DFH_ENV_LABEL": "bar",
-            "DFH_LOGLEVEL": "error",
-            "DFH_HOST": "1.2.3.4",
-            "DFH_PORT": "1234",
-        }
-        with mock.patch.dict("os.environ", values=new_env, clear=True):
-            cfg, err = dfh.api.compile_server_config()
-            assert not err
-            assert cfg == ServerConfig(
-                kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
-                kubecontext="kind-kind",
-                managed_by="foo",
-                env_label="bar",
-                host="1.2.3.4",
-                port=1234,
-                loglevel="error",
-            )
-
-        # Invalid because DFH_MANAGED_BY and DFH_ENV_LABEL are both mandatory.
-        with mock.patch.dict("os.environ", values={}, clear=True):
-            cfg, err = dfh.api.compile_server_config()
-            assert err
-
-        # Must have correctly received the values from the `.env` file.
-        cfg, err = dfh.api.compile_server_config()
-        assert not err
-        assert cfg == ServerConfig(
-            kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
-            kubecontext="kind-kind",
-            managed_by="dfh",
-            env_label="env",
-            host="0.0.0.0",
-            port=5001,
-            loglevel="info",
-        )
+@pytest.fixture
+async def client():
+    c = create_authenticated_client("/demo/api/crt")
+    yield c
 
 
-class TestAPI:
-    def test_get_root(self, client):
-        # Must serve the webapp on all routes by default.
-        for path in ("/", "/static/index.html", "/anywhere/but/api"):
-            response = client.get(path)
-            assert response.status_code == 200
-            assert response.text == "Placeholder static/index.html"
+@pytest.fixture
+async def clientls():
+    # Invoke the lifespan handler (use `client` if you do not need that.)
+    with create_authenticated_client("/demo/api/crt") as client:
+        yield client
 
-        # Assets are also used by static web apps.
-        response = client.get("/assets/index.html")
-        assert response.status_code == 200
-        assert response.text == "Placeholder assets/index.html"
 
-    def test_get_healthz(self, client):
-        response = client.get("/healthz")
-        assert response.status_code == 200
-
+class TestRuntimes:
     @mock.patch.object(dfh.generate, "compile_plan")
     def test_crud_apps(self, m_plan, client: TestClient):
         # Mock plan.
@@ -129,13 +66,13 @@ class TestAPI:
 
         # Fixtures.
         name, namespace, env = "foo", "nsfoo", "stg"
-        path = f"/api/crt/v1/apps/{name}/{env}"
+        path = f"/v1/apps/{name}/{env}"
         info = AppInfo(
             metadata=AppMetadata(name=name, env=env, namespace=namespace),
         )
 
         # Must return an empty list of apps.
-        response = client.get("/api/crt/v1/apps")
+        response = client.get("/v1/apps")
         assert response.status_code == 200
         overview = [AppEnvOverview.model_validate(_) for _ in response.json()]
         assert overview == []
@@ -176,8 +113,8 @@ class TestAPI:
         ret = AppInfo.model_validate(response.json())
         assert ret.primary.deployment.image == "image:v1"
 
-        # `/api/crt/v1/apps` endpoint must return all apps.
-        response = client.get("/api/crt/v1/apps")
+        # `/v1/apps` endpoint must return all apps.
+        response = client.get("/v1/apps")
         assert response.status_code == 200
         overview = [AppEnvOverview.model_validate(_) for _ in response.json()]
         assert (
@@ -213,7 +150,7 @@ class TestAPI:
     def test_get_app(self, env: str, name: str, client: TestClient):
         test_helpers.add_app(client, name, "ns", env)
 
-        response = client.get(f"/api/crt/v1/apps/{name}/{env}")
+        response = client.get(f"/v1/apps/{name}/{env}")
         assert response.status_code == 200
 
         data = AppInfo.model_validate(response.json())
@@ -230,7 +167,7 @@ class TestAPI:
 
         # Fixtures.
         name, namespace, env = "demo", "default", "stg"
-        url = f"/api/crt/v1/apps/{name}/{env}"
+        url = f"/v1/apps/{name}/{env}"
 
         app_info = AppInfo(
             metadata=AppMetadata(name=name, env=env, namespace=namespace),
@@ -264,7 +201,7 @@ class TestAPI:
         # Fixtures.
         name, ns, env = "demo", "default", "stg"
         db: Database = client.app.extra["db"]  # type: ignore
-        url = f"/api/crt/v1/apps/{name}/{env}"
+        url = f"/v1/apps/{name}/{env}"
 
         # Insert a DFH deployment with 2 pods as well as an unrelated pod.
         app_info = test_helpers.add_app(client, name, ns, env, num_pods=2)
@@ -309,7 +246,7 @@ class TestAPI:
         # Install app.
         name, namespace, env = "demo", "default", "stg"
         app_info = test_helpers.add_app(client, name, namespace, env)
-        url = f"/api/crt/v1/apps/{name}/{env}"
+        url = f"/v1/apps/{name}/{env}"
 
         # Must accept valid patch.
         response = client.patch(url, json=app_info.model_dump())
@@ -326,7 +263,7 @@ class TestAPI:
         assert response.status_code == 406
 
     def test_get_apps(self, client: TestClient):
-        response = client.get(f"/api/crt/v1/apps")
+        response = client.get(f"/v1/apps")
         assert response.status_code == 200
         assert len(response.json()) == 0
 
@@ -342,12 +279,12 @@ class TestAPI:
         client.app.extra["db"] = db  # type: ignore
 
         # Pretend the watch reported two Deployments.
-        response = client.post(f"/api/crt/v1/apps/app-1/stg", json=app_1.model_dump())
+        response = client.post("/v1/apps/app-1/stg", json=app_1.model_dump())
         assert response.status_code == 200
-        response = client.post(f"/api/crt/v1/apps/app-2/prod", json=app_2.model_dump())
+        response = client.post("/v1/apps/app-2/prod", json=app_2.model_dump())
         assert response.status_code == 200
 
-        response = client.get("/api/crt/v1/apps")
+        response = client.get("/v1/apps")
         assert response.status_code == 200
         assert len(response.json()) == 2
 
@@ -358,7 +295,7 @@ class TestAPI:
 
     def test_get_pods_all_envs(self, client: TestClient):
         # Must not return any pods.
-        ret = client.get(f"/api/crt/v1/pods")
+        ret = client.get("/v1/pods")
         assert ret.status_code == 200
         resp = PodList.model_validate(ret.json())
         assert len(resp.items) == 0
@@ -367,7 +304,7 @@ class TestAPI:
         test_helpers.add_app(client, "demo", "default", "stg", num_pods=2)
 
         # API must now provide two pods.
-        ret = client.get(f"/api/crt/v1/pods")
+        ret = client.get("/v1/pods")
         assert ret.status_code == 200
         resp = PodList.model_validate(ret.json())
         assert len(resp.items) == 2
@@ -380,7 +317,7 @@ class TestAPI:
 
     def test_get_pods_specific_name_and_env(self, client: TestClient):
         # Must not return any pods.
-        ret = client.get(f"/api/crt/v1/pods/demo1/stg")
+        ret = client.get("/v1/pods/demo1/stg")
         assert ret.status_code == 404
 
         # Insert a deployment with 2 pods.
@@ -390,7 +327,7 @@ class TestAPI:
         test_helpers.add_app(client, "demo2", "ns-prod", "prod", num_pods=2)
 
         # Base API must provide eight pods.
-        ret = client.get(f"/api/crt/v1/pods")
+        ret = client.get("/v1/pods")
         assert ret.status_code == 200
         resp = PodList.model_validate(ret.json())
         assert len(resp.items) == 8
@@ -398,7 +335,7 @@ class TestAPI:
         # Query specific pods.
         for name in ("demo1", "demo2"):
             for env in ("stg", "prod"):
-                ret = client.get(f"/api/crt/v1/pods/{name}/{env}")
+                ret = client.get(f"/v1/pods/{name}/{env}")
                 assert ret.status_code == 200
                 resp = PodList.model_validate(ret.json())
                 assert len(resp.items) == 2
@@ -410,32 +347,32 @@ class TestAPI:
                 assert resp.items[1].name == f"{name}-1234-1"
 
     def test_get_jobs(self, client: TestClient):
-        ret = client.get(f"/api/crt/v1/jobs/123")
+        ret = client.get(f"/v1/jobs/123")
         assert ret.status_code == 200
 
-    @mock.patch.object(dfh.api.square, "apply_plan")
+    @mock.patch.object(runtimes.square, "apply_plan")
     async def test_post_jobs(self, m_plan, client: TestClient):
         m_plan.return_value = False
         job = JobDescription(jobId="jobid")
         plan = square.dtypes.DeploymentPlan(create=[], patch=[], delete=[])
 
         # Queue a fake job.
-        await dfh.api.queue_job(client.app, job.jobId, plan)
+        await runtimes.queue_job(client.app, job.jobId, plan)
 
         # Must return 200 because the job exists.
-        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        ret = client.post("/v1/jobs", json=job.model_dump())
         assert ret.status_code == 200
 
         # Must return 412 because the job does not exist anymore.
         job = JobDescription(jobId="jobid")
-        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        ret = client.post("/v1/jobs", json=job.model_dump())
         assert ret.status_code == 412
 
         # Must return 418 because the job failed.
-        await dfh.api.queue_job(client.app, job.jobId, plan)
+        await runtimes.queue_job(client.app, job.jobId, plan)
         m_plan.return_value = True
         job = JobDescription(jobId="jobid")
-        ret = client.post(f"/api/crt/v1/jobs", json=job.model_dump())
+        ret = client.post("/v1/jobs", json=job.model_dump())
         assert ret.status_code == 418
 
 
@@ -449,7 +386,7 @@ class TestIntegration:
         """Serves as a simple integration test to ensure the namespace watch works."""
         for _ in range(10):
             time.sleep(0.1)
-            response = clientls.get("/api/crt/v1/namespaces")
+            response = clientls.get("/v1/namespaces")
             assert response.status_code == 200
 
             res = WatchedResource.model_validate(response.json())
@@ -466,7 +403,7 @@ class TestIntegration:
 
         async with create_temporary_k8s_namespace(client) as namespace:
             # --- There must be no apps yet. ---
-            ret = client.get("/api/crt/v1/apps")
+            ret = client.get("/v1/apps")
             assert ret.status_code == 200 and len(ret.json()) == 0
 
             # --- Define an app and request a plan from the jobs endpoint ---
@@ -485,15 +422,11 @@ class TestIntegration:
             )
 
             # Insert the App.
-            ret = client.post(
-                f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump()
-            )
+            ret = client.post(f"/v1/apps/{name}/{env}", json=app_info.model_dump())
             assert ret.status_code == 200
 
             # Request a plan based on the supplied AppInfo.
-            ret = client.patch(
-                f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump()
-            )
+            ret = client.patch(f"/v1/apps/{name}/{env}", json=app_info.model_dump())
             assert ret.status_code == 200
 
             plan = FrontendDeploymentPlan.model_validate(ret.json())
@@ -502,13 +435,13 @@ class TestIntegration:
 
             # --- Request to implement the plan ---
             jd = JobDescription(jobId=plan.jobId)
-            ret = client.post(f"/api/crt/v1/jobs", json=jd.model_dump())
+            ret = client.post(f"/v1/jobs", json=jd.model_dump())
             assert ret.status_code == 200
 
             for _ in range(10):
                 time.sleep(0.5)
 
-                ret = client.get(f"/api/crt/v1/jobs/{plan.jobId}")
+                ret = client.get(f"/v1/jobs/{plan.jobId}")
                 assert ret.status_code == 200
                 job = JobStatus.model_validate(ret.json())
                 if job.done:
@@ -541,7 +474,7 @@ class TestIntegration:
 
             # --- Remove the app ---
             # Request a plan to delete the resources.
-            ret = client.delete(f"/api/crt/v1/apps/{name}/{env}")
+            ret = client.delete(f"/v1/apps/{name}/{env}")
             assert ret.status_code == 200
 
             plan = FrontendDeploymentPlan.model_validate(ret.json())
@@ -549,13 +482,13 @@ class TestIntegration:
 
             # Implement the plan.
             jd = JobDescription(jobId=plan.jobId)
-            ret = client.post(f"/api/crt/v1/jobs", json=jd.model_dump())
+            ret = client.post("/v1/jobs", json=jd.model_dump())
             assert ret.status_code == 200
 
             for _ in range(10):
                 time.sleep(0.5)
 
-                ret = client.get(f"/api/crt/v1/jobs/{plan.jobId}")
+                ret = client.get(f"/v1/jobs/{plan.jobId}")
                 assert ret.status_code == 200
                 job = JobStatus.model_validate(ret.json())
                 if job.done:
@@ -573,7 +506,7 @@ class TestIntegration:
             # Service.
             resp, err = await dfh.k8s.get(
                 realK8sCfg,
-                f"/api/v1/namespaces/{namespace}/services/{name}",
+                f"/demo/api/v1/namespaces/{namespace}/services/{name}",
             )
             assert err
 
@@ -587,7 +520,7 @@ class TestIntegration:
             # --- Get all apps in all envs and verify that our test app is among them. ---
             await asyncio.sleep(1)
 
-            ret = client.get("/api/crt/v1/apps")
+            ret = client.get("/v1/apps")
             assert ret.status_code == 200
 
             # There must be exactly one app deployed.
@@ -599,7 +532,7 @@ class TestIntegration:
             del data
 
             # --- get all configurable items for the app ---
-            ret = client.get(f"/api/crt/v1/apps/{name}/{env}")
+            ret = client.get(f"/v1/apps/{name}/{env}")
             assert ret.status_code == 200
             app = AppInfo.model_validate(ret.json())
             app.metadata.namespace = namespace
@@ -611,20 +544,20 @@ class TestIntegration:
             assert len(app.primary.deployment.envVars) == 0
             app.primary.deployment.envVars.append(K8sEnvVar(name="foo", value="bar"))
 
-            ret = client.patch(f"/api/crt/v1/apps/{name}/{env}", json=app.model_dump())
+            ret = client.patch(f"/v1/apps/{name}/{env}", json=app.model_dump())
             assert ret.status_code == 200
             plan = FrontendDeploymentPlan.model_validate(ret.json())
             assert plan.jobId != ""
 
             # --- Request to implement the plan ---
             jd = JobDescription(jobId=plan.jobId)
-            ret = client.post(f"/api/crt/v1/jobs", json=jd.model_dump())
+            ret = client.post(f"/v1/jobs", json=jd.model_dump())
             assert ret.status_code == 200
 
             for _ in range(10):
                 time.sleep(0.5)
 
-                ret = client.get(f"/api/crt/v1/jobs/{plan.jobId}")
+                ret = client.get(f"/v1/jobs/{plan.jobId}")
                 assert ret.status_code == 200
                 job = JobStatus.model_validate(ret.json())
                 if job.done:
@@ -634,7 +567,7 @@ class TestIntegration:
 
             # --- Query our app to see if it has tracked the changes ---
             await asyncio.sleep(1)
-            ret = client.get(f"/api/crt/v1/apps/{name}/{env}")
+            ret = client.get(f"/v1/apps/{name}/{env}")
             assert ret.status_code == 200
             app = AppInfo.model_validate(ret.json())
             assert app.primary.deployment
@@ -669,7 +602,7 @@ class TestIntegrationCanary:
             # --- Get all apps in all envs and verify that our test app is among them. ---
             await asyncio.sleep(1)
 
-            ret = client.get("/api/crt/v1/apps")
+            ret = client.get("/v1/apps")
             assert ret.status_code == 200
 
             # There must be exactly one app deployed.
@@ -684,7 +617,7 @@ class TestIntegrationCanary:
             del data
 
             # --- get all configurable items for the app ---
-            ret = client.get(f"/api/crt/v1/apps/{name}/{env}")
+            ret = client.get(f"/v1/apps/{name}/{env}")
             assert ret.status_code == 200
             app = AppInfo.model_validate(ret.json())
             assert app.primary.deployment
@@ -695,7 +628,7 @@ class TestIntegrationCanary:
             app.canary = AppCanary.model_validate(app.primary.model_dump())
             app.canary.deployment.image = "nginx:1.20"
 
-            ret = client.patch(f"/api/crt/v1/apps/{name}/{env}", json=app.model_dump())
+            ret = client.patch(f"/v1/apps/{name}/{env}", json=app.model_dump())
             assert ret.status_code == 200
             plan = FrontendDeploymentPlan.model_validate(ret.json())
             assert plan.jobId != ""
@@ -705,13 +638,13 @@ class TestIntegrationCanary:
 
             # --- Tell server to implement the plan ---
             jd = JobDescription(jobId=plan.jobId)
-            ret = client.post(f"/api/crt/v1/jobs", json=jd.model_dump())
+            ret = client.post(f"/v1/jobs", json=jd.model_dump())
             assert ret.status_code == 200
 
             for _ in range(10):
                 time.sleep(0.5)
 
-                ret = client.get(f"/api/crt/v1/jobs/{plan.jobId}")
+                ret = client.get(f"/v1/jobs/{plan.jobId}")
                 assert ret.status_code == 200
                 job = JobStatus.model_validate(ret.json())
                 if job.done:
@@ -721,7 +654,7 @@ class TestIntegrationCanary:
 
             # --- Query our app to see if it has tracked the changes ---
             await asyncio.sleep(1)
-            ret = client.get(f"/api/crt/v1/apps/{name}/{env}")
+            ret = client.get(f"/v1/apps/{name}/{env}")
             assert ret.status_code == 200
             app = AppInfo.model_validate(ret.json())
             assert app.primary.deployment

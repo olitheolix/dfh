@@ -90,9 +90,7 @@ async def deploy_test_app(client: TestClient):
         )
 
         # Upload app definition to dfh.
-        response = client.post(
-            f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump()
-        )
+        response = client.post(f"/v1/apps/{name}/{env}", json=app_info.model_dump())
         assert response.status_code == 200
 
         data, err = dfh.generate.manifests_from_appinfo(cfg, app_info, Database())
@@ -148,7 +146,7 @@ def add_app(
     )
 
     # Upload app definition to dfh.
-    response = client.post(f"/api/crt/v1/apps/{name}/{env}", json=app_info.model_dump())
+    response = client.post(f"/v1/apps/{name}/{env}", json=app_info.model_dump())
     assert response.status_code == 200
 
     if deployment:
