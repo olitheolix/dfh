@@ -1,3 +1,4 @@
+import os
 import asyncio
 import sys
 
@@ -8,10 +9,18 @@ from hypercorn.config import Config
 import dfh.api
 import dfh.logstreams
 
+
+def isLocalDev() -> bool:
+    return os.environ.get("LOCAL_DEV", "") != ""
+
+
 if __name__ == "__main__":  # codecov-skip
     square.square.setup_logging(2)
     cfg, err = dfh.api.compile_server_config()
     assert not err
+    if isLocalDev():
+        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
     try:
         dfh.logstreams.setup(cfg.loglevel)
         hypercorn_cfg = Config()

@@ -5,7 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 
 import MuiDrawer from '@mui/material/Drawer';
 import MenuIcon from '@mui/icons-material/Menu';
-
+import Person from '@mui/icons-material/Person';
 import {
     Box, Toolbar, List, Typography, Divider, IconButton, Badge,
     Container, Link, ListItemButton, ListItemIcon, ListItemText
@@ -16,7 +16,10 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-
+import { Button } from '@mui/material';
+import Cookies from 'js-cookie';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 function Copyright(props: any) {
     return (
@@ -84,8 +87,61 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
 // TODO remove, this demo shouldn't need to reset the theme.
 const defaultTheme = createTheme();
 
+function ContextMenuLogout({ userEmail, setUserEmail }: { userEmail: string, setUserEmail: React.Dispatch<React.SetStateAction<string>> }) {
+    const [contextMenu, setContextMenu] = React.useState<{
+        mouseX: number;
+        mouseY: number;
+    } | null>(null);
+
+    const handleContextMenu = (event: React.MouseEvent) => {
+        event.preventDefault();
+        setContextMenu(
+            contextMenu === null
+                ? {
+                    mouseX: event.clientX + 2,
+                    mouseY: event.clientY - 6,
+                }
+                : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+                // Other native context menus might behave different.
+                // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+                null,
+        );
+    };
+
+    const handleClose = () => {
+        setContextMenu(null);
+        fetch('/demo/api/simulate-logout')
+            .then(_ => { setUserEmail("") })
+            .catch(error => {
+                console.error('Error fetching data:');
+            });
+    };
+
+
+    return (
+        <div onContextMenu={handleContextMenu} style={{ cursor: 'context-menu' }}>
+            <Typography>
+                {userEmail}
+            </Typography>
+            <Menu
+                open={contextMenu !== null}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                    contextMenu !== null
+                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                        : undefined
+                }
+            >
+                <MenuItem onClick={handleClose}>Logout</MenuItem>
+            </Menu>
+        </div>
+    )
+}
+
+
 export default function Dashboard() {
     const [open, setOpen] = React.useState(true);
+    const [userEmail, setUserEmail] = React.useState("");
     const toggleDrawer = () => {
         setOpen(!open);
     };
@@ -95,6 +151,19 @@ export default function Dashboard() {
     };
     const gotoK8sOverviewDashboard = () => {
         navigate('/');
+    };
+    const gotoUserManagement = () => {
+        navigate('/uam');
+    };
+
+    const onLogin = () => {
+        fetch('/demo/api/simulate-login')
+            .then(_ => {
+                setUserEmail(Cookies.get('email') || "")
+            })
+            .catch(error => {
+                console.error('Error fetching data:');
+            });
     };
 
     const mainListItems = (
@@ -110,6 +179,12 @@ export default function Dashboard() {
                     <ShoppingCartIcon />
                 </ListItemIcon>
                 <ListItemText primary="New Application" />
+            </ListItemButton>
+            <ListItemButton onClick={gotoUserManagement}>
+                <ListItemIcon>
+                    <Person />
+                </ListItemIcon>
+                <ListItemText primary="User Management" />
             </ListItemButton>
         </React.Fragment >
     );
@@ -145,11 +220,7 @@ export default function Dashboard() {
                         >
                             Deployments For Humans
                         </Typography>
-                        <IconButton color="inherit">
-                            <Badge badgeContent={4} color="secondary">
-                                <NotificationsIcon />
-                            </Badge>
-                        </IconButton>
+                        {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : (<Button variant="contained" color="primary" onClick={onLogin}>Login</Button>)}
                     </Toolbar>
                 </AppBar>
                 <Drawer variant="permanent" open={open}>
@@ -184,7 +255,7 @@ export default function Dashboard() {
                     }}
                 >
                     <Toolbar />
-                    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
                         <Outlet />
                         <Copyright sx={{ pt: 4 }} />
                     </Container>

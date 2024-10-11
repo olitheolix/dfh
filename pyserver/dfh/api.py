@@ -1,3 +1,5 @@
+from typing import Annotated
+import requests
 import asyncio
 import logging
 import os
@@ -6,15 +8,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
+import google.oauth2.credentials
+import google_auth_oauthlib.flow
+import googleapiclient.discovery
+import httplib2
 import square.dtypes
 import square.k8s
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from square.square import DeploymentPlan
+from starlette.middleware.sessions import SessionMiddleware
 
+import dfh
 import dfh.generate
 import dfh.k8s
 import dfh.square_types
@@ -29,11 +37,24 @@ from dfh.models import (
     JobStatus,
     PodList,
     ServerConfig,
+    TreeNode,
     WatchedResource,
 )
 
 # Convenience.
 logit = logging.getLogger("app")
+
+
+def isLocalDev() -> bool:
+    return os.environ.get("LOCAL_DEV", "") != ""
+
+
+# This variable specifies the name of a file that contains the OAuth 2.0
+# information for this application, including its client_id and client_secret.
+CLIENT_SECRETS_FILE = "client_secret.json"
+
+# Request a token to query the user's email.
+SCOPES = ["https://www.googleapis.com/auth/userinfo.email", "openid"]
 
 
 # ----------------------------------------------------------------------
@@ -102,6 +123,12 @@ app = FastAPI(
     description="",
     version="0.1.0",
     db={},
+)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="some-secret",
+    max_age=8 * 3600,  # 8 hours
+    https_only=False if isLocalDev() else True,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -177,6 +204,7 @@ def get_namespaces(request: Request) -> WatchedResource:
 
 @app.get("/api/crt/v1/apps")
 def get_apps(request: Request) -> List[AppEnvOverview]:
+    print("*** apps")
     db: Database = request.app.extra["db"]
 
     # Iterate over our app database in order to find the name of all apps and
@@ -336,7 +364,251 @@ async def post_jobs(job: JobDescription, request: Request):
         )
 
 
+def is_authenticated(request: Request) -> str:
+    email = request.session.get("email")
+    if "credentials" not in request.session or email is None:
+        raise HTTPException(status_code=403, detail="Not logged in")
+    return email
+
+
+def fetch_user_email(credentials) -> str:
+    if isLocalDev():
+        htbuild = httplib2.Http(disable_ssl_certificate_validation=True)
+    else:
+        htbuild = httplib2.Http(disable_ssl_certificate_validation=False)
+    client = googleapiclient.discovery.google_auth_httplib2.AuthorizedHttp(
+        credentials, http=htbuild
+    )
+    user_info_service = googleapiclient.discovery.build("oauth2", "v2", http=client)
+    user_info = user_info_service.userinfo().get().execute()
+    return user_info["email"]
+
+
+@app.get("/demo/api/test", dependencies=[Depends(is_authenticated)])
+def test_api_request(request: Request):
+    # Load credentials from the session.
+    credentials = google.oauth2.credentials.Credentials(
+        **request.session["credentials"]
+    )
+
+    # Save credentials back to session in case access token was refreshed.
+    # ACTION ITEM: In a production app, you likely want to save these
+    #              credentials in a persistent database instead.
+    request.session["credentials"] = credentials_to_dict(credentials)
+    email = fetch_user_email(credentials)
+    return f"User: {email}"
+
+
+@app.get("/demo/api/login")
+def authorize(request: Request):
+    # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, scopes=SCOPES
+    )
+
+    # The URI created here must exactly match one of the authorized redirect URIs
+    # for the OAuth 2.0 client, which you configured in the API Console. If this
+    # value doesn't match an authorized URI, you will get a 'redirect_uri_mismatch'
+    # error.
+    flow.redirect_uri = request.url_for("oauth2callback")
+
+    authorization_url, state = flow.authorization_url(
+        # Enable offline access so that you can refresh an access token without
+        # re-prompting the user for permission. Recommended for web server apps.
+        access_type="offline",
+        # Enable incremental authorization. Recommended as a best practice.
+        include_granted_scopes="true",
+    )
+
+    # Store the state so the callback can verify the auth server response.
+    request.session["state"] = state
+
+    return RedirectResponse(url=authorization_url)
+
+
+@app.get("/demo/api/oauth2callback")
+def oauth2callback(request: Request):
+    # Specify the state when creating the flow in the callback so that it can
+    # verified in the authorization server response.
+    state = request.session["state"]
+
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state
+    )
+    flow.redirect_uri = request.url_for("oauth2callback")
+
+    # Use the authorization server's response to fetch the OAuth 2.0 tokens.
+    resp_url = str(request.url)
+
+    if not isLocalDev():
+        resp_url = resp_url.replace("http://", "https://")
+
+    authorization_response = resp_url
+
+    flow.fetch_token(authorization_response=authorization_response)
+
+    # Store credentials in the session.
+    # ACTION ITEM: In a production app, you likely want to save these
+    #              credentials in a persistent database instead.
+    request.session["credentials"] = credentials_to_dict(flow.credentials)
+    request.session["email"] = fetch_user_email(flow.credentials)
+
+    return RedirectResponse(url=request.url_for("test_api_request"))
+
+
+@app.get("/demo/api/authdemo")
+def authdemo():
+    return HTMLResponse(print_index_table())
+
+
+@app.get("/demo/api/revoke")
+def revoke(request: Request):
+    if "credentials" not in request.session:
+        return HTMLResponse(
+            'You need to <a href="/demo/api/authorize">authorize</a> before '
+            + "testing the code to revoke credentials."
+        )
+
+    credentials = google.oauth2.credentials.Credentials(
+        **request.session["credentials"]
+    )
+
+    revoke = requests.post(
+        "https://oauth2.googleapis.com/revoke",
+        params={"token": credentials.token},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+
+    status_code = getattr(revoke, "status_code")
+    del request.session["credentials"]
+    if status_code == 200:
+        return "Credentials successfully revoked."
+    else:
+        return "An error occurred."
+
+
+@app.get("/demo/api/clear")
+def clear_credentials(request: Request):
+    if "credentials" in request.session:
+        del request.session["credentials"]
+    return "Credentials have been cleared.<br><br>"
+
+
+@app.get("/authinfo")
+def debug_authinfo(request: Request, email: Annotated[dict, Depends(is_authenticated)]):
+    return f"Logged in as {email}"
+
+
+@app.get("/demo/api/group")
+def get_group(request: Request):
+    return [
+        {"name": "group1", "uid": "gid-1"},
+        {"name": "group2", "uid": "gid-2"},
+    ]
+
+
+@app.get("/demo/api/user")
+def get_user(request: Request):
+    users = [dict(name=f"user{i}", uid=f"uid{i}", enabled=True) for i in range(100)]
+    return users
+
+
+@app.get("/demo/api/tree")
+def get_tree(request: Request) -> List[TreeNode]:
+    t1 = TreeNode(
+        id="1",
+        label="Item 1",
+        elId="group",
+        children=[
+            TreeNode(
+                id="1-1",
+                label="Sub Item 1-1",
+                elId="group",
+                children=[
+                    TreeNode(id="1-1-1", label="Sub Sub Item 1-1-1", elId="user"),
+                    TreeNode(id="1-1-2", label="Sub Sub Item 1-1-2", elId="user"),
+                ],
+            ),
+            TreeNode(id="1-2", label="Sub Item 1-2", elId="user"),
+        ],
+    )
+    t2 = TreeNode(
+        id="2",
+        label="Item 2",
+        elId="group",
+        children=[
+            TreeNode(
+                id="2-1",
+                label="Sub Item 2-1",
+                elId="group",
+                children=[
+                    TreeNode(id="2-1-1", label="Sub Sub Item 2-1-1", elId="user"),
+                    TreeNode(id="2-1-2", label="Sub Sub Item 2-1-2", elId="user"),
+                ],
+            )
+        ],
+    )
+
+    tree = TreeNode(
+        id="0",
+        label="Root",
+        elId="group",
+        children=[t1, t2],
+    )
+    return [tree]
+
+
+@app.get("/demo/api/simulate-login")
+def simulate_login(request: Request, response: Response):
+    email = "foo@bar.com"
+    response.set_cookie(key="email", value=email)
+    return {"email": email}
+
+
+@app.get("/demo/api/simulate-logout")
+def simulate_logout(request: Request, response: Response):
+    response.delete_cookie(key="email")
+    return {"email": ""}
+
+
 # Serve static web app on all paths that have not been defined already.
 @app.get("/{path:path}")
 async def catch_all(path: str):
     return FileResponse("static/index.html")
+
+
+def credentials_to_dict(credentials):
+    return {
+        "token": credentials.token,
+        "refresh_token": credentials.refresh_token,
+        "token_uri": credentials.token_uri,
+        "client_id": credentials.client_id,
+        "client_secret": credentials.client_secret,
+        "scopes": credentials.scopes,
+    }
+
+
+def print_index_table():
+    return (
+        "<table>"
+        + '<tr><td><a href="/demo/api/test">Test an API request</a></td>'
+        + "<td>Submit an API request and see a formatted JSON response. "
+        + "    Go through the authorization flow if there are no stored "
+        + "    credentials for the user.</td></tr>"
+        + '<tr><td><a href="/demo/api/authorize">Test the auth flow directly</a></td>'
+        + "<td>Go directly to the authorization flow. If there are stored "
+        + "    credentials, you still might not be prompted to reauthorize "
+        + "    the application.</td></tr>"
+        + '<tr><td><a href="/demo/api/revoke">Revoke current credentials</a></td>'
+        + "<td>Revoke the access token associated with the current user "
+        + "    session. After revoking credentials, if you go to the test "
+        + "    page, you should see an <code>invalid_grant</code> error."
+        + "</td></tr>"
+        + '<tr><td><a href="/demo/api/clear">Clear session credentials</a></td>'
+        + "<td>Clear the access token currently stored in the user session. "
+        + '    After clearing the token, if you <a href="/demo/api/test">test the '
+        + "    API request</a> again, you should go back to the auth flow."
+        + "</td></tr>"
+        + '<tr><td><a href="/demo/api/authinfo">Debug Session Info</a></td></tr>'
+        + "</table>"
+    )

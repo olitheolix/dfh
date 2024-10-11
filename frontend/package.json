@@ -15,13 +15,16 @@
     "@mui/material": "latest",
     "@mui/x-charts": "latest",
     "@mui/x-data-grid-generator": "latest",
+    "@mui/x-tree-view": "^7.20.0",
     "eslint": "^8.56.0",
+    "js-cookie": "^3.0.5",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "^6.22.0",
     "recharts": "latest"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",

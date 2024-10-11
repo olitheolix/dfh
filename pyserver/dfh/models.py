@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -363,6 +363,13 @@ class PodList(BaseModel):
         reason: str = ""
 
     items: List[PodInfo] = []
+
+
+class TreeNode(BaseModel):
+    id: str
+    label: str
+    elId: str
+    children: Optional[List["TreeNode"]] = None
 
 
 class JobStatus(BaseModel):
