@@ -37,3 +37,5 @@ frontend/*.sw?
 # Misc.
 private/
 **/delme*
+integration-test-cluster/istio-1.23.2/
+pyserver/client_secret.json
