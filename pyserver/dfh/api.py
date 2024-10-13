@@ -517,33 +517,33 @@ def get_user(request: Request):
 def get_tree(request: Request) -> List[TreeNode]:
     t1 = TreeNode(
         id="1",
-        label="Item 1",
+        label="Group 1",
         elId="group",
         children=[
             TreeNode(
                 id="1-1",
-                label="Sub Item 1-1",
+                label="Group 2",
                 elId="group",
                 children=[
-                    TreeNode(id="1-1-1", label="Sub Sub Item 1-1-1", elId="user"),
-                    TreeNode(id="1-1-2", label="Sub Sub Item 1-1-2", elId="user"),
+                    TreeNode(id="1-1-1", label="Group 10", elId="user"),
+                    TreeNode(id="1-1-2", label="Group 11", elId="user"),
                 ],
             ),
-            TreeNode(id="1-2", label="Sub Item 1-2", elId="user"),
+            TreeNode(id="1-2", label="Group 3", elId="user"),
         ],
     )
     t2 = TreeNode(
         id="2",
-        label="Item 2",
+        label="Group 4",
         elId="group",
         children=[
             TreeNode(
                 id="2-1",
-                label="Sub Item 2-1",
+                label="Group 5",
                 elId="group",
                 children=[
-                    TreeNode(id="2-1-1", label="Sub Sub Item 2-1-1", elId="user"),
-                    TreeNode(id="2-1-2", label="Sub Sub Item 2-1-2", elId="user"),
+                    TreeNode(id="2-1-1", label="Group 10", elId="user"),
+                    TreeNode(id="2-1-2", label="Group 11", elId="user"),
                 ],
             )
         ],
