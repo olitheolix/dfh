@@ -424,6 +424,22 @@ class GeneratedManifests(BaseModel):
 # ----------------------------------------------------------------------
 
 
+class GoogleToken(BaseModel):
+    token: str
+
+
+class UAMUser(BaseModel):
+    uid: str
+    name: str
+
+
+class UAMGroup(BaseModel):
+    uid: str
+    name: str
+    users: List[UAMUser]
+    children: List["UAMGroup"]
+
+
 class UAMTreeNode(BaseModel):
     id: str
     label: str
@@ -431,5 +447,7 @@ class UAMTreeNode(BaseModel):
     children: Optional[List["UAMTreeNode"]] = None
 
 
-class GoogleToken(BaseModel):
-    token: str
+class UAMDatabase(BaseModel):
+    users: List[UAMUser]
+    groups: List[UAMGroup]
+    root: UAMGroup = UAMGroup(uid="root", name="Org", users=[], children=[])

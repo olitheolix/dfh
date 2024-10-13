@@ -1,3 +1,4 @@
+import random
 from typing import Annotated
 import requests
 import asyncio
@@ -6,7 +7,7 @@ import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import List
+from typing import List, Set, Dict
 
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
@@ -41,11 +42,16 @@ from dfh.models import (
     PodList,
     ServerConfig,
     UAMTreeNode,
+    UAMDatabase,
+    UAMUser,
+    UAMGroup,
     WatchedResource,
 )
 
 # Convenience.
 logit = logging.getLogger("app")
+
+UAM_DB: UAMDatabase = UAMDatabase(users=[], groups=[])
 
 
 def isLocalDev() -> bool:
@@ -64,6 +70,67 @@ GOOGLE_CLIENT_ID = (
 
 # Request a token to query the user's email.
 SCOPES = ["https://www.googleapis.com/auth/userinfo.email", "openid"]
+
+
+def create_fake_uam_dataset():
+    import faker
+
+    num_users, num_groups = 1000, 1000
+    fake = faker.Faker()
+    first = [fake.first_name() for _ in range(num_users)]
+    last = [fake.name().split()[0] for _ in range(num_users)]
+    user_names = [f"{f}.{s}@company.org" for f, s in zip(first, last)]
+    user_names = list(set(user_names))
+    del first, last
+
+    group_names = [str.join("-", fake.country().split()) for _ in range(num_groups)]
+    group_names = list(set(group_names))
+
+    for idx, user_name in enumerate(user_names):
+        UAM_DB.users.append(UAMUser(name=user_name, uid=f"uid-{idx}"))
+        del idx, user_name
+
+    for idx, group_name in enumerate(group_names):
+        k = random.randint(0, num_users // 2)
+        user_idx = random.choices(range(len(UAM_DB.users)), k=k)
+        user_idx = list(set(user_idx))
+        users = [UAM_DB.users[_] for _ in user_idx]
+        UAM_DB.groups.append(
+            UAMGroup(name=group_name, users=users, uid=f"gid-{idx}", children=[])
+        )
+        del k, user_idx, users, idx, group_name
+    del group_names
+
+    root = UAM_DB.root
+    available = set(range(len(UAM_DB.groups)))
+    populate_tree(root, available, 0.1)
+
+
+def populate_tree(node: UAMGroup, available: set, prob):
+    if len(available) == 0:
+        return
+
+    cur = {_ for _ in available if random.random() < prob}
+    node.children = [UAM_DB.groups[i] for i in cur]
+    for i in cur:
+        available.remove(i)
+
+    for child in node.children:
+        populate_tree(child, available, prob / 2)
+
+
+def count_users(node: UAMGroup) -> Set[str]:
+    users = {_.name for _ in node.users}
+    for child in node.children:
+        users |= count_users(child)
+    return users
+
+
+def print_tree(node: UAMGroup, prefix=""):
+    cnt = len(count_users(node))
+    print(f"{prefix}{node.name} ({cnt} users)")
+    for child in node.children:
+        print_tree(child, prefix + " ")
 
 
 # ----------------------------------------------------------------------
@@ -98,6 +165,8 @@ def compile_server_config():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    create_fake_uam_dataset()
+
     # Create client for one K8s cluster.
     cfg, err = compile_server_config()
     assert not err
@@ -210,7 +279,6 @@ def get_namespaces(request: Request) -> WatchedResource:
 
 @app.get("/api/crt/v1/apps")
 def get_apps(request: Request) -> List[AppEnvOverview]:
-    print("*** apps")
     db: Database = request.app.extra["db"]
 
     # Iterate over our app database in order to find the name of all apps and
@@ -526,7 +594,7 @@ def debug_authinfo(request: Request, email: Annotated[dict, Depends(is_authentic
     return f"Logged in as {email}"
 
 
-@app.get("/demo/api/group")
+@app.get("/demo/api/groups")
 def get_group(request: Request):
     return [
         {"name": "group1", "uid": "gid-1"},
@@ -534,55 +602,37 @@ def get_group(request: Request):
     ]
 
 
-@app.get("/demo/api/user")
-def get_user(request: Request):
-    users = [dict(name=f"user{i}", uid=f"uid{i}", enabled=True) for i in range(100)]
-    return users
+@app.get("/demo/api/users")
+def get_user(request: Request) -> List[UAMUser]:
+    return UAM_DB.users
+
+
+@app.get("/demo/api/users/{uid}")
+def get_users_in_group(request: Request, uid: str) -> List[UAMUser]:
+
+    users: Dict[str, UAMUser] = {}
+
+    def _walk(node: UAMGroup):
+        users.update({_.uid: _ for _ in node.users})
+        for child in node.children:
+            _walk(child)
+
+    for group in [UAM_DB.root, *UAM_DB.groups]:
+        if group.uid == uid:
+            _walk(group)
+            break
+    return list(users.values())
 
 
 @app.get("/demo/api/tree")
-def get_tree(request: Request) -> List[UAMTreeNode]:
-    t1 = UAMTreeNode(
-        id="1",
-        label="Group 1",
-        elId="group",
-        children=[
-            UAMTreeNode(
-                id="1-1",
-                label="Group 2",
-                elId="group",
-                children=[
-                    UAMTreeNode(id="1-1-1", label="Group 10", elId="user"),
-                    UAMTreeNode(id="1-1-2", label="Group 11", elId="user"),
-                ],
-            ),
-            UAMTreeNode(id="1-2", label="Group 3", elId="user"),
-        ],
-    )
-    t2 = UAMTreeNode(
-        id="2",
-        label="Group 4",
-        elId="group",
-        children=[
-            UAMTreeNode(
-                id="2-1",
-                label="Group 5",
-                elId="group",
-                children=[
-                    UAMTreeNode(id="2-1-1", label="Group 10", elId="user"),
-                    UAMTreeNode(id="2-1-2", label="Group 11", elId="user"),
-                ],
-            )
-        ],
-    )
+def get_tree(request: Request) -> UAMGroup:
+    def _walk(node: UAMGroup) -> UAMGroup:
+        out = UAMGroup(uid=node.uid, name=node.name, users=[], children=[])
+        for child in node.children:
+            out.children.append(_walk(child))
+        return out
 
-    tree = UAMTreeNode(
-        id="0",
-        label="Root",
-        elId="group",
-        children=[t1, t2],
-    )
-    return [tree]
+    return _walk(UAM_DB.root)
 
 
 @app.get("/demo/api/simulate-login")

@@ -16,11 +16,16 @@ import {
 import Title from './Title';
 
 
-interface TreeNode {
-    id: string;
-    elId: 'group' | 'user'
-    label: string;
-    children?: TreeNode[]; // Recursive type to handle nested children
+interface UAMUser {
+    uid: string;
+    name: string;
+}
+
+interface UAMGroup {
+    uid: string;
+    name: string;
+    users: UAMUser[];
+    children: UAMGroup[];
 }
 
 interface User {
@@ -35,7 +40,7 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
     useEffect(() => {
         // Fetch the list of users from the /users endpoint when the dialog opens
         if (isOpen) {
-            fetch('/demo/api/user')
+            fetch('/demo/api/users')
                 .then(response => response.json())
                 .then(data => {
                     const userList = data.map((row: User) => {
@@ -105,7 +110,12 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
 
 
 export default function UAMOverview() {
-    const [treeData, setTreeData] = useState<TreeNode[]>([]);
+    const [treeData, setTreeData] = useState<UAMGroup>({
+        uid: "n/a",
+        name: "n/a",
+        users: [],
+        children: [],
+    });
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [dataGridRows, setDataGridRows] = useState<any[]>([]);
@@ -139,8 +149,8 @@ export default function UAMOverview() {
 
     // const [rows, setRows] = useState<GridRowsProp>([]);
 
-    const handleNodeSelect = (node: TreeNode) => {
-        fetch('/demo/api/user')
+    const handleNodeSelect = (node: UAMGroup) => {
+        fetch(`/demo/api/users/${node.uid}`)
             .then(response => response.json())
             .then(data => {
                 const dataWithID = data.map((row: User) => {
@@ -154,7 +164,7 @@ export default function UAMOverview() {
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
                 ]);
-                setSelectedNode(node.label)
+                setSelectedNode(node.name)
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -163,14 +173,9 @@ export default function UAMOverview() {
 
 
     // Recursive function to render tree items
-    const renderTree = (nodes: TreeNode) => (
-        < TreeItem key={nodes.label} itemId={nodes.label} label={nodes.label} onClick={() => handleNodeSelect(nodes)
-        }>
-            {
-                Array.isArray(nodes.children)
-                    ? nodes.children.map((node: TreeNode) => renderTree(node))
-                    : null
-            }
+    const renderTree = (nodes: UAMGroup) => (
+        < TreeItem key={nodes.uid} itemId={nodes.uid} label={nodes.name} onClick={() => handleNodeSelect(nodes)}>
+            {nodes.children.map((node: UAMGroup) => renderTree(node))}
         </TreeItem >
     );
 
@@ -198,13 +203,13 @@ export default function UAMOverview() {
 
                     <Grid container size="grow" spacing={2}>
                         <Grid>
-                            <Button variant="contained" color="primary"
+                            <Button variant="contained" color="primary" disabled={true}
                                 onClick={onOpenUserAddDialog}>Add User</Button>
                             <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
 
                         </Grid>
                         <Grid>
-                            <Button variant="contained" color="primary"
+                            <Button variant="contained" color="primary" disabled={true}
                                 onClick={onOpenUserAddDialog}>Add Group</Button>
                             <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
 
@@ -218,11 +223,8 @@ export default function UAMOverview() {
                 ) : error ? (
                     <p>{error}</p>
                 ) : (
-                    <SimpleTreeView
-                        defaultSelectedItems={treeData.length > 0 ? treeData[0].label : null}
-                    >
-                        {treeData.map((node) => renderTree(node))}
-
+                    <SimpleTreeView defaultSelectedItems={treeData.uid}>
+                        {renderTree(treeData)}
                     </SimpleTreeView>
                 )}
 
