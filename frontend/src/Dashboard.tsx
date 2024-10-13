@@ -23,12 +23,17 @@ import MenuItem from '@mui/material/MenuItem';
 import { GoogleLogin } from '@react-oauth/google';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
+interface GoogleTokenResponse {
+    credential: string;
+}
+
+
 const GoogleLoginButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<React.SetStateAction<string>> }) => {
-    const handleSuccess = async (response) => {
+    const handleSuccess = async (response: any) => {
         console.log('Login Success:', response);
         // You can use the access token or profile data as per your need
 
-        const token = response.credential; // This is the ID token
+        const token = (response as GoogleTokenResponse).credential; // This is the ID token
 
         try {
             const apiResponse = await fetch('/demo/api/validate-google-token', {
