@@ -365,17 +365,6 @@ class PodList(BaseModel):
     items: List[PodInfo] = []
 
 
-class TreeNode(BaseModel):
-    id: str
-    label: str
-    elId: str
-    children: Optional[List["TreeNode"]] = None
-
-
-class GoogleToken(BaseModel):
-    token: str
-
-
 class JobStatus(BaseModel):
     """GET `/api/crt/v1/jobs/{jobId}`"""
 
@@ -428,3 +417,19 @@ class GeneratedManifests(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     resources: Dict[str, WatchedResource] = factory_WatchedResource()
+
+
+# ----------------------------------------------------------------------
+# User Access Management.
+# ----------------------------------------------------------------------
+
+
+class UAMTreeNode(BaseModel):
+    id: str
+    label: str
+    elId: str
+    children: Optional[List["UAMTreeNode"]] = None
+
+
+class GoogleToken(BaseModel):
+    token: str
