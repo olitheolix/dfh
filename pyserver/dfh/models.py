@@ -372,6 +372,10 @@ class TreeNode(BaseModel):
     children: Optional[List["TreeNode"]] = None
 
 
+class GoogleToken(BaseModel):
+    token: str
+
+
 class JobStatus(BaseModel):
     """GET `/api/crt/v1/jobs/{jobId}`"""
 

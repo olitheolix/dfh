@@ -14,6 +14,8 @@ import googleapiclient.discovery
 import httplib2
 import square.dtypes
 import square.k8s
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from fastapi import FastAPI, HTTPException, Request, Response, status, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -33,6 +35,7 @@ from dfh.models import (
     AppInfo,
     Database,
     DatabaseAppEntry,
+    GoogleToken,
     JobDescription,
     JobStatus,
     PodList,
@@ -52,6 +55,12 @@ def isLocalDev() -> bool:
 # This variable specifies the name of a file that contains the OAuth 2.0
 # information for this application, including its client_id and client_secret.
 CLIENT_SECRETS_FILE = "client_secret.json"
+
+# Specify the OAuth CLIENT_ID of the app from Google Cloud Console.
+GOOGLE_CLIENT_ID = (
+    "34471668497-aj0h4ifb4fe3dbcrijurdu04ahu1gurm.apps.googleusercontent.com"
+)
+
 
 # Request a token to query the user's email.
 SCOPES = ["https://www.googleapis.com/auth/userinfo.email", "openid"]
@@ -131,12 +140,9 @@ app.add_middleware(
     https_only=False if isLocalDev() else True,
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-
 
 # Serve static app.
-@app.get("/")
+@app.get("/demo")
 async def get_index():
     return FileResponse("static/index.html")
 
@@ -424,6 +430,27 @@ def authorize(request: Request):
     request.session["state"] = state
 
     return RedirectResponse(url=authorization_url)
+
+
+@app.post("/demo/api/validate-google-token")
+async def google_auth(data: GoogleToken, response: Response):
+    try:
+        # Verify the ID token using Google's library
+        id_info = id_token.verify_oauth2_token(
+            data.token, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+
+        # The ID token is valid, you can access user info here:
+        user_id = id_info["sub"]  # User's unique ID
+        email = id_info["email"]
+        name = id_info.get("name", "Anonymous User")
+
+        # Perform user authentication or registration here
+        print(f"User was identified as {name} ({email})")
+        response.set_cookie(key="email", value=email)
+    except ValueError:
+        # Invalid token
+        raise HTTPException(status_code=400, detail="Invalid ID token")
 
 
 @app.get("/demo/api/oauth2callback")

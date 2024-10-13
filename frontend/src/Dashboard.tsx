@@ -20,6 +20,50 @@ import { Button } from '@mui/material';
 import Cookies from 'js-cookie';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import { GoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const GoogleLoginButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<React.SetStateAction<string>> }) => {
+    const handleSuccess = async (response) => {
+        console.log('Login Success:', response);
+        // You can use the access token or profile data as per your need
+
+        const token = response.credential; // This is the ID token
+
+        try {
+            const apiResponse = await fetch('/demo/api/validate-google-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ "token": token }),
+            });
+
+            if (apiResponse.ok) {
+                const data = await apiResponse.json();
+                console.log('User authenticated:', data);
+                setUserEmail(Cookies.get('email') || "")
+            } else {
+                console.error('Failed to authenticate user');
+            }
+        } catch (error) {
+            console.error('Error sending token to backend:', error);
+        }
+    };
+
+    const handleError = () => {
+        console.error('Login Failed');
+    };
+
+    return (
+        <div>
+            <GoogleLogin
+                onSuccess={handleSuccess}
+                onError={handleError}
+            />
+        </div>
+    );
+};
 
 function Copyright(props: any) {
     return (
@@ -191,76 +235,78 @@ export default function Dashboard() {
 
     return (
         <ThemeProvider theme={defaultTheme}>
-            <Box sx={{ display: 'flex' }}>
-                <CssBaseline />
-                <AppBar position="absolute" open={open}>
-                    <Toolbar
-                        sx={{
-                            pr: '24px', // keep right padding when drawer closed
-                        }}
-                    >
-                        <IconButton
-                            edge="start"
-                            color="inherit"
-                            aria-label="open drawer"
-                            onClick={toggleDrawer}
+            <GoogleOAuthProvider clientId="34471668497-aj0h4ifb4fe3dbcrijurdu04ahu1gurm.apps.googleusercontent.com">
+                <Box sx={{ display: 'flex' }}>
+                    <CssBaseline />
+                    <AppBar position="absolute" open={open}>
+                        <Toolbar
                             sx={{
-                                marginRight: '36px',
-                                ...(open && { display: 'none' }),
+                                pr: '24px', // keep right padding when drawer closed
                             }}
                         >
-                            <MenuIcon />
-                        </IconButton>
-                        <Typography
-                            component="h1"
-                            variant="h6"
-                            color="inherit"
-                            noWrap
-                            sx={{ flexGrow: 1 }}
+                            <IconButton
+                                edge="start"
+                                color="inherit"
+                                aria-label="open drawer"
+                                onClick={toggleDrawer}
+                                sx={{
+                                    marginRight: '36px',
+                                    ...(open && { display: 'none' }),
+                                }}
+                            >
+                                <MenuIcon />
+                            </IconButton>
+                            <Typography
+                                component="h1"
+                                variant="h6"
+                                color="inherit"
+                                noWrap
+                                sx={{ flexGrow: 1 }}
+                            >
+                                Deployments For Humans
+                            </Typography>
+                            {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : (<GoogleLoginButton setUserEmail={setUserEmail} />)}
+                        </Toolbar>
+                    </AppBar>
+                    <Drawer variant="permanent" open={open}>
+                        <Toolbar
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                px: [1],
+                            }}
                         >
-                            Deployments For Humans
-                        </Typography>
-                        {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : (<Button variant="contained" color="primary" onClick={onLogin}>Login</Button>)}
-                    </Toolbar>
-                </AppBar>
-                <Drawer variant="permanent" open={open}>
-                    <Toolbar
+                            <IconButton onClick={toggleDrawer}>
+                                <ChevronLeftIcon />
+                            </IconButton>
+                        </Toolbar>
+                        <Divider />
+                        <List component="nav">
+                            {mainListItems}
+                            <Divider sx={{ my: 1 }} />
+                        </List>
+                    </Drawer>
+                    <Box
+                        component="main"
                         sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            px: [1],
+                            backgroundColor: (theme) =>
+                                theme.palette.mode === 'light'
+                                    ? theme.palette.grey[100]
+                                    : theme.palette.grey[900],
+                            flexGrow: 1,
+                            height: '100vh',
+                            overflow: 'auto',
                         }}
                     >
-                        <IconButton onClick={toggleDrawer}>
-                            <ChevronLeftIcon />
-                        </IconButton>
-                    </Toolbar>
-                    <Divider />
-                    <List component="nav">
-                        {mainListItems}
-                        <Divider sx={{ my: 1 }} />
-                    </List>
-                </Drawer>
-                <Box
-                    component="main"
-                    sx={{
-                        backgroundColor: (theme) =>
-                            theme.palette.mode === 'light'
-                                ? theme.palette.grey[100]
-                                : theme.palette.grey[900],
-                        flexGrow: 1,
-                        height: '100vh',
-                        overflow: 'auto',
-                    }}
-                >
-                    <Toolbar />
-                    <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
-                        <Outlet />
-                        <Copyright sx={{ pt: 4 }} />
-                    </Container>
+                        <Toolbar />
+                        <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
+                            <Outlet />
+                            <Copyright sx={{ pt: 4 }} />
+                        </Container>
+                    </Box>
                 </Box>
-            </Box>
+            </GoogleOAuthProvider>
         </ThemeProvider>
     );
 }
