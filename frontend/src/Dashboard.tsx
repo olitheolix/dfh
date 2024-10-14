@@ -21,7 +21,7 @@ import Cookies from 'js-cookie';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { GoogleLogin } from '@react-oauth/google';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 
 interface GoogleTokenResponse {
     credential: string;
@@ -29,6 +29,53 @@ interface GoogleTokenResponse {
 
 
 const googleClientId = "34471668497-aj0h4ifb4fe3dbcrijurdu04ahu1gurm.apps.googleusercontent.com"
+
+
+
+const GoogleSignInButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<React.SetStateAction<string>> }) => {
+    const handleSuccess = async (response: any) => {
+        console.log('Login Success:', response);
+        // You can use the access token or profile data as per your need
+
+        const token = response.access_token; // This is the ID token
+
+        try {
+            const apiResponse = await fetch('/demo/api/validate-google-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ "token": token }),
+            });
+
+            if (apiResponse.ok) {
+                const data = await apiResponse.json();
+                console.log('User authenticated:', data);
+                setUserEmail(Cookies.get('email') || "")
+            } else {
+                console.error('Failed to authenticate user');
+            }
+        } catch (error) {
+            console.error('Error sending token to backend:', error);
+        }
+    };
+
+    const handleError = () => {
+        console.error('Login Failed');
+    };
+
+    // Use the useGoogleLogin hook to handle login functionality
+    const login = useGoogleLogin({
+        onSuccess: handleSuccess,
+        onError: handleError,
+    });
+
+    return (
+        <Button variant="contained" color="primary" onClick={() => login()}>
+            Sign in with Google
+        </Button>
+    );
+};
 
 
 const GoogleLoginButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<React.SetStateAction<string>> }) => {
@@ -283,6 +330,7 @@ export default function Dashboard() {
                                 Deployments For Humans
                             </Typography>
                             {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : (<GoogleLoginButton setUserEmail={setUserEmail} />)}
+                            <GoogleSignInButton setUserEmail={setUserEmail} />
                         </Toolbar>
                     </AppBar>
                     <Drawer variant="permanent" open={open}>
