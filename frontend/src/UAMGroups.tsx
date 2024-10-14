@@ -1,111 +1,29 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid2';
-import { DataGrid, GridEventListener } from '@mui/x-data-grid';
-import { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
-import { CircularProgress, Button } from '@mui/material';
-import { GridToolbar } from '@mui/x-data-grid';
-import {
-    Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-    Autocomplete, TextField,
-} from '@mui/material';
+import { DataGrid, GridToolbar, GridEventListener, GridColDef, GridSortModel, GridRowSelectionModel } from '@mui/x-data-grid';
+import { CircularProgress, Button, Paper, Typography, Box } from '@mui/material';
 import { UAMUser, UAMGroup } from './UAMInterfaces'
+import Grid from '@mui/material/Grid2';
 
 import Title from './Title';
 
 
-function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
-    const [options, setOptions] = useState<string[]>([]);
-    const [selectedUser, setSelectedUser] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Fetch the list of users from the /users endpoint when the dialog opens
-        if (isOpen) {
-            fetch('/demo/api/users')
-                .then(response => response.json())
-                .then(data => {
-                    const userList = data.map((row: UAMUser) => {
-                        return row.name
-                    })
-                    setOptions(userList);
-                })
-                .catch(error => console.error('Error fetching users:', error));
-        }
-    }, [isOpen]);
-
-    const handleClose = () => {
-        setIsOpen(false);
-    };
-
-    const handleOk = () => {
-        if (selectedUser) {
-            fetch('/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ user: selectedUser }),
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(() => {
-                    console.log('User successfully added');
-                    handleClose();
-                })
-                .catch(error => console.error('Error adding user:', error));
-        } else {
-            console.warn('No user selected');
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onClose={handleClose} fullWidth={true}>
-            <DialogTitle>Select a User</DialogTitle>
-            <DialogContent>
-                <Autocomplete
-                    options={options}
-                    value={selectedUser}
-                    onChange={(event, newValue) => {
-                        setSelectedUser(newValue);
-                    }}
-                    renderInput={(params) => (
-                        <TextField {...params} label="User" variant="outlined" fullWidth />
-                    )}
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleClose} color="primary">
-                    Cancel
-                </Button>
-                <Button onClick={handleOk} color="primary" variant="contained">
-                    OK
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
-
 export default function UAMGroups() {
     const [loading, setLoading] = useState<boolean>(true);
-    const [groupRows, setGroupRows] = useState<any[]>([]);
     const [groupColumns, setGroupColumns] = useState<GridColDef[]>([]);
-    const [groupUserRows, setGroupUserRows] = useState<any[]>([]);
-    const [otherUserRows, setOtherUserRows] = useState<any[]>([]);
     const [userColumns, setUserColumns] = useState<GridColDef[]>([]);
-    const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
+    const [groupRows, setGroupRows] = useState<any[]>([]);
+    const [leftUserRows, setLeftUserRows] = useState<any[]>([]);
+    const [rightUserRows, setRightUserRows] = useState<any[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<UAMGroup>({
         uid: "n/a",
         name: "n/a",
         users: [],
         children: [],
     })
-    const [selectedItems, setSelectedItems] = useState<GridRowSelectionModel>([]);
+    const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
+    const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
+    const [sortModel, setSortModel] = React.useState<GridSortModel>([{ field: "name", sort: "asc" }]);
 
     useEffect(() => {
         fetch('/demo/api/groups')
@@ -125,17 +43,13 @@ export default function UAMGroups() {
                 setLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching data:');
+                console.error('Error fetching data:', error);
             });
     }, []);
 
 
     if (loading) {
         return <CircularProgress />;
-    }
-
-    const onOpenUserAddDialog = async () => {
-        setIsUseraddModalOpen(true)
     }
 
     const handleGroupRowClick: GridEventListener<'rowClick'> = (params) => {
@@ -150,7 +64,7 @@ export default function UAMGroups() {
                         id: row.uid,
                     }
                 })
-                setGroupUserRows(data)
+                setLeftUserRows(data)
                 setUserColumns([
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
@@ -158,7 +72,7 @@ export default function UAMGroups() {
                 setLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching data:');
+                console.error('Error fetching data:', error);
             });
         fetch(`/demo/api/users`)
             .then(response => response.json())
@@ -169,7 +83,7 @@ export default function UAMGroups() {
                         id: row.uid,
                     }
                 })
-                setOtherUserRows(data)
+                setRightUserRows(data)
                 setUserColumns([
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
@@ -177,19 +91,25 @@ export default function UAMGroups() {
                 setLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching data:');
+                console.error('Error fetching data:', error);
             });
     };
 
-    const handleSelectionChange = (selectionModel: GridRowSelectionModel) => {
-        setSelectedItems(selectionModel);
+    const onSelectLeft = (selection: GridRowSelectionModel) => { setLeftSelected(selection); };
+    const onSelectRight = (selection: GridRowSelectionModel) => { setRightSelected(selection); };
+
+    const onMoveRightToLeft = () => {
+        const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
+        setRightUserRows(rightUserRows.filter((item) => !rightSelected.includes(item.id)));
+        setLeftUserRows([...leftUserRows, ...itemsToMove]);
+        setRightSelected([]);
     };
 
-    const handleMoveItems = () => {
-        const itemsToMove = otherUserRows.filter((item) => selectedItems.includes(item.id));
-        setOtherUserRows(otherUserRows.filter((item) => !selectedItems.includes(item.id)));
-        setGroupUserRows([...groupUserRows, ...itemsToMove]);
-        setSelectedItems([]);
+    const onMoveLeftToRight = () => {
+        const itemsToMove = leftUserRows.filter((item) => leftSelected.includes(item.id));
+        setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
+        setRightUserRows([...rightUserRows, ...itemsToMove]);
+        setLeftSelected([]);
     };
 
     return (
@@ -208,15 +128,14 @@ export default function UAMGroups() {
 
                     <Grid container size="grow" spacing={2}>
                         <Grid>
-                            <Button variant="contained" color="primary" disabled={true}
-                                onClick={onOpenUserAddDialog}>Add User</Button>
-                            <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
+                            <Typography variant="subtitle1" gutterBottom>
+                                Group: {selectedGroup.name}
+                            </Typography>
                         </Grid>
                         <Grid>
-                            <Button variant="contained" color="primary" disabled={true}
-                                onClick={onOpenUserAddDialog}>Add Group</Button>
-                            <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
-
+                            <Typography variant="subtitle1" gutterBottom>
+                                Group: {selectedGroup.name}
+                            </Typography>
                         </Grid>
                     </Grid>
                 </Paper>
@@ -230,6 +149,7 @@ export default function UAMGroups() {
                             columns={groupColumns}
                             slots={{ toolbar: GridToolbar }}
                             onRowClick={handleGroupRowClick}
+                            sortModel={sortModel}
                             slotProps={{
                                 toolbar: {
                                     showQuickFilter: true,
@@ -248,8 +168,10 @@ export default function UAMGroups() {
                         <DataGrid
                             checkboxSelection
                             disableColumnSelector
-                            rows={groupUserRows}
+                            rows={leftUserRows}
                             columns={userColumns}
+                            onRowSelectionModelChange={onSelectLeft}
+                            sortModel={sortModel}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{
                                 toolbar: {
@@ -259,7 +181,7 @@ export default function UAMGroups() {
                         />
                     </Box >
                     <Button variant="contained" color="primary"
-                        onClick={onOpenUserAddDialog}>Remove from Group</Button>
+                        onClick={onMoveLeftToRight}>Remove from Group</Button>
                 </Paper>
             </Grid>
             <Grid size={4} justifyContent="center" alignItems="center">
@@ -269,9 +191,10 @@ export default function UAMGroups() {
                         <DataGrid
                             checkboxSelection
                             disableColumnSelector
-                            rows={otherUserRows}
+                            rows={rightUserRows}
                             columns={userColumns}
-                            onRowSelectionModelChange={handleSelectionChange}
+                            onRowSelectionModelChange={onSelectRight}
+                            sortModel={sortModel}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{
                                 toolbar: {
@@ -281,7 +204,7 @@ export default function UAMGroups() {
                         />
                     </Box >
                     <Button variant="contained" color="primary"
-                        onClick={handleMoveItems}>Add to Group</Button>
+                        onClick={onMoveRightToLeft}>Add to Group</Button>
                 </Paper>
             </Grid>
 
