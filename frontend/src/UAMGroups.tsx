@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import { DataGrid, GridEventListener } from '@mui/x-data-grid';
-import { GridColDef } from '@mui/x-data-grid';
+import { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
 import { CircularProgress, Button } from '@mui/material';
 import { GridToolbar } from '@mui/x-data-grid';
 import {
@@ -93,9 +93,10 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
 
 export default function UAMGroups() {
     const [loading, setLoading] = useState<boolean>(true);
-    const [userRows, setUserRows] = useState<any[]>([]);
     const [groupRows, setGroupRows] = useState<any[]>([]);
     const [groupColumns, setGroupColumns] = useState<GridColDef[]>([]);
+    const [groupUserRows, setGroupUserRows] = useState<any[]>([]);
+    const [otherUserRows, setOtherUserRows] = useState<any[]>([]);
     const [userColumns, setUserColumns] = useState<GridColDef[]>([]);
     const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
     const [selectedGroup, setSelectedGroup] = useState<UAMGroup>({
@@ -104,6 +105,7 @@ export default function UAMGroups() {
         users: [],
         children: [],
     })
+    const [selectedItems, setSelectedItems] = useState<GridRowSelectionModel>([]);
 
     useEffect(() => {
         fetch('/demo/api/groups')
@@ -137,10 +139,57 @@ export default function UAMGroups() {
     }
 
     const handleGroupRowClick: GridEventListener<'rowClick'> = (params) => {
+        console.log(params)
         setSelectedGroup(params.row as UAMGroup)
-        console.log('Row clicked:', params);
-        console.log('Row ID:', params.id);
-        console.log('Row Data:', params.row);
+        fetch(`/demo/api/users/${params.id}`)
+            .then(response => response.json())
+            .then(jsonData => {
+                const data = jsonData.map((row: UAMUser) => {
+                    return {
+                        name: row.name,
+                        id: row.uid,
+                    }
+                })
+                setGroupUserRows(data)
+                setUserColumns([
+                    { field: 'name', headerName: 'Name', width: 200 },
+                    { field: 'date', headerName: 'Date', width: 150 },
+                ])
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Error fetching data:');
+            });
+        fetch(`/demo/api/users`)
+            .then(response => response.json())
+            .then(jsonData => {
+                const data = jsonData.map((row: UAMUser) => {
+                    return {
+                        name: row.name,
+                        id: row.uid,
+                    }
+                })
+                setOtherUserRows(data)
+                setUserColumns([
+                    { field: 'name', headerName: 'Name', width: 200 },
+                    { field: 'date', headerName: 'Date', width: 150 },
+                ])
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Error fetching data:');
+            });
+    };
+
+    const handleSelectionChange = (selectionModel: GridRowSelectionModel) => {
+        setSelectedItems(selectionModel);
+    };
+
+    const handleMoveItems = () => {
+        const itemsToMove = otherUserRows.filter((item) => selectedItems.includes(item.id));
+        setOtherUserRows(otherUserRows.filter((item) => !selectedItems.includes(item.id)));
+        setGroupUserRows([...groupUserRows, ...itemsToMove]);
+        setSelectedItems([]);
     };
 
     return (
@@ -162,7 +211,6 @@ export default function UAMGroups() {
                             <Button variant="contained" color="primary" disabled={true}
                                 onClick={onOpenUserAddDialog}>Add User</Button>
                             <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
-
                         </Grid>
                         <Grid>
                             <Button variant="contained" color="primary" disabled={true}
@@ -193,13 +241,14 @@ export default function UAMGroups() {
 
 
             </Grid>
-            <Grid size={7} justifyContent="center" alignItems="center">
+            <Grid size={4} justifyContent="center" alignItems="center">
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
-                    <Title>Unassigned Users</Title>
+                    <Title>Users in {selectedGroup.name}</Title>
                     <Box height="70vh">
                         <DataGrid
+                            checkboxSelection
                             disableColumnSelector
-                            rows={userRows}
+                            rows={groupUserRows}
                             columns={userColumns}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{
@@ -209,8 +258,33 @@ export default function UAMGroups() {
                             }}
                         />
                     </Box >
+                    <Button variant="contained" color="primary"
+                        onClick={onOpenUserAddDialog}>Remove from Group</Button>
                 </Paper>
             </Grid>
+            <Grid size={4} justifyContent="center" alignItems="center">
+                <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
+                    <Title>Unassigned Users</Title>
+                    <Box height="70vh">
+                        <DataGrid
+                            checkboxSelection
+                            disableColumnSelector
+                            rows={otherUserRows}
+                            columns={userColumns}
+                            onRowSelectionModelChange={handleSelectionChange}
+                            slots={{ toolbar: GridToolbar }}
+                            slotProps={{
+                                toolbar: {
+                                    showQuickFilter: true,
+                                },
+                            }}
+                        />
+                    </Box >
+                    <Button variant="contained" color="primary"
+                        onClick={handleMoveItems}>Add to Group</Button>
+                </Paper>
+            </Grid>
+
         </Grid>
     );
 };

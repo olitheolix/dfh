@@ -624,7 +624,9 @@ def get_user(request: Request) -> List[UAMUser]:
 
 
 @app.get("/demo/api/users/{uid}")
-def get_users_in_group(request: Request, uid: str, recursive: bool) -> List[UAMUser]:
+def get_users_in_group(
+    request: Request, uid: str, recursive: bool = False
+) -> List[UAMUser]:
     """Return all users in the group `uid`"""
 
     users: Dict[str, UAMUser] = {}
