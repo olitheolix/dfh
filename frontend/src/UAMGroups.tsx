@@ -24,6 +24,7 @@ export default function UAMGroups() {
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
     const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
     const [sortModel, setSortModel] = React.useState<GridSortModel>([{ field: "name", sort: "asc" }]);
+    const [initialGroup, setInitialGroup] = useState<number[]>([]);
 
     useEffect(() => {
         fetch('/demo/api/groups')
@@ -40,6 +41,7 @@ export default function UAMGroups() {
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
                 ])
+                setInitialGroup([data[0]?.id])
                 setLoading(false);
             })
             .catch(error => {
@@ -150,6 +152,7 @@ export default function UAMGroups() {
                             slots={{ toolbar: GridToolbar }}
                             onRowClick={handleGroupRowClick}
                             sortModel={sortModel}
+                            rowSelectionModel={initialGroup}
                             slotProps={{
                                 toolbar: {
                                     showQuickFilter: true,

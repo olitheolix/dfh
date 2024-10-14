@@ -615,12 +615,12 @@ def debug_authinfo(request: Request, email: Annotated[dict, Depends(is_authentic
 
 @app.get("/demo/api/groups")
 def get_group(request: Request) -> List[UAMGroup]:
-    return UAM_DB.groups
+    return sorted(UAM_DB.groups, key=lambda _: _.name)
 
 
 @app.get("/demo/api/users")
 def get_user(request: Request) -> List[UAMUser]:
-    return UAM_DB.users
+    return sorted(UAM_DB.users, key=lambda _: _.name)
 
 
 @app.get("/demo/api/users/{uid}")
@@ -643,7 +643,7 @@ def get_users_in_group(
             else:
                 users.update({_.uid: _ for _ in group.users})
             break
-    return list(users.values())
+    return sorted(users.values(), key=lambda _: _.name)
 
 
 @app.get("/demo/api/tree")
