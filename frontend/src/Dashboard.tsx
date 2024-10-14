@@ -40,7 +40,7 @@ const GoogleSignInButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<Rea
         const token = response.access_token; // This is the ID token
 
         try {
-            const apiResponse = await fetch('/demo/api/validate-google-token', {
+            const apiResponse = await fetch('/demo/api/validate-google-token-bearer', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,9 +71,16 @@ const GoogleSignInButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<Rea
     });
 
     return (
-        <Button variant="contained" color="primary" onClick={() => login()}>
-            Sign in with Google
-        </Button>
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            height="100vh"
+        >
+            <Button variant="contained" color="primary" onClick={() => login()}>
+                Sign in with Google
+            </Button>
+        </Box>
     );
 };
 
@@ -240,7 +247,7 @@ function ContextMenuLogout({ userEmail, setUserEmail }: { userEmail: string, set
 
 export default function Dashboard() {
     const [open, setOpen] = React.useState(true);
-    const [userEmail, setUserEmail] = React.useState("");
+    const [userEmail, setUserEmail] = React.useState(Cookies.get('email') || "");
     const toggleDrawer = () => {
         setOpen(!open);
     };
@@ -329,8 +336,7 @@ export default function Dashboard() {
                             >
                                 Deployments For Humans
                             </Typography>
-                            {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : (<GoogleLoginButton setUserEmail={setUserEmail} />)}
-                            <GoogleSignInButton setUserEmail={setUserEmail} />
+                            {userEmail != "" ? (<ContextMenuLogout userEmail={userEmail} setUserEmail={setUserEmail} />) : null}
                         </Toolbar>
                     </AppBar>
                     <Drawer variant="permanent" open={open}>
@@ -366,7 +372,7 @@ export default function Dashboard() {
                     >
                         <Toolbar />
                         <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
-                            <Outlet />
+                            {userEmail == "" ? <GoogleSignInButton setUserEmail={setUserEmail} /> : (<Outlet />)}
                             <Copyright sx={{ pt: 4 }} />
                         </Container>
                     </Box>

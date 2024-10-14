@@ -521,6 +521,25 @@ async def google_auth(data: GoogleToken, response: Response):
         raise HTTPException(status_code=400, detail="Invalid ID token")
 
 
+@app.post("/demo/api/validate-google-token-bearer")
+async def google_auth_bearer(data: GoogleToken, response: Response):
+    url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={data.token}"
+    resp = requests.get(url)
+    if resp.status_code == 200:
+        id_info = resp.json()
+        # The ID token is valid, you can access user info here:
+        user_id = id_info["sub"]  # User's unique ID
+        email = id_info["email"]
+        name = id_info.get("name", "Anonymous User")
+
+        # Perform user authentication or registration here
+        print(f"User was identified as {name} ({email})")
+        response.set_cookie(key="email", value=email)
+    else:
+        # Invalid token
+        raise HTTPException(status_code=400, detail="Invalid ID token")
+
+
 @app.get("/demo/api/oauth2callback")
 def oauth2callback(request: Request):
     # Specify the state when creating the flow in the callback so that it can
