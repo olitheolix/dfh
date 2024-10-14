@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { DataGrid, GridToolbar, GridEventListener, GridColDef, GridSortModel, GridRowSelectionModel } from '@mui/x-data-grid';
 import { CircularProgress, Button, Paper, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField } from '@mui/material';
-import { UAMUser, UAMGroup } from './UAMInterfaces'
+import { UAMUser, UAMGroup, POSTGroup, POSTGroupMembers } from './UAMInterfaces'
 import Grid from '@mui/material/Grid2';
 
 import Title from './Title';
@@ -10,7 +10,8 @@ import Title from './Title';
 
 function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
     const [options, setOptions] = useState<string[]>([]);
-    const [selectedUser, setSelectedUser] = useState<string | null>(null);
+    const [groupOwner, setGroupOwner] = useState<string>("");
+    const [groupName, setGroupName] = useState<string>("");
 
     useEffect(() => {
         // Fetch the list of users from the /users endpoint when the dialog opens
@@ -32,13 +33,15 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
     };
 
     const handleOk = () => {
-        if (selectedUser) {
-            fetch('/users', {
+        if (groupOwner) {
+            const payload: POSTGroup = { owner: groupOwner, name: groupName }
+
+            fetch('/demo/api/groups', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ user: selectedUser }),
+                body: JSON.stringify(payload),
             })
                 .then(response => {
                     if (!response.ok) {
@@ -48,26 +51,34 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
                 })
                 .then(() => {
                     console.log('User successfully added');
-                    handleClose();
                 })
                 .catch(error => console.error('Error adding user:', error));
         } else {
             console.warn('No user selected');
         }
+        handleClose();
     };
 
     return (
         <Dialog open={isOpen} onClose={handleClose} fullWidth={true}>
-            <DialogTitle>Select a User</DialogTitle>
+            <DialogTitle>Group Owner</DialogTitle>
             <DialogContent>
-                <Autocomplete
-                    options={options}
-                    value={selectedUser}
-                    onChange={(_, newValue) => { setSelectedUser(newValue); }}
-                    renderInput={(params) => (
-                        <TextField {...params} label="User" variant="outlined" fullWidth />
-                    )}
-                />
+                <Grid container spacing={2} alignItems="center">
+                    <Grid size={10}>
+                        <Autocomplete
+                            options={options}
+                            value={groupOwner}
+                            onChange={(_, newValue) => { setGroupOwner(newValue || ""); }}
+                            renderInput={(params) => (
+                                <TextField {...params} label="owner" variant="standard" fullWidth />
+                            )}
+                        />
+                    </Grid>
+                    <Grid size={10}>
+                        <TextField label="group name" type="string" variant="standard"
+                            onChange={(e) => setGroupName(e.target.value)} />
+                    </Grid>
+                </Grid>
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose} color="primary">
@@ -81,6 +92,11 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
     );
 };
 
+interface DGGroupRow {
+    id: string
+    name: string
+}
+
 
 export default function UAMGroups() {
     const [loading, setLoading] = useState<boolean>(true);
@@ -89,12 +105,7 @@ export default function UAMGroups() {
     const [groupRows, setGroupRows] = useState<any[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<any[]>([]);
     const [rightUserRows, setRightUserRows] = useState<any[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<UAMGroup>({
-        uid: "n/a",
-        name: "n/a",
-        users: [],
-        children: [],
-    })
+    const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({ id: "", name: "" });
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
     const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
     const [sortModel, setSortModel] = React.useState<GridSortModel>([{ field: "name", sort: "asc" }]);
@@ -120,16 +131,27 @@ export default function UAMGroups() {
             .catch(error => {
                 console.error('Error fetching data:', error);
             });
+    }, []);
+
+    useEffect(() => {
         fetch(`/demo/api/users`)
             .then(response => response.json())
             .then(jsonData => {
-                const data = jsonData.map((row: UAMUser) => {
+                const data: DGGroupRow[] = jsonData.map((row: UAMUser) => {
                     return {
                         name: row.name,
                         id: row.uid,
                     }
                 })
-                setRightUserRows(data)
+                // Remove all entries from right that already exist in left.
+                let right_dict = data.reduce<Record<string, any>>((acc, item) => {
+                    acc[item.id] = item;
+                    return acc;
+                }, {});
+                for (const row of leftUserRows) {
+                    delete right_dict[row.id]
+                }
+                setRightUserRows(Object.values(right_dict))
                 setUserColumns([
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
@@ -139,7 +161,7 @@ export default function UAMGroups() {
             .catch(error => {
                 console.error('Error fetching data:', error);
             });
-    }, []);
+    }, [leftUserRows]);
 
 
     if (loading) {
@@ -151,7 +173,7 @@ export default function UAMGroups() {
     }
 
     const handleGroupRowClick: GridEventListener<'rowClick'> = (params) => {
-        setSelectedGroup(params.row as UAMGroup)
+        setSelectedGroup(params.row)
         fetch(`/demo/api/users/${params.id}`)
             .then(response => response.json())
             .then(jsonData => {
@@ -162,6 +184,7 @@ export default function UAMGroups() {
                     }
                 })
                 setLeftUserRows(data)
+
                 setUserColumns([
                     { field: 'name', headerName: 'Name', width: 200 },
                     { field: 'date', headerName: 'Date', width: 150 },
@@ -178,10 +201,44 @@ export default function UAMGroups() {
 
     const onMoveRightToLeft = () => {
         const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
+
         setRightUserRows(rightUserRows.filter((item) => !rightSelected.includes(item.id)));
-        setLeftUserRows([...leftUserRows, ...itemsToMove]);
+
+        // Merge the rows and remove duplicates.
+        let merged = [...leftUserRows, ...itemsToMove]
+        let merged_dict = merged.reduce<Record<string, any>>((acc, item) => {
+            acc[item.id] = item;
+            return acc;
+        }, {});
+        const merged_unique = Object.values(merged_dict)
+
+        setLeftUserRows(merged_unique);
         setRightSelected([]);
-    };
+
+        let payload: POSTGroupMembers = {
+            groupId: selectedGroup.id,
+            userIds: merged_unique.map(row => row.id),
+        }
+        console.log("Payload: ", payload)
+
+        fetch('/demo/api/groups/members', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(() => {
+                console.log('User successfully added');
+            })
+            .catch(error => console.error('Error adding user:', error));
+    }
 
     const onMoveLeftToRight = () => {
         const itemsToMove = leftUserRows.filter((item) => leftSelected.includes(item.id));

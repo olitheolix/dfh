@@ -451,3 +451,13 @@ class UAMDatabase(BaseModel):
     users: List[UAMUser]
     groups: List[UAMGroup]
     root: UAMGroup = UAMGroup(uid="root", name="Org", users=[], children=[])
+
+
+class UAMPOSTGroup(BaseModel):
+    name: str
+    owner: str
+
+
+class UAMPOSTGroupMembers(BaseModel):
+    groupId: str
+    userIds: List[str]

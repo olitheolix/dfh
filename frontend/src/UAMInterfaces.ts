@@ -9,3 +9,13 @@ export interface UAMGroup {
     users: UAMUser[];
     children: UAMGroup[];
 }
+
+export interface POSTGroup {
+    name: string;
+    owner: string;
+}
+
+export interface POSTGroupMembers {
+    groupId: string;
+    userIds: string[];
+}

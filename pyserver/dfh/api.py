@@ -1,3 +1,4 @@
+import hashlib
 import random
 from typing import Annotated
 import requests
@@ -41,10 +42,11 @@ from dfh.models import (
     JobStatus,
     PodList,
     ServerConfig,
-    UAMTreeNode,
+    UAMPOSTGroupMembers,
     UAMDatabase,
     UAMUser,
     UAMGroup,
+    UAMPOSTGroup,
     WatchedResource,
 )
 
@@ -616,6 +618,37 @@ def debug_authinfo(request: Request, email: Annotated[dict, Depends(is_authentic
 @app.get("/demo/api/groups")
 def get_group(request: Request) -> List[UAMGroup]:
     return sorted(UAM_DB.groups, key=lambda _: _.name)
+
+
+@app.post("/demo/api/groups")
+def post_user(request: Request, new_group: UAMPOSTGroup):
+    uid = hashlib.sha256(new_group.name.encode("utf8")).hexdigest()
+    for group in UAM_DB.groups:
+        if group.name == new_group.name:
+            raise HTTPException(status_code=400, detail="group already exists")
+
+    UAM_DB.groups.append(UAMGroup(uid=uid, name=new_group.name, users=[], children=[]))
+
+
+@app.post("/demo/api/groups/members")
+def post_group_members(request: Request, group: UAMPOSTGroupMembers):
+    gid = group.groupId
+    users = set(group.userIds)
+    del group
+
+    usr_db = {_.uid: _ for _ in UAM_DB.users}
+    new_children = [usr_db[_] for _ in users]
+    N_new = len(new_children)
+
+    for g in UAM_DB.groups:
+        if g.uid == gid:
+            N_old = len(g.users)
+            g.users.clear()
+            g.users = new_children
+            print(f"Node {gid} went from {N_old} -> {N_new}")
+            break
+    else:
+        raise HTTPException(status_code=400, detail="group does not exists")
 
 
 @app.get("/demo/api/users")
