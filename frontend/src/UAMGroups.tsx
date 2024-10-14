@@ -7,6 +7,15 @@ import Grid from '@mui/material/Grid2';
 
 import Title from './Title';
 
+const DataGridGroupColumns = [
+    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'date', headerName: 'Date', width: 150 },
+]
+const DataGridUserColumns = [
+    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'date', headerName: 'Date', width: 150 },
+]
+
 
 function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
     const [options, setOptions] = useState<string[]>([]);
@@ -100,8 +109,8 @@ interface DGGroupRow {
 
 export default function UAMGroups() {
     const [loading, setLoading] = useState<boolean>(true);
-    const [groupColumns, setGroupColumns] = useState<GridColDef[]>([]);
-    const [userColumns, setUserColumns] = useState<GridColDef[]>([]);
+    const [groupColumns, setGroupColumns] = useState<GridColDef[]>(DataGridGroupColumns);
+    const [userColumns, setUserColumns] = useState<GridColDef[]>(DataGridUserColumns);
     const [groupRows, setGroupRows] = useState<any[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<any[]>([]);
     const [rightUserRows, setRightUserRows] = useState<any[]>([]);
@@ -122,10 +131,6 @@ export default function UAMGroups() {
                     }
                 })
                 setGroupRows(data)
-                setGroupColumns([
-                    { field: 'name', headerName: 'Name', width: 200 },
-                    { field: 'date', headerName: 'Date', width: 150 },
-                ])
                 setLoading(false);
             })
             .catch(error => {
@@ -179,10 +184,6 @@ export default function UAMGroups() {
                         delete right_dict[row.id]
                     }
                     setRightUserRows(Object.values(right_dict))
-                    setUserColumns([
-                        { field: 'name', headerName: 'Name', width: 200 },
-                        { field: 'date', headerName: 'Date', width: 150 },
-                    ])
                     setLoading(false);
                 })
                 .catch(error => {
@@ -212,11 +213,6 @@ export default function UAMGroups() {
                     }
                 })
                 setLeftUserRows(data)
-
-                setUserColumns([
-                    { field: 'name', headerName: 'Name', width: 200 },
-                    { field: 'date', headerName: 'Date', width: 150 },
-                ])
                 setLoading(false);
             })
             .catch(error => {
