@@ -685,6 +685,7 @@ def get_tree(request: Request) -> UAMGroup:
         out = UAMGroup(uid=node.uid, name=node.name, users=[], children=[])
         for child in node.children:
             out.children.append(_walk(child))
+        out.children.sort(key=lambda _: _.name)
         return out
 
     return _walk(UAM_DB.root)
