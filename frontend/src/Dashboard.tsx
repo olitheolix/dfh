@@ -204,6 +204,9 @@ export default function Dashboard() {
     const gotoUserManagement = () => {
         navigate('/uam');
     };
+    const gotoGroupManagement = () => {
+        navigate('/uamgroups');
+    };
 
     const onLogin = () => {
         fetch('/demo/api/simulate-login')
@@ -233,7 +236,13 @@ export default function Dashboard() {
                 <ListItemIcon>
                     <Person />
                 </ListItemIcon>
-                <ListItemText primary="User Management" />
+                <ListItemText primary="Group Hierarchy" />
+            </ListItemButton>
+            <ListItemButton onClick={gotoGroupManagement}>
+                <ListItemIcon>
+                    <Person />
+                </ListItemIcon>
+                <ListItemText primary="Groups & Users" />
             </ListItemButton>
         </React.Fragment >
     );

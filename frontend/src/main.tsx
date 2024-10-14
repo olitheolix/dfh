@@ -10,6 +10,7 @@ import ClusterOverview from './ClusterOverview';
 import K8sAppConfigurationDashboard from './K8sAppConfigurationDashboard';
 import K8sNewAppDialog from './K8sNewAppDialog';
 import UAMOverview from './UAMOverview';
+import UAMGroups from './UAMGroups';
 
 
 import {
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
             {
                 path: "uam/",
                 element: <UAMOverview />,
+            },
+            {
+                path: "uamgroups/",
+                element: <UAMGroups />,
             }
         ]
     },
