@@ -1,6 +1,9 @@
 export interface UAMUser {
     uid: string;
     name: string;
+    lanid: string
+    slack: string
+    email: string
 }
 
 export interface UAMGroup {

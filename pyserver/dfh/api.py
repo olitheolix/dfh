@@ -81,16 +81,26 @@ def create_fake_uam_dataset():
     fake = faker.Faker()
     first = [fake.first_name() for _ in range(num_users)]
     last = [fake.last_name().split()[0] for _ in range(num_users)]
-    user_names = [f"{f}.{s}@company.org" for f, s in zip(first, last)]
-    user_names = list(set(user_names))
+    names = list(set(zip(first, last)))
+    email = [f"{f}.{s}@foo.org" for f, s in names]
+    lanids = [f"{f_[0]}{l_[:4]}" for f_, l_ in names]
+    slack = [f"@{f_[0]}{l_[:4]}" for f_, l_ in names]
     del first, last
 
     group_names = [str.join("-", fake.country().split()) for _ in range(num_groups)]
     group_names = list(set(group_names))
 
-    for idx, user_name in enumerate(user_names):
-        UAM_DB.users.append(UAMUser(name=user_name, uid=f"uid-{idx}"))
-        del idx, user_name
+    for idx in range(len(names)):
+        UAM_DB.users.append(
+            UAMUser(
+                name=str.join(" ", names[idx]),
+                uid=f"uid-{idx}",
+                lanid=lanids[idx],
+                slack=slack[idx],
+                email=email[idx],
+            )
+        )
+        del idx
 
     for idx, group_name in enumerate(group_names):
         k = random.randint(0, num_users // 2)

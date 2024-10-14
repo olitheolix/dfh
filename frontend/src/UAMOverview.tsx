@@ -16,6 +16,12 @@ import {
 import Title from './Title';
 import { UAMUser, UAMGroup } from './UAMInterfaces'
 
+const DataGridUserColumns = [
+    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'slack', headerName: 'Slack', width: 100 },
+    { field: 'lanid', headerName: 'LanID', width: 100 },
+    { field: 'email', headerName: 'Email', flex: 1 },
+]
 
 function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
     const [options, setOptions] = useState<string[]>([]);
@@ -101,7 +107,7 @@ export default function UAMOverview() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [dataGridRows, setDataGridRows] = useState<any[]>([]);
-    const [columns, setColumns] = useState<GridColDef[]>([]);
+    const [columns, setColumns] = useState<GridColDef[]>(DataGridUserColumns);
     const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
     const [selectedNode, setSelectedNode] = useState<string>("");
 
@@ -122,14 +128,13 @@ export default function UAMOverview() {
                 const dataWithID = data.map((row: UAMUser) => {
                     return {
                         name: row.name,
-                        id: row.uid
+                        email: row.email,
+                        slack: row.slack,
+                        lanid: row.lanid,
+                        id: row.uid,
                     }
                 })
                 setDataGridRows(dataWithID);
-                setColumns([
-                    { field: 'name', headerName: 'Name', width: 200 },
-                    { field: 'date', headerName: 'Date', width: 150 },
-                ]);
                 setSelectedNode(node.name)
             })
             .catch(error => {

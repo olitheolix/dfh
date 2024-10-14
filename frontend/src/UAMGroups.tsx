@@ -6,16 +6,16 @@ import { UAMUser, UAMGroup, POSTGroup, POSTGroupMembers } from './UAMInterfaces'
 import Grid from '@mui/material/Grid2';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import IconButton from '@mui/material/IconButton';
 
 import Title from './Title';
 
 const DataGridGroupColumns = [
-    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'name', headerName: 'Name', flex: 1 },
 ]
 const DataGridUserColumns = [
-    { field: 'name', headerName: 'Name', width: 200 },
-    { field: 'date', headerName: 'Date', width: 150 },
+    { field: 'name', headerName: 'Name', width: 150 },
+    { field: 'lanid', headerName: 'LanID', width: 100 },
+    { field: 'email', headerName: 'Email', flex: 1 },
 ]
 
 
@@ -174,6 +174,9 @@ export default function UAMGroups() {
                     const data: DGGroupRow[] = jsonData.map((row: UAMUser) => {
                         return {
                             name: row.name,
+                            email: row.email,
+                            slack: row.slack,
+                            lanid: row.lanid,
                             id: row.uid,
                         }
                     })
@@ -211,6 +214,9 @@ export default function UAMGroups() {
                 const data = jsonData.map((row: UAMUser) => {
                     return {
                         name: row.name,
+                        email: row.email,
+                        slack: row.slack,
+                        lanid: row.lanid,
                         id: row.uid,
                     }
                 })

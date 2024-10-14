@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 # ----------------------------------------------------------------------
 # Generic Models
@@ -431,6 +431,9 @@ class GoogleToken(BaseModel):
 class UAMUser(BaseModel):
     uid: str
     name: str
+    lanid: str
+    slack: str
+    email: str
 
 
 class UAMGroup(BaseModel):
@@ -454,6 +457,7 @@ class UAMDatabase(BaseModel):
 
 
 class UAMPOSTGroup(BaseModel):
+    # fixme: uses UIDs
     name: str
     owner: str
 
