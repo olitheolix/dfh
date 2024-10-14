@@ -8,10 +8,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import { GridColDef } from '@mui/x-data-grid';
 import { CircularProgress, Button } from '@mui/material';
 import { GridToolbar } from '@mui/x-data-grid';
-import {
-    Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-    Autocomplete, TextField,
-} from '@mui/material';
+import { Paper, Typography } from '@mui/material';
 
 import Title from './Title';
 import { UAMUser, UAMGroup } from './UAMInterfaces'
@@ -22,80 +19,6 @@ const DataGridUserColumns = [
     { field: 'lanid', headerName: 'LanID', width: 100 },
     { field: 'email', headerName: 'Email', flex: 1 },
 ]
-
-function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
-    const [options, setOptions] = useState<string[]>([]);
-    const [selectedUser, setSelectedUser] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Fetch the list of users from the /users endpoint when the dialog opens
-        if (isOpen) {
-            fetch('/demo/api/users')
-                .then(response => response.json())
-                .then(data => {
-                    const userList = data.map((row: UAMUser) => {
-                        return row.name
-                    })
-                    setOptions(userList);
-                })
-                .catch(error => console.error('Error fetching users:', error));
-        }
-    }, [isOpen]);
-
-    const handleClose = () => {
-        setIsOpen(false);
-    };
-
-    const handleOk = () => {
-        if (selectedUser) {
-            fetch('/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ user: selectedUser }),
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(() => {
-                    console.log('User successfully added');
-                    handleClose();
-                })
-                .catch(error => console.error('Error adding user:', error));
-        } else {
-            console.warn('No user selected');
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onClose={handleClose} fullWidth={true}>
-            <DialogTitle>Select a User</DialogTitle>
-            <DialogContent>
-                <Autocomplete
-                    options={options}
-                    value={selectedUser}
-                    onChange={(_, newValue) => { setSelectedUser(newValue); }}
-                    renderInput={(params) => (
-                        <TextField {...params} label="User" variant="outlined" fullWidth />
-                    )}
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleClose} color="primary">
-                    Cancel
-                </Button>
-                <Button onClick={handleOk} color="primary" variant="contained">
-                    OK
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
 
 export default function UAMOverview() {
     const [treeData, setTreeData] = useState<UAMGroup>({
@@ -171,21 +94,6 @@ export default function UAMOverview() {
                     <Typography variant="subtitle1" gutterBottom>
                         Group: {selectedNode}
                     </Typography>
-
-                    <Grid container size="grow" spacing={2}>
-                        <Grid>
-                            <Button variant="contained" color="primary" disabled={true}
-                                onClick={onOpenUserAddDialog}>Add User</Button>
-                            <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
-
-                        </Grid>
-                        <Grid>
-                            <Button variant="contained" color="primary" disabled={true}
-                                onClick={onOpenUserAddDialog}>Add Group</Button>
-                            <ShowAddUser isOpen={isUseraddModalOpen} setIsOpen={setIsUseraddModalOpen} />
-
-                        </Grid>
-                    </Grid>
                 </Paper>
 
                 {/* TreeView section */}
