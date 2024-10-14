@@ -72,9 +72,7 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
                 <Autocomplete
                     options={options}
                     value={selectedUser}
-                    onChange={(event, newValue) => {
-                        setSelectedUser(newValue);
-                    }}
+                    onChange={(_, newValue) => { setSelectedUser(newValue); }}
                     renderInput={(params) => (
                         <TextField {...params} label="User" variant="outlined" fullWidth />
                     )}
@@ -114,24 +112,8 @@ export default function UAMOverview() {
                 setTreeData(jsonData);
                 setLoading(false);
             })
-            .catch(error => {
-                console.error('Error fetching data:');
-            });
+            .catch(error => { console.error('Error fetching data:', error); });
     }, []);
-
-    // Sample data for DataGrid
-    const rows = [
-        { id: 1, col1: 'Hello', col2: 'World' },
-        { id: 2, col1: 'DataGrid', col2: 'Component' },
-        { id: 3, col1: 'Material-UI', col2: 'Rocks' },
-    ];
-
-    const columnsold = [
-        { field: 'col1', headerName: 'Column 1', width: 150 },
-        { field: 'col2', headerName: 'Column 2', width: 150 },
-    ];
-
-    // const [rows, setRows] = useState<GridRowsProp>([]);
 
     const handleNodeSelect = (node: UAMGroup) => {
         fetch(`/demo/api/users/${node.uid}?recursive=1`)
