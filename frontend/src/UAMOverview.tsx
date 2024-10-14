@@ -24,6 +24,8 @@ export default function UAMOverview() {
     const [treeData, setTreeData] = useState<UAMGroup>({
         uid: "n/a",
         name: "n/a",
+        owner: "n/a",
+        type: "",
         users: [],
         children: [],
     });

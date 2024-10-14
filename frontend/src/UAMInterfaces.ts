@@ -9,13 +9,15 @@ export interface UAMUser {
 export interface UAMGroup {
     uid: string;
     name: string;
+    owner: string
+    type: string
     users: UAMUser[];
     children: UAMGroup[];
 }
 
 export interface POSTGroup {
-    name: string;
-    owner: string;
+    name: string;               // This is the text name; backend will assign UID
+    ownerId: string;
 }
 
 export interface POSTGroupMembers {

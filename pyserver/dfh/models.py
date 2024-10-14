@@ -439,6 +439,7 @@ class UAMUser(BaseModel):
 class UAMGroup(BaseModel):
     uid: str
     name: str
+    owner: str
     users: List[UAMUser]
     children: List["UAMGroup"]
 
@@ -453,13 +454,12 @@ class UAMTreeNode(BaseModel):
 class UAMDatabase(BaseModel):
     users: List[UAMUser]
     groups: List[UAMGroup]
-    root: UAMGroup = UAMGroup(uid="root", name="Org", users=[], children=[])
+    root: UAMGroup = UAMGroup(uid="root", name="Org", owner="", users=[], children=[])
 
 
 class UAMPOSTGroup(BaseModel):
-    # fixme: uses UIDs
     name: str
-    owner: str
+    ownerId: str
 
 
 class UAMPOSTGroupMembers(BaseModel):

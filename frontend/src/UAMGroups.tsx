@@ -45,7 +45,7 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
 
     const handleOk = () => {
         if (groupOwner) {
-            const payload: POSTGroup = { owner: groupOwner, name: groupName }
+            const payload: POSTGroup = { ownerId: groupOwner, name: groupName }
 
             fetch('/demo/api/groups', {
                 method: 'POST',
@@ -106,6 +106,7 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
 interface DGGroupRow {
     id: string
     name: string
+    owner: string
 }
 
 
@@ -116,7 +117,11 @@ export default function UAMGroups() {
     const [groupRows, setGroupRows] = useState<any[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<any[]>([]);
     const [rightUserRows, setRightUserRows] = useState<any[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({ id: "", name: "" });
+    const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
+        id: "",
+        name: "",
+        owner: ""
+    });
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
     const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
     const [sortModel, setSortModel] = React.useState<GridSortModel>([{ field: "name", sort: "asc" }]);
@@ -129,6 +134,7 @@ export default function UAMGroups() {
                 const data = jsonData.map((row: UAMGroup) => {
                     return {
                         name: row.name,
+                        owner: row.owner,
                         id: row.uid,
                     }
                 })
@@ -259,21 +265,17 @@ export default function UAMGroups() {
                     padding: '20px', display: 'flex',
                     flexDirection: 'column',
                 }} sx={{ mt: 0, mb: 6 }}>
-                    <Title>Group</Title>
-
-                    <Typography variant="subtitle1" gutterBottom>
-                        Group: {selectedGroup.name}
-                    </Typography>
+                    <Title>Group {selectedGroup.name}</Title>
 
                     <Grid container size="grow" spacing={2}>
                         <Grid>
                             <Typography variant="subtitle1" gutterBottom>
-                                Group: {selectedGroup.name}
+                                Owner: {selectedGroup.owner}
                             </Typography>
                         </Grid>
                         <Grid>
                             <Typography variant="subtitle1" gutterBottom>
-                                Group: {selectedGroup.name}
+                                Type: {selectedGroup.name}
                             </Typography>
                         </Grid>
                     </Grid>

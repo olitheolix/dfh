@@ -108,7 +108,13 @@ def create_fake_uam_dataset():
         user_idx = list(set(user_idx))
         users = [UAM_DB.users[_] for _ in user_idx]
         UAM_DB.groups.append(
-            UAMGroup(name=group_name, users=users, uid=f"gid-{idx}", children=[])
+            UAMGroup(
+                name=group_name,
+                users=users,
+                owner=users[0].name,  # Make first user the owner.
+                uid=f"gid-{idx}",
+                children=[],
+            )
         )
         del k, user_idx, users, idx, group_name
     del group_names
@@ -637,7 +643,11 @@ def post_user(request: Request, new_group: UAMPOSTGroup):
         if group.name == new_group.name:
             raise HTTPException(status_code=400, detail="group already exists")
 
-    UAM_DB.groups.append(UAMGroup(uid=uid, name=new_group.name, users=[], children=[]))
+    UAM_DB.groups.append(
+        UAMGroup(
+            uid=uid, name=new_group.name, owner=new_group.ownerId, users=[], children=[]
+        )
+    )
 
 
 @app.post("/demo/api/groups/members")
@@ -692,7 +702,9 @@ def get_users_in_group(
 @app.get("/demo/api/tree")
 def get_tree(request: Request) -> UAMGroup:
     def _walk(node: UAMGroup) -> UAMGroup:
-        out = UAMGroup(uid=node.uid, name=node.name, users=[], children=[])
+        out = UAMGroup(
+            uid=node.uid, name=node.name, owner=node.owner, users=[], children=[]
+        )
         for child in node.children:
             out.children.append(_walk(child))
         out.children.sort(key=lambda _: _.name)
