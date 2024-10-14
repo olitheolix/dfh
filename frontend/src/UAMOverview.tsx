@@ -134,7 +134,7 @@ export default function UAMOverview() {
     // const [rows, setRows] = useState<GridRowsProp>([]);
 
     const handleNodeSelect = (node: UAMGroup) => {
-        fetch(`/demo/api/users/${node.uid}`)
+        fetch(`/demo/api/users/${node.uid}?recursive=1`)
             .then(response => response.json())
             .then(data => {
                 const dataWithID = data.map((row: UAMUser) => {

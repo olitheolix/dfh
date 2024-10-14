@@ -624,7 +624,8 @@ def get_user(request: Request) -> List[UAMUser]:
 
 
 @app.get("/demo/api/users/{uid}")
-def get_users_in_group(request: Request, uid: str) -> List[UAMUser]:
+def get_users_in_group(request: Request, uid: str, recursive: bool) -> List[UAMUser]:
+    """Return all users in the group `uid`"""
 
     users: Dict[str, UAMUser] = {}
 
@@ -635,7 +636,10 @@ def get_users_in_group(request: Request, uid: str) -> List[UAMUser]:
 
     for group in [UAM_DB.root, *UAM_DB.groups]:
         if group.uid == uid:
-            _walk(group)
+            if recursive:
+                _walk(group)
+            else:
+                users.update({_.uid: _ for _ in group.users})
             break
     return list(users.values())
 
