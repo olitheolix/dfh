@@ -80,7 +80,7 @@ def create_fake_uam_dataset():
     num_users, num_groups = 1000, 1000
     fake = faker.Faker()
     first = [fake.first_name() for _ in range(num_users)]
-    last = [fake.name().split()[0] for _ in range(num_users)]
+    last = [fake.last_name().split()[0] for _ in range(num_users)]
     user_names = [f"{f}.{s}@company.org" for f, s in zip(first, last)]
     user_names = list(set(user_names))
     del first, last
