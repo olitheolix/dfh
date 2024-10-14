@@ -1,37 +1,19 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
-import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import Grid from '@mui/material/Grid2';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridEventListener } from '@mui/x-data-grid';
 import { GridColDef } from '@mui/x-data-grid';
 import { CircularProgress, Button } from '@mui/material';
 import { GridToolbar } from '@mui/x-data-grid';
 import {
     Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-    MenuItem, Select, Autocomplete, TextField,
+    Autocomplete, TextField,
 } from '@mui/material';
+import { UAMUser, UAMGroup } from './UAMInterfaces'
 
 import Title from './Title';
 
-
-interface UAMUser {
-    uid: string;
-    name: string;
-}
-
-interface UAMGroup {
-    uid: string;
-    name: string;
-    users: UAMUser[];
-    children: UAMGroup[];
-}
-
-interface User {
-    name: string;
-    uid: string
-}
 
 function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
     const [options, setOptions] = useState<string[]>([]);
@@ -43,7 +25,7 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
             fetch('/demo/api/users')
                 .then(response => response.json())
                 .then(data => {
-                    const userList = data.map((row: User) => {
+                    const userList = data.map((row: UAMUser) => {
                         return row.name
                     })
                     setOptions(userList);
@@ -110,24 +92,34 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
 
 
 export default function UAMGroups() {
-    const [treeData, setTreeData] = useState<UAMGroup>({
+    const [loading, setLoading] = useState<boolean>(true);
+    const [userRows, setUserRows] = useState<any[]>([]);
+    const [groupRows, setGroupRows] = useState<any[]>([]);
+    const [groupColumns, setGroupColumns] = useState<GridColDef[]>([]);
+    const [userColumns, setUserColumns] = useState<GridColDef[]>([]);
+    const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
+    const [selectedGroup, setSelectedGroup] = useState<UAMGroup>({
         uid: "n/a",
         name: "n/a",
         users: [],
         children: [],
-    });
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [dataGridRows, setDataGridRows] = useState<any[]>([]);
-    const [columns, setColumns] = useState<GridColDef[]>([]);
-    const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
-    const [selectedNode, setSelectedNode] = useState<string>("");
+    })
 
     useEffect(() => {
-        fetch('/demo/api/tree')
+        fetch('/demo/api/groups')
             .then(response => response.json())
             .then(jsonData => {
-                setTreeData(jsonData);
+                const data = jsonData.map((row: UAMGroup) => {
+                    return {
+                        name: row.name,
+                        id: row.uid,
+                    }
+                })
+                setGroupRows(data)
+                setGroupColumns([
+                    { field: 'name', headerName: 'Name', width: 200 },
+                    { field: 'date', headerName: 'Date', width: 150 },
+                ])
                 setLoading(false);
             })
             .catch(error => {
@@ -135,49 +127,6 @@ export default function UAMGroups() {
             });
     }, []);
 
-    // Sample data for DataGrid
-    const rows = [
-        { id: 1, col1: 'Hello', col2: 'World' },
-        { id: 2, col1: 'DataGrid', col2: 'Component' },
-        { id: 3, col1: 'Material-UI', col2: 'Rocks' },
-    ];
-
-    const columnsold = [
-        { field: 'col1', headerName: 'Column 1', width: 150 },
-        { field: 'col2', headerName: 'Column 2', width: 150 },
-    ];
-
-    // const [rows, setRows] = useState<GridRowsProp>([]);
-
-    const handleNodeSelect = (node: UAMGroup) => {
-        fetch(`/demo/api/users/${node.uid}`)
-            .then(response => response.json())
-            .then(data => {
-                const dataWithID = data.map((row: User) => {
-                    return {
-                        name: row.name,
-                        id: row.uid
-                    }
-                })
-                setDataGridRows(dataWithID);
-                setColumns([
-                    { field: 'name', headerName: 'Name', width: 200 },
-                    { field: 'date', headerName: 'Date', width: 150 },
-                ]);
-                setSelectedNode(node.name)
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
-    };
-
-
-    // Recursive function to render tree items
-    const renderTree = (nodes: UAMGroup) => (
-        < TreeItem key={nodes.uid} itemId={nodes.uid} label={nodes.name} onClick={() => handleNodeSelect(nodes)}>
-            {nodes.children.map((node: UAMGroup) => renderTree(node))}
-        </TreeItem >
-    );
 
     if (loading) {
         return <CircularProgress />;
@@ -186,6 +135,13 @@ export default function UAMGroups() {
     const onOpenUserAddDialog = async () => {
         setIsUseraddModalOpen(true)
     }
+
+    const handleGroupRowClick: GridEventListener<'rowClick'> = (params) => {
+        setSelectedGroup(params.row as UAMGroup)
+        console.log('Row clicked:', params);
+        console.log('Row ID:', params.id);
+        console.log('Row Data:', params.row);
+    };
 
     return (
         <Grid container spacing={2}>
@@ -198,7 +154,7 @@ export default function UAMGroups() {
                     <Title>Group</Title>
 
                     <Typography variant="subtitle1" gutterBottom>
-                        Group: {selectedNode}
+                        Group: {selectedGroup.name}
                     </Typography>
 
                     <Grid container size="grow" spacing={2}>
@@ -218,13 +174,14 @@ export default function UAMGroups() {
                 </Paper>
 
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
-                    <Title>Users in {selectedNode}</Title>
+                    <Title>Groups</Title>
                     <Box height="52.4vh">
                         <DataGrid
                             disableColumnSelector
-                            rows={dataGridRows}
-                            columns={columns}
+                            rows={groupRows}
+                            columns={groupColumns}
                             slots={{ toolbar: GridToolbar }}
+                            onRowClick={handleGroupRowClick}
                             slotProps={{
                                 toolbar: {
                                     showQuickFilter: true,
@@ -238,12 +195,12 @@ export default function UAMGroups() {
             </Grid>
             <Grid size={7} justifyContent="center" alignItems="center">
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
-                    <Title>Users in {selectedNode}</Title>
+                    <Title>Unassigned Users</Title>
                     <Box height="70vh">
                         <DataGrid
                             disableColumnSelector
-                            rows={dataGridRows}
-                            columns={columns}
+                            rows={userRows}
+                            columns={userColumns}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{
                                 toolbar: {

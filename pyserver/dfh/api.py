@@ -595,11 +595,8 @@ def debug_authinfo(request: Request, email: Annotated[dict, Depends(is_authentic
 
 
 @app.get("/demo/api/groups")
-def get_group(request: Request):
-    return [
-        {"name": "group1", "uid": "gid-1"},
-        {"name": "group2", "uid": "gid-2"},
-    ]
+def get_group(request: Request) -> List[UAMGroup]:
+    return UAM_DB.groups
 
 
 @app.get("/demo/api/users")

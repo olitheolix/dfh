@@ -10,28 +10,12 @@ import { CircularProgress, Button } from '@mui/material';
 import { GridToolbar } from '@mui/x-data-grid';
 import {
     Paper, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-    MenuItem, Select, Autocomplete, TextField,
+    Autocomplete, TextField,
 } from '@mui/material';
 
 import Title from './Title';
+import { UAMUser, UAMGroup } from './UAMInterfaces'
 
-
-interface UAMUser {
-    uid: string;
-    name: string;
-}
-
-interface UAMGroup {
-    uid: string;
-    name: string;
-    users: UAMUser[];
-    children: UAMGroup[];
-}
-
-interface User {
-    name: string;
-    uid: string
-}
 
 function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>> }) {
     const [options, setOptions] = useState<string[]>([]);
@@ -43,7 +27,7 @@ function ShowAddUser({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React.
             fetch('/demo/api/users')
                 .then(response => response.json())
                 .then(data => {
-                    const userList = data.map((row: User) => {
+                    const userList = data.map((row: UAMUser) => {
                         return row.name
                     })
                     setOptions(userList);
@@ -153,7 +137,7 @@ export default function UAMOverview() {
         fetch(`/demo/api/users/${node.uid}`)
             .then(response => response.json())
             .then(data => {
-                const dataWithID = data.map((row: User) => {
+                const dataWithID = data.map((row: UAMUser) => {
                     return {
                         name: row.name,
                         id: row.uid

@@ -28,6 +28,9 @@ interface GoogleTokenResponse {
 }
 
 
+const googleClientId = "34471668497-aj0h4ifb4fe3dbcrijurdu04ahu1gurm.apps.googleusercontent.com"
+
+
 const GoogleLoginButton = ({ setUserEmail }: { setUserEmail: React.Dispatch<React.SetStateAction<string>> }) => {
     const handleSuccess = async (response: any) => {
         console.log('Login Success:', response);
@@ -249,7 +252,7 @@ export default function Dashboard() {
 
     return (
         <ThemeProvider theme={defaultTheme}>
-            <GoogleOAuthProvider clientId="34471668497-aj0h4ifb4fe3dbcrijurdu04ahu1gurm.apps.googleusercontent.com">
+            <GoogleOAuthProvider clientId={googleClientId}>
                 <Box sx={{ display: 'flex' }}>
                     <CssBaseline />
                     <AppBar position="absolute" open={open}>
