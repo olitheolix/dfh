@@ -4,12 +4,14 @@ import { DataGrid, GridToolbar, GridEventListener, GridColDef, GridSortModel, Gr
 import { CircularProgress, Button, Paper, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField } from '@mui/material';
 import { UAMUser, UAMGroup, POSTGroup, POSTGroupMembers } from './UAMInterfaces'
 import Grid from '@mui/material/Grid2';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import IconButton from '@mui/material/IconButton';
 
 import Title from './Title';
 
 const DataGridGroupColumns = [
     { field: 'name', headerName: 'Name', width: 200 },
-    { field: 'date', headerName: 'Date', width: 150 },
 ]
 const DataGridUserColumns = [
     { field: 'name', headerName: 'Name', width: 200 },
@@ -245,7 +247,7 @@ export default function UAMGroups() {
 
     return (
         <Grid container spacing={2}>
-            <Grid size={4} alignItems="left">
+            <Grid size={3.5} alignItems="left">
                 {/* Info Field */}
                 <Paper style={{
                     padding: '20px', display: 'flex',
@@ -273,7 +275,7 @@ export default function UAMGroups() {
 
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
                     <Title>Groups</Title>
-                    <Box height="52.4vh">
+                    <Box height="49.4vh">
                         <DataGrid
                             disableColumnSelector
                             rows={groupRows}
@@ -292,8 +294,6 @@ export default function UAMGroups() {
                     <Button variant="contained" color="primary" onClick={onOpenCreateGroupDialog}>Create Group</Button>
                     <ShowAddGroup isOpen={showAddGroup} setIsOpen={setShowAddGroup} />
                 </Paper>
-
-
             </Grid>
             <Grid size={4} justifyContent="center" alignItems="center">
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
@@ -315,9 +315,11 @@ export default function UAMGroups() {
                             }}
                         />
                     </Box >
-                    <Button variant="contained" color="primary"
-                        onClick={onMoveLeftToRight}>Remove from Group</Button>
                 </Paper>
+            </Grid>
+            <Grid container size={0.5} justifyContent="center" direction="column">
+                <Button variant="contained" color="primary" onClick={onMoveLeftToRight}><ArrowForwardIcon /></Button>
+                <Button variant="contained" color="primary" onClick={onMoveRightToLeft}><ArrowBackIcon /></Button>
             </Grid>
             <Grid size={4} justifyContent="center" alignItems="center">
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
@@ -339,10 +341,9 @@ export default function UAMGroups() {
                             }}
                         />
                     </Box >
-                    <Button variant="contained" color="primary" onClick={onMoveRightToLeft}>Add to Group</Button>
                 </Paper>
             </Grid>
 
-        </Grid>
+        </Grid >
     );
 };
