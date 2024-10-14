@@ -45,7 +45,10 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
 
     const handleOk = () => {
         if (groupOwner) {
-            const payload: POSTGroup = { ownerId: groupOwner, name: groupName }
+            const payload: POSTGroup = {
+                ownerId: groupOwner, name: groupName,
+                provider: ""
+            }
 
             fetch('/demo/api/groups', {
                 method: 'POST',
@@ -103,10 +106,11 @@ function ShowAddGroup({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: React
     );
 };
 
-interface DGGroupRow {
+interface DGUserRow {
     id: string
     name: string
     owner: string
+    provider: string
 }
 
 
@@ -117,10 +121,11 @@ export default function UAMGroups() {
     const [groupRows, setGroupRows] = useState<any[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<any[]>([]);
     const [rightUserRows, setRightUserRows] = useState<any[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
+    const [selectedGroup, setSelectedGroup] = useState<DGUserRow>({
         id: "",
         name: "",
-        owner: ""
+        owner: "",
+        provider: "",
     });
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
     const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
@@ -135,6 +140,7 @@ export default function UAMGroups() {
                     return {
                         name: row.name,
                         owner: row.owner,
+                        provider: row.provider,
                         id: row.uid,
                     }
                 })
@@ -177,7 +183,7 @@ export default function UAMGroups() {
             fetch(`/demo/api/users`)
                 .then(response => response.json())
                 .then(jsonData => {
-                    const data: DGGroupRow[] = jsonData.map((row: UAMUser) => {
+                    const data: DGUserRow[] = jsonData.map((row: UAMUser) => {
                         return {
                             name: row.name,
                             email: row.email,
@@ -275,7 +281,7 @@ export default function UAMGroups() {
                         </Grid>
                         <Grid>
                             <Typography variant="subtitle1" gutterBottom>
-                                Type: {selectedGroup.name}
+                                Provider: {selectedGroup.provider}
                             </Typography>
                         </Grid>
                     </Grid>

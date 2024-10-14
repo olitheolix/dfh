@@ -25,7 +25,7 @@ export default function UAMOverview() {
         uid: "n/a",
         name: "n/a",
         owner: "n/a",
-        type: "",
+        provider: "",
         users: [],
         children: [],
     });

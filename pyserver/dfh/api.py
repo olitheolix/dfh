@@ -107,11 +107,13 @@ def create_fake_uam_dataset():
         user_idx = random.choices(range(len(UAM_DB.users)), k=k)
         user_idx = list(set(user_idx))
         users = [UAM_DB.users[_] for _ in user_idx]
+        owner = users[0].name if len(users) > 0 else random.choice(UAM_DB.users).name
         UAM_DB.groups.append(
             UAMGroup(
                 name=group_name,
                 users=users,
-                owner=users[0].name,  # Make first user the owner.
+                provider="google" if random.random() < 0.5 else "github",
+                owner=owner,  # Make first user the owner.
                 uid=f"gid-{idx}",
                 children=[],
             )
@@ -645,7 +647,12 @@ def post_user(request: Request, new_group: UAMPOSTGroup):
 
     UAM_DB.groups.append(
         UAMGroup(
-            uid=uid, name=new_group.name, owner=new_group.ownerId, users=[], children=[]
+            uid=uid,
+            name=new_group.name,
+            owner=new_group.ownerId,
+            provider=new_group.provider,
+            users=[],
+            children=[],
         )
     )
 
@@ -703,7 +710,12 @@ def get_users_in_group(
 def get_tree(request: Request) -> UAMGroup:
     def _walk(node: UAMGroup) -> UAMGroup:
         out = UAMGroup(
-            uid=node.uid, name=node.name, owner=node.owner, users=[], children=[]
+            uid=node.uid,
+            name=node.name,
+            provider=node.provider,
+            owner=node.owner,
+            users=[],
+            children=[],
         )
         for child in node.children:
             out.children.append(_walk(child))
