@@ -645,7 +645,7 @@ def post_group_members(request: Request, group: UAMPOSTGroupMembers):
             N_old = len(g.users)
             g.users.clear()
             g.users = new_children
-            print(f"Node {gid} went from {N_old} -> {N_new}")
+            print(f"Node {gid} ({g.name}) went from {N_old} -> {N_new}")
             break
     else:
         raise HTTPException(status_code=400, detail="group does not exists")

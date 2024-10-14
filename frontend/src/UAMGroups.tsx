@@ -133,34 +133,62 @@ export default function UAMGroups() {
             });
     }, []);
 
+    // Notify the API whenever the content of the left (ie selected group) changes.
     useEffect(() => {
-        fetch(`/demo/api/users`)
-            .then(response => response.json())
-            .then(jsonData => {
-                const data: DGGroupRow[] = jsonData.map((row: UAMUser) => {
-                    return {
-                        name: row.name,
-                        id: row.uid,
-                    }
-                })
-                // Remove all entries from right that already exist in left.
-                let right_dict = data.reduce<Record<string, any>>((acc, item) => {
-                    acc[item.id] = item;
-                    return acc;
-                }, {});
-                for (const row of leftUserRows) {
-                    delete right_dict[row.id]
-                }
-                setRightUserRows(Object.values(right_dict))
-                setUserColumns([
-                    { field: 'name', headerName: 'Name', width: 200 },
-                    { field: 'date', headerName: 'Date', width: 150 },
-                ])
-                setLoading(false);
+        let payload: POSTGroupMembers = {
+            groupId: selectedGroup.id,
+            userIds: leftUserRows.map(row => row.id),
+        }
+
+        // Only call the API if a group was actually selected. We need to
+        // intercept this case because the DataGrid does not have a row selected initially.
+        if (payload.groupId != '') {
+            fetch('/demo/api/groups/members', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
             })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    console.log('User successfully added');
+                })
+                .catch(error => console.error('Error adding user:', error));
+
+            fetch(`/demo/api/users`)
+                .then(response => response.json())
+                .then(jsonData => {
+                    const data: DGGroupRow[] = jsonData.map((row: UAMUser) => {
+                        return {
+                            name: row.name,
+                            id: row.uid,
+                        }
+                    })
+                    // Remove all entries from right that already exist in left.
+                    let right_dict = data.reduce<Record<string, any>>((acc, item) => {
+                        acc[item.id] = item;
+                        return acc;
+                    }, {});
+                    for (const row of leftUserRows) {
+                        delete right_dict[row.id]
+                    }
+                    setRightUserRows(Object.values(right_dict))
+                    setUserColumns([
+                        { field: 'name', headerName: 'Name', width: 200 },
+                        { field: 'date', headerName: 'Date', width: 150 },
+                    ])
+                    setLoading(false);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
     }, [leftUserRows]);
 
 
@@ -202,8 +230,6 @@ export default function UAMGroups() {
     const onMoveRightToLeft = () => {
         const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
 
-        setRightUserRows(rightUserRows.filter((item) => !rightSelected.includes(item.id)));
-
         // Merge the rows and remove duplicates.
         let merged = [...leftUserRows, ...itemsToMove]
         let merged_dict = merged.reduce<Record<string, any>>((acc, item) => {
@@ -214,36 +240,10 @@ export default function UAMGroups() {
 
         setLeftUserRows(merged_unique);
         setRightSelected([]);
-
-        let payload: POSTGroupMembers = {
-            groupId: selectedGroup.id,
-            userIds: merged_unique.map(row => row.id),
-        }
-        console.log("Payload: ", payload)
-
-        fetch('/demo/api/groups/members', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(() => {
-                console.log('User successfully added');
-            })
-            .catch(error => console.error('Error adding user:', error));
     }
 
     const onMoveLeftToRight = () => {
-        const itemsToMove = leftUserRows.filter((item) => leftSelected.includes(item.id));
         setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
-        setRightUserRows([...rightUserRows, ...itemsToMove]);
         setLeftSelected([]);
     };
 
@@ -284,6 +284,7 @@ export default function UAMGroups() {
                             columns={groupColumns}
                             slots={{ toolbar: GridToolbar }}
                             onRowClick={handleGroupRowClick}
+                            keepNonExistentRowsSelected={false}
                             sortModel={sortModel}
                             slotProps={{
                                 toolbar: {
@@ -308,6 +309,7 @@ export default function UAMGroups() {
                             rows={leftUserRows}
                             columns={userColumns}
                             onRowSelectionModelChange={onSelectLeft}
+                            keepNonExistentRowsSelected={false}
                             sortModel={sortModel}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{
@@ -330,6 +332,7 @@ export default function UAMGroups() {
                             disableColumnSelector
                             rows={rightUserRows}
                             columns={userColumns}
+                            keepNonExistentRowsSelected={false}
                             onRowSelectionModelChange={onSelectRight}
                             sortModel={sortModel}
                             slots={{ toolbar: GridToolbar }}
