@@ -221,6 +221,9 @@ app = FastAPI(
     description="",
     version="0.1.0",
     db={},
+    docs_url="/demo/api/docs",
+    openapi_url="/demo/api/v1/openapi.json",
+    redoc_url="/demo/api/redoc",
 )
 app.add_middleware(
     SessionMiddleware,
@@ -256,7 +259,7 @@ def get_healthz() -> int:
     return status.HTTP_200_OK
 
 
-@app.get("/api/crt/v1/pods")
+@app.get("/demo/api/crt/v1/pods")
 def get_pods(request: Request) -> PodList:
     db: Database = request.app.extra["db"]
 
@@ -269,7 +272,7 @@ def get_pods(request: Request) -> PodList:
     return ret
 
 
-@app.get("/api/crt/v1/pods/{name}/{env}")
+@app.get("/demo/api/crt/v1/pods/{name}/{env}")
 def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
     db: Database = request.app.extra["db"]
 
@@ -291,13 +294,13 @@ def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
     return ret
 
 
-@app.get("/api/crt/v1/namespaces")
+@app.get("/demo/api/crt/v1/namespaces")
 def get_namespaces(request: Request) -> WatchedResource:
     db: Database = request.app.extra["db"]
     return db.resources["Namespace"]
 
 
-@app.get("/api/crt/v1/apps")
+@app.get("/demo/api/crt/v1/apps")
 def get_apps(request: Request) -> List[AppEnvOverview]:
     db: Database = request.app.extra["db"]
 
@@ -317,7 +320,7 @@ def get_apps(request: Request) -> List[AppEnvOverview]:
     return resp
 
 
-@app.get("/api/crt/v1/apps/{name}/{env}")
+@app.get("/demo/api/crt/v1/apps/{name}/{env}")
 def get_single_app(name: str, env: str, request: Request) -> AppInfo:
     db: Database = request.app.extra["db"]
     try:
@@ -328,7 +331,7 @@ def get_single_app(name: str, env: str, request: Request) -> AppInfo:
         )
 
 
-@app.post("/api/crt/v1/apps/{name}/{env}")
+@app.post("/demo/api/crt/v1/apps/{name}/{env}")
 async def post_single_app(name: str, env: str, app_info: AppInfo, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
     db: Database = request.app.extra["db"]
@@ -375,7 +378,7 @@ async def queue_job(app, jobId: str, sq_plan: DeploymentPlan):
     app.extra["jobs"][jobId] = sq_plan
 
 
-@app.patch("/api/crt/v1/apps/{name}/{env}")
+@app.patch("/demo/api/crt/v1/apps/{name}/{env}")
 async def patch_single_app(
     name: str, env: str, app_info: AppInfo, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
@@ -406,7 +409,7 @@ async def patch_single_app(
     return plan
 
 
-@app.delete("/api/crt/v1/apps/{name}/{env}")
+@app.delete("/demo/api/crt/v1/apps/{name}/{env}")
 async def delete_single_app(
     name: str, env: str, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
@@ -430,12 +433,12 @@ async def delete_single_app(
     return plan
 
 
-@app.get("/api/crt/v1/jobs/{jobId}")
+@app.get("/demo/api/crt/v1/jobs/{jobId}")
 def get_jobs(jobId: str) -> JobStatus:
     return JobStatus(jobId=jobId, logs=["line 1", "line 2"], done=True)
 
 
-@app.post("/api/crt/v1/jobs")
+@app.post("/demo/api/crt/v1/jobs")
 async def post_jobs(job: JobDescription, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
     sq_config = square.dtypes.Config(

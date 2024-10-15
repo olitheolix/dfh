@@ -557,7 +557,7 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
 
     const sendData = () => {
         const data = { jobId: jobId }
-        fetch(`/api/crt/v1/jobs`, {
+        fetch(`/demo/api/crt/v1/jobs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -765,7 +765,7 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
         const fetchData = async () => {
             // setIsLoading(true)
             try {
-                const response = await fetch(`/api/crt/v1/apps/${appId}/${envId}`);
+                const response = await fetch(`/demo/api/crt/v1/apps/${appId}/${envId}`);
                 const data: AppSpec = await response.json();
                 console.log("From backend:", data);
 
@@ -792,7 +792,7 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
         setIsLoading(true)
 
         try {
-            const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
+            const response = await fetch(`/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -830,7 +830,7 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
 
         console.log("To backend: ", data)
         try {
-            const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
+            const response = await fetch(`/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

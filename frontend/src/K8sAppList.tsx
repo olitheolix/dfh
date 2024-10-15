@@ -44,7 +44,7 @@ export default function K8sAppList() {
     // Populate the Pod list when mounting the component and the periodically refresh it.
     useEffect(() => {
         const fetchData = () => {
-            fetch('/api/crt/v1/apps')
+            fetch('/demo/api/crt/v1/apps')
                 .then(response => response.json())
                 .then(jsonData => {
                     const appList: AppEnvOverview[] = jsonData as AppEnvOverview[];

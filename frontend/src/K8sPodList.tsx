@@ -25,7 +25,7 @@ export default function K8sPodList({ appId, envId }: { appId: string, envId: str
     // Populate the Pod list when mounting the component and periodically refresh it.
     useEffect(() => {
         const fetchData = () => {
-            fetch(`/api/crt/v1/pods/${appId}/${envId}`)
+            fetch(`/demo/api/crt/v1/pods/${appId}/${envId}`)
                 .then(response => response.json())
                 .then(jsonData => {
                     const podList: PodList = jsonData as PodList;

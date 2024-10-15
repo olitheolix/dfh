@@ -210,7 +210,7 @@ export default function K8sNewAppDialog() {
 
         console.log("To backend: ", data)
         try {
-            const response = await fetch(`/api/crt/v1/apps/${meta.name}/${meta.env}`, {
+            const response = await fetch(`/demo/api/crt/v1/apps/${meta.name}/${meta.env}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
