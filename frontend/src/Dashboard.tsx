@@ -281,13 +281,13 @@ export default function Dashboard() {
                 <ListItemIcon>
                     <DashboardIcon />
                 </ListItemIcon>
-                <ListItemText primary="Dashboard" />
+                <ListItemText primary="App Overview" />
             </ListItemButton>
             <ListItemButton onClick={gotoCreateApp}>
                 <ListItemIcon>
                     <ShoppingCartIcon />
                 </ListItemIcon>
-                <ListItemText primary="New Application" />
+                <ListItemText primary="Deploy in <60s" />
             </ListItemButton>
             <ListItemButton onClick={gotoUserManagement}>
                 <ListItemIcon>
