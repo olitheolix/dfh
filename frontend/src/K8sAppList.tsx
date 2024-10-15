@@ -52,7 +52,7 @@ export default function K8sAppList() {
                     // Augment each row with a third column that houses a Switch.
                     const rowsWithId: RowWithId[] = appList.map((row) => {
                         const envLinks: EnvLink[] = row.envs.map((env: string) => ({
-                            url: `/app/${row.name}/${env}`,
+                            url: `/demo/app/${row.name}/${env}`,
                             label: env
                         }));
 
