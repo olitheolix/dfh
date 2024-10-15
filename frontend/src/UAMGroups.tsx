@@ -274,16 +274,12 @@ export default function UAMGroups() {
                     <Title>Group {selectedGroup.name}</Title>
 
                     <Grid container size="grow" spacing={2}>
-                        <Grid>
-                            <Typography variant="subtitle1" gutterBottom>
-                                Owner: {selectedGroup.owner}
-                            </Typography>
-                        </Grid>
-                        <Grid>
-                            <Typography variant="subtitle1" gutterBottom>
-                                Provider: {selectedGroup.provider}
-                            </Typography>
-                        </Grid>
+                        <Typography variant="subtitle1" gutterBottom>
+                            Owner: {selectedGroup.owner}
+                        </Typography>
+                        <Typography variant="subtitle1" gutterBottom>
+                            Provider: {selectedGroup.provider}
+                        </Typography>
                     </Grid>
                 </Paper>
 

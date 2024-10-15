@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import Grid from '@mui/material/Grid2';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridEventListener } from '@mui/x-data-grid';
 import { GridColDef } from '@mui/x-data-grid';
 import { CircularProgress, Button } from '@mui/material';
 import { GridToolbar } from '@mui/x-data-grid';
@@ -20,6 +20,13 @@ const DataGridUserColumns = [
     { field: 'email', headerName: 'Email', flex: 1 },
 ]
 
+interface DGUserRow {
+    id: string
+    name: string
+    owner: string
+    provider: string
+}
+
 export default function UAMOverview() {
     const [treeData, setTreeData] = useState<UAMGroup>({
         uid: "n/a",
@@ -34,7 +41,12 @@ export default function UAMOverview() {
     const [dataGridRows, setDataGridRows] = useState<any[]>([]);
     const [columns, setColumns] = useState<GridColDef[]>(DataGridUserColumns);
     const [isUseraddModalOpen, setIsUseraddModalOpen] = useState<boolean>(false);
-    const [selectedNode, setSelectedNode] = useState<string>("");
+    const [selectedGroupNode, setSelectedGroupNode] = useState<DGUserRow>({
+        id: "",
+        name: "",
+        owner: "",
+        provider: "",
+    });
 
     useEffect(() => {
         fetch('/demo/api/tree')
@@ -46,8 +58,9 @@ export default function UAMOverview() {
             .catch(error => { console.error('Error fetching data:', error); });
     }, []);
 
-    const handleNodeSelect = (node: UAMGroup) => {
-        fetch(`/demo/api/users/${node.uid}?recursive=1`)
+    const handleGroupTreeSelect = (params: any) => {
+        // todo: properly type params
+        fetch(`/demo/api/users/${params.uid}?recursive=1`)
             .then(response => response.json())
             .then(data => {
                 const dataWithID = data.map((row: UAMUser) => {
@@ -60,7 +73,7 @@ export default function UAMOverview() {
                     }
                 })
                 setDataGridRows(dataWithID);
-                setSelectedNode(node.name)
+                setSelectedGroupNode(params)
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -70,7 +83,7 @@ export default function UAMOverview() {
 
     // Recursive function to render tree items
     const renderTree = (nodes: UAMGroup) => (
-        < TreeItem key={nodes.uid} itemId={nodes.uid} label={nodes.name} onClick={() => handleNodeSelect(nodes)}>
+        < TreeItem key={nodes.uid} itemId={nodes.uid} label={nodes.name} onClick={() => handleGroupTreeSelect(nodes)}>
             {nodes.children.map((node: UAMGroup) => renderTree(node))}
         </TreeItem >
     );
@@ -94,7 +107,10 @@ export default function UAMOverview() {
                     <Title>Group</Title>
 
                     <Typography variant="subtitle1" gutterBottom>
-                        Group: {selectedNode}
+                        Group: {selectedGroupNode.name}
+                    </Typography>
+                    <Typography variant="subtitle1" gutterBottom>
+                        Provider: {selectedGroupNode.provider}
                     </Typography>
                 </Paper>
 
@@ -112,7 +128,7 @@ export default function UAMOverview() {
             </Grid>
             <Grid size={7} justifyContent="center" alignItems="center">
                 <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
-                    <Title>Users in {selectedNode}</Title>
+                    <Title>Users in {selectedGroupNode.name}</Title>
                     <Box height="70vh">
                         <DataGrid
                             disableColumnSelector
