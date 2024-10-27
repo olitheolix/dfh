@@ -214,7 +214,7 @@ const GoogleSignInButton = ({
             display="flex"
             justifyContent="center"
             alignItems="center"
-            height="100vh"
+            height="80vh"
         >
             <Button variant="contained" color="primary" onClick={() => login()}>
                 Sign in with Google
