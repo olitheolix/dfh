@@ -31,12 +31,12 @@ jobs:
       - name: Start KinD Cluster
         run: |
           mkdir ~/bin
-          curl -L --output ~/bin/kubectl https://dl.k8s.io/release/v1.25.5/bin/linux/amd64/kubectl
-          curl -L --output ~/bin/kind https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
+          curl -L --output ~/bin/kubectl https://dl.k8s.io/release/v1.29.5/bin/linux/amd64/kubectl
+          curl -L --output ~/bin/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
           chmod +x ~/bin/kubectl ~/bin/kind
 
           cd ./integration-test-cluster
-          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.20.3 TARGET_ARCH=x86_64 sh -
+          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.23.2 TARGET_ARCH=x86_64 sh -
           ./start_cluster.sh
           cd ..
 
@@ -51,19 +51,19 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd pyserver
+          cd backend
           pipenv install --system --deploy --dev
 
       - name: Linting and Static Analysis
         run: |
-          cd pyserver
+          cd backend
           pycodestyle .
           mypy .
 
       # Break if coverage drops below 100%.
       - name: Unit and Integration Tests
         run: |
-          cd pyserver
+          cd backend
           pytest --cov=dfh --cov-report=term-missing --cov-report=xml --cov-fail-under=100 --durations=10
 
       - name: Upload coverage reports to Codecov
@@ -73,7 +73,7 @@ jobs:
           slug: olitheolix/dfh
 
           fail_ci_if_error: true
-          files: pyserver/coverage.xml
+          files: backend/coverage.xml
           flags: unittests
           name: codecov-umbrella
           verbose: false
