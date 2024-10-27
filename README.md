@@ -28,7 +28,7 @@ integration test cluster if you have it running.
     # Start Backend API.
     cd backend
     pipenv install --dev
-    pipenv run python -m dfh
+    LOCAL_DEV=1 pipenv run python -m dfh
 
     # Import apps from KinD cluster.
     cd backend
