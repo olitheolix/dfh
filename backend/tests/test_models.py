@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pydantic
+import pytest
 import yaml
 
 import dfh.models
@@ -9,6 +11,8 @@ from dfh.models import (
     K8sPod,
     K8sService,
     K8sVirtualService,
+    UAMGroup,
+    UAMUser,
 )
 
 # Convenience: we can re-use it in all tests.
@@ -104,3 +108,39 @@ class TestModels:
                 )
             },
         )
+
+    def test_uamuser_invalid(self):
+        """Must reject invalid values in UAMUser."""
+        # Create a valid user.
+        user = UAMUser(email="foo@bar.com", name="name", lanid="lanid", slack="slack")
+
+        # Must reject malformed email addresses.
+        invalid_emails = ["", "foo", "foo@", "@bar.com", "@", " foo@bar.com"]
+        for email in invalid_emails:
+            with pytest.raises(pydantic.ValidationError):
+                src = user.model_dump()
+                src["email"] = email
+                UAMUser.model_validate(src)
+
+        # Must reject malformed strings for name, lanid and Slack.
+        invalid_strings = ["", "  ", " foo"]
+        for key in ("name", "lanid", "slack"):
+            for value in invalid_strings:
+                with pytest.raises(pydantic.ValidationError):
+                    src = user.model_dump()
+                    src[key] = value
+                    UAMUser.model_validate(src)
+
+    def test_uamgroup_invalid(self):
+        """Must reject invalid values in UAMGroup."""
+        # Create a valid group.
+        group = UAMGroup(name="name", owner="owner", provider="github")
+
+        # Must reject malformed strings for name and owner.
+        invalid_strings = ["", "  ", " foo"]
+        for key in ("name", "owner"):
+            for value in invalid_strings:
+                with pytest.raises(pydantic.ValidationError):
+                    src = group.model_dump()
+                    src[key] = value
+                    UAMGroup.model_validate(src)

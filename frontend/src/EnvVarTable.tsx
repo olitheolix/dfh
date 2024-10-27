@@ -1,19 +1,17 @@
-import { Button, TextField, Grid } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ControlPointIcon from '@mui/icons-material/ControlPoint';
+import { Button, TextField, Grid } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ControlPointIcon from "@mui/icons-material/ControlPoint";
 
-import { K8sEnvVar } from './BackendInterfaces'
-
+import { K8sEnvVar } from "./BackendInterfaces";
 
 export interface EnvVarTableIfx {
     pairs: K8sEnvVar[];
     setPairs: React.Dispatch<React.SetStateAction<K8sEnvVar[]>>;
 }
 
-
 export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
     const handleAddRow = () => {
-        setPairs([...pairs, { name: '', value: '', valueFrom: null }]);
+        setPairs([...pairs, { name: "", value: "", valueFrom: null }]);
     };
 
     const handleRemoveRow = (index: number) => {
@@ -22,7 +20,11 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
         setPairs(updatedPairs);
     };
 
-    const handleChange = (index: number, field: 'name' | 'value', value: string) => {
+    const handleChange = (
+        index: number,
+        field: "name" | "value",
+        value: string,
+    ) => {
         const updatedPairs: K8sEnvVar[] = [...pairs];
         updatedPairs[index][field] = value;
         setPairs(updatedPairs);
@@ -38,7 +40,9 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.name}
-                            onChange={(e) => handleChange(index, 'name', e.target.value)}
+                            onChange={(e) =>
+                                handleChange(index, "name", e.target.value)
+                            }
                         />
                     </Grid>
                     <Grid item xs={4}>
@@ -47,17 +51,29 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.value}
-                            onChange={(e) => handleChange(index, 'value', e.target.value)}
+                            onChange={(e) =>
+                                handleChange(index, "value", e.target.value)
+                            }
                         />
                     </Grid>
                     <Grid item>
-                        <Button variant="text" color="primary" onClick={() => handleRemoveRow(index)} startIcon={<DeleteIcon />}>
+                        <Button
+                            variant="text"
+                            color="primary"
+                            onClick={() => handleRemoveRow(index)}
+                            startIcon={<DeleteIcon />}
+                        >
                             Delete
                         </Button>
                     </Grid>
                 </Grid>
             ))}
-            <Button variant="text" color="primary" onClick={handleAddRow} startIcon={<ControlPointIcon />}>
+            <Button
+                variant="text"
+                color="primary"
+                onClick={handleAddRow}
+                startIcon={<ControlPointIcon />}
+            >
                 Add Row
             </Button>
         </div>

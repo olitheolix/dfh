@@ -9,7 +9,6 @@ from httpx import Response
 from tenacity import wait_none
 
 import dfh.k8s
-from dfh.models import PodList
 
 from .conftest import K8sConfig
 

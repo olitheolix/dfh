@@ -1,17 +1,16 @@
-import { Button, TextField, Grid } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ControlPointIcon from '@mui/icons-material/ControlPoint';
-import { KeyValuePairType } from './BackendInterfaces'
+import { Button, TextField, Grid } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ControlPointIcon from "@mui/icons-material/ControlPoint";
+import { KeyValuePairType } from "./BackendInterfaces";
 
 export interface KeyValueTableIfx {
     pairs: KeyValuePairType[];
     setPairs: React.Dispatch<React.SetStateAction<KeyValuePairType[]>>;
 }
 
-
 export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
     const handleAddRow = () => {
-        setPairs([...pairs, { key: '', value: '' }]);
+        setPairs([...pairs, { key: "", value: "" }]);
     };
 
     const handleRemoveRow = (index: number) => {
@@ -20,7 +19,11 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
         setPairs(updatedPairs);
     };
 
-    const handleChange = (index: number, field: 'key' | 'value', value: string) => {
+    const handleChange = (
+        index: number,
+        field: "key" | "value",
+        value: string,
+    ) => {
         const updatedPairs = [...pairs];
         updatedPairs[index][field] = value;
         setPairs(updatedPairs);
@@ -36,7 +39,9 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.key}
-                            onChange={(e) => handleChange(index, 'key', e.target.value)}
+                            onChange={(e) =>
+                                handleChange(index, "key", e.target.value)
+                            }
                         />
                     </Grid>
                     <Grid item xs={4}>
@@ -45,17 +50,29 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.value}
-                            onChange={(e) => handleChange(index, 'value', e.target.value)}
+                            onChange={(e) =>
+                                handleChange(index, "value", e.target.value)
+                            }
                         />
                     </Grid>
                     <Grid item>
-                        <Button variant="text" color="primary" onClick={() => handleRemoveRow(index)} startIcon={<DeleteIcon />}>
+                        <Button
+                            variant="text"
+                            color="primary"
+                            onClick={() => handleRemoveRow(index)}
+                            startIcon={<DeleteIcon />}
+                        >
                             Delete
                         </Button>
                     </Grid>
                 </Grid>
             ))}
-            <Button variant="text" color="primary" onClick={handleAddRow} startIcon={<ControlPointIcon />}>
+            <Button
+                variant="text"
+                color="primary"
+                onClick={handleAddRow}
+                startIcon={<ControlPointIcon />}
+            >
                 Add Row
             </Button>
         </div>

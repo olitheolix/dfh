@@ -8,7 +8,7 @@
 # Deployments For Humans
 
 ## Usage
-Create a `pyserver/.env` file to tell DFH where to find the credentials and
+Create a `backend/.env` file to tell DFH where to find the credentials and
 which label scheme to use. Example:
 
     KUBECONFIG="/tmp/kind-kubeconf.yaml"
@@ -26,16 +26,16 @@ integration test cluster if you have it running.
     npm run dev
 
     # Start Backend API.
-    cd pyserver
+    cd backend
     pipenv install --dev
     pipenv run python -m dfh
 
     # Import apps from KinD cluster.
-    cd pyserver
+    cd backend
     PYTHONPATH=`pwd` pipenv run python scripts/import_existing_apps.py
 
 ## Testing
 Make sure you start the [integration test cluster](integration-test-cluster/). Then run `pytest` as usual:
 
-    cd pyserver
+    cd backend
     pipenv run pytest --cov --cov-report=html --cov-report=term-missing

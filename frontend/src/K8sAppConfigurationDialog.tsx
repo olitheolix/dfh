@@ -1,25 +1,43 @@
-import * as React from 'react';
-import { useState, ChangeEvent, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import * as React from "react";
+import { useState, ChangeEvent, useEffect } from "react";
+import { useParams } from "react-router-dom";
 
-import { green, red, amber } from '@mui/material/colors';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { green, red, amber } from "@mui/material/colors";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-    Accordion, AccordionDetails, AccordionSummary, TextField,
-    Grid, Switch, Slider, Autocomplete, Button, Dialog,
-    DialogActions, DialogContent, DialogTitle, FormControlLabel
-} from '@mui/material';
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    TextField,
+    Grid,
+    Switch,
+    Slider,
+    Autocomplete,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControlLabel,
+} from "@mui/material";
 
 // Import Custom components.
-import EnvVarTable, { EnvVarTableIfx } from './EnvVarTable';
-import KeyValueTable, { KeyValueTableIfx } from './KeyValueTable';
-import Title from './Title';
-import { Typography, Divider } from '@mui/material';
+import EnvVarTable, { EnvVarTableIfx } from "./EnvVarTable";
+import KeyValueTable, { KeyValueTableIfx } from "./KeyValueTable";
+import Title from "./Title";
+import { Typography, Divider } from "@mui/material";
 import {
-    DeltaPatch, DeltaCreate, DeltaDelete, FrontendDeploymentPlan, AppPrimary, AppCanary,
-    AppMetadata, AppSpec, KeyValuePairType, K8sEnvVar
-} from './BackendInterfaces'
-
+    DeltaPatch,
+    DeltaCreate,
+    DeltaDelete,
+    FrontendDeploymentPlan,
+    AppPrimary,
+    AppCanary,
+    AppMetadata,
+    AppSpec,
+    KeyValuePairType,
+    K8sEnvVar,
+} from "./BackendInterfaces";
 
 // ----------------------------------------------------------------------
 // Type definitions for the various components in this very file.
@@ -29,7 +47,6 @@ interface AppResourcePropIfx {
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary | AppCanary>>;
 }
 
-
 // ----------------------------------------------------------------------
 // Components
 // ----------------------------------------------------------------------
@@ -38,47 +55,67 @@ function RequestAndLimitsComponent({ appRes, setAppRes }: AppResourcePropIfx) {
         setAppRes((prevObject: AppPrimary | AppCanary) => {
             let out = {
                 ...prevObject,
-            }
-            out.deployment.useResources = !out.deployment.useResources
-            return out
+            };
+            out.deployment.useResources = !out.deployment.useResources;
+            return out;
         });
     };
 
     const onResourceChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary | AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             if (name == "cpuReq") {
-                out.deployment.resources.requests.cpu = value
+                out.deployment.resources.requests.cpu = value;
             }
             if (name == "cpuLim") {
-                out.deployment.resources.limits.cpu = value
+                out.deployment.resources.limits.cpu = value;
             }
             if (name == "memReq") {
-                out.deployment.resources.requests.memory = value
+                out.deployment.resources.requests.memory = value;
             }
             if (name == "memLim") {
-                out.deployment.resources.limits.memory = value
+                out.deployment.resources.limits.memory = value;
             }
 
-            return out
+            return out;
         });
     };
 
     return (
         <React.Fragment>
-            <FormControlLabel control={<Switch checked={appRes.deployment.useResources} onChange={handleResourceSwitchChange} />} label="Requests & Limits" />
+            <FormControlLabel
+                control={
+                    <Switch
+                        checked={appRes.deployment.useResources}
+                        onChange={handleResourceSwitchChange}
+                    />
+                }
+                label="Requests & Limits"
+            />
             {appRes.deployment.useResources && (
                 <Grid container spacing={2} alignItems="center">
                     {/* Spacer to push text fields to the right */}
                     <Grid item xs={2} />
 
                     <Grid item>
-                        <TextField label="CPU Request" variant="standard" value={appRes.deployment.resources.requests.cpu} name="cpuReq" onChange={onResourceChange} />
+                        <TextField
+                            label="CPU Request"
+                            variant="standard"
+                            value={appRes.deployment.resources.requests.cpu}
+                            name="cpuReq"
+                            onChange={onResourceChange}
+                        />
                     </Grid>
                     <Grid item>
-                        <TextField label="CPU Limit" variant="standard" value={appRes.deployment.resources.limits.cpu} name="cpuLim" onChange={onResourceChange} />
+                        <TextField
+                            label="CPU Limit"
+                            variant="standard"
+                            value={appRes.deployment.resources.limits.cpu}
+                            name="cpuLim"
+                            onChange={onResourceChange}
+                        />
                     </Grid>
 
                     {/* Force newline and push text fields slightly to the right*/}
@@ -86,28 +123,43 @@ function RequestAndLimitsComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                     <Grid item xs={2} />
 
                     <Grid item>
-                        <TextField label="Memory Request" variant="standard" value={appRes.deployment.resources.requests.memory} name="memReq" onChange={onResourceChange} />
+                        <TextField
+                            label="Memory Request"
+                            variant="standard"
+                            value={appRes.deployment.resources.requests.memory}
+                            name="memReq"
+                            onChange={onResourceChange}
+                        />
                     </Grid>
                     <Grid item>
-                        <TextField label="Memory Limit" variant="standard" value={appRes.deployment.resources.limits.memory} name="memLim" onChange={onResourceChange} />
+                        <TextField
+                            label="Memory Limit"
+                            variant="standard"
+                            value={appRes.deployment.resources.limits.memory}
+                            name="memLim"
+                            onChange={onResourceChange}
+                        />
                     </Grid>
                 </Grid>
             )}
         </React.Fragment>
-    )
+    );
 }
 
-function CanaryTrafficComponent({ appRes, setAppRes }: {
+function CanaryTrafficComponent({
+    appRes,
+    setAppRes,
+}: {
     appRes: AppCanary;
     setAppRes: React.Dispatch<React.SetStateAction<AppCanary>>;
 }) {
     const onTrafficChange = (_: Event, value: number | number[]) => {
         setAppRes((prevObject: AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out.trafficPercent = value
-            return out
+            out.trafficPercent = value;
+            return out;
         });
     };
 
@@ -133,7 +185,7 @@ function CanaryTrafficComponent({ appRes, setAppRes }: {
                 </Grid>
             </Grid>
         </React.Fragment>
-    )
+    );
 }
 
 function CanaryConfigComponent({
@@ -142,7 +194,7 @@ function CanaryConfigComponent({
     envars,
     setEnvars,
     secrets,
-    setSecrets
+    setSecrets,
 }: {
     appRes: AppCanary;
     setAppRes: React.Dispatch<React.SetStateAction<AppCanary>>;
@@ -154,22 +206,85 @@ function CanaryConfigComponent({
     return (
         <React.Fragment>
             <Accordion variant="elevation">
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1-content" id="panel1-header">
+                <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    aria-controls="panel1-content"
+                    id="panel1-header"
+                >
                     <Typography>Canary</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                    <div><ContainerImageComponent appRes={appRes} setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><RequestAndLimitsComponent appRes={appRes} setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><ServiceConfigComponent appRes={appRes} setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><HealthProbeComponent appRes={appRes} probeKind="live" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><HealthProbeComponent appRes={appRes} probeKind="ready" setAppRes={setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>} /></div>
-                    <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
-                    <div><SecretComponent pairs={secrets} setPairs={setSecrets} /></div>
-                    <div><CanaryTrafficComponent appRes={appRes} setAppRes={setAppRes} /></div>
+                    <div>
+                        <ContainerImageComponent
+                            appRes={appRes}
+                            setAppRes={
+                                setAppRes as React.Dispatch<
+                                    React.SetStateAction<AppPrimary>
+                                >
+                            }
+                        />
+                    </div>
+                    <div>
+                        <RequestAndLimitsComponent
+                            appRes={appRes}
+                            setAppRes={
+                                setAppRes as React.Dispatch<
+                                    React.SetStateAction<AppPrimary>
+                                >
+                            }
+                        />
+                    </div>
+                    <div>
+                        <ServiceConfigComponent
+                            appRes={appRes}
+                            setAppRes={
+                                setAppRes as React.Dispatch<
+                                    React.SetStateAction<AppPrimary>
+                                >
+                            }
+                        />
+                    </div>
+                    <div>
+                        <HealthProbeComponent
+                            appRes={appRes}
+                            probeKind="live"
+                            setAppRes={
+                                setAppRes as React.Dispatch<
+                                    React.SetStateAction<AppPrimary>
+                                >
+                            }
+                        />
+                    </div>
+                    <div>
+                        <HealthProbeComponent
+                            appRes={appRes}
+                            probeKind="ready"
+                            setAppRes={
+                                setAppRes as React.Dispatch<
+                                    React.SetStateAction<AppPrimary>
+                                >
+                            }
+                        />
+                    </div>
+                    <div>
+                        <EnvVarsComponent pairs={envars} setPairs={setEnvars} />
+                    </div>
+                    <div>
+                        <SecretComponent
+                            pairs={secrets}
+                            setPairs={setSecrets}
+                        />
+                    </div>
+                    <div>
+                        <CanaryTrafficComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                        />
+                    </div>
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
-    )
+    );
 }
 
 function PrimaryConfigComponent({
@@ -178,7 +293,7 @@ function PrimaryConfigComponent({
     envars,
     setEnvars,
     secrets,
-    setSecrets
+    setSecrets,
 }: {
     appRes: AppPrimary;
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary>>;
@@ -190,119 +305,204 @@ function PrimaryConfigComponent({
     return (
         <React.Fragment>
             <Accordion variant="elevation">
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1-content" id="panel1-header">
+                <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    aria-controls="panel1-content"
+                    id="panel1-header"
+                >
                     <Typography>Primary</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                    <div><ContainerImageComponent appRes={appRes} setAppRes={setAppRes} /></div>
-                    <div><RequestAndLimitsComponent appRes={appRes} setAppRes={setAppRes} /></div>
-                    <div><ServiceConfigComponent appRes={appRes} setAppRes={setAppRes} /></div>
-                    <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="live" /></div>
-                    <div><HealthProbeComponent appRes={appRes} setAppRes={setAppRes} probeKind="ready" /></div>
-                    <div><EnvVarsComponent pairs={envars} setPairs={setEnvars} /></div>
-                    <div><SecretComponent pairs={secrets} setPairs={setSecrets} /></div>
+                    <div>
+                        <ContainerImageComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                        />
+                    </div>
+                    <div>
+                        <RequestAndLimitsComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                        />
+                    </div>
+                    <div>
+                        <ServiceConfigComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                        />
+                    </div>
+                    <div>
+                        <HealthProbeComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                            probeKind="live"
+                        />
+                    </div>
+                    <div>
+                        <HealthProbeComponent
+                            appRes={appRes}
+                            setAppRes={setAppRes}
+                            probeKind="ready"
+                        />
+                    </div>
+                    <div>
+                        <EnvVarsComponent pairs={envars} setPairs={setEnvars} />
+                    </div>
+                    <div>
+                        <SecretComponent
+                            pairs={secrets}
+                            setPairs={setSecrets}
+                        />
+                    </div>
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
-    )
+    );
 }
 
 function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
     const onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary) => {
-            let out: AppPrimary = { ...prevObject }
+            let out: AppPrimary = { ...prevObject };
 
             // @ts-ignore
-            out.deployment[name] = value
-            return out
+            out.deployment[name] = value;
+            return out;
         });
     };
 
     return (
         <React.Fragment>
             <Grid container spacing={3} alignItems="center">
-                <Grid item xs={1} /> {/* Spacer to push text fields to the right */}
+                <Grid item xs={1} />{" "}
+                {/* Spacer to push text fields to the right */}
                 <Grid item xs={2}>
                     <Autocomplete
-                        freeSolo options={["v1", "v2"]} value={appRes.deployment.name} renderInput={(params) => (
-                            <TextField {...params} id="name" label="Container Name" variant="standard" name="name" onChange={onChange} />
+                        freeSolo
+                        options={["v1", "v2"]}
+                        value={appRes.deployment.name}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                id="name"
+                                label="Container Name"
+                                variant="standard"
+                                name="name"
+                                onChange={onChange}
+                            />
                         )}
                     />
                 </Grid>
                 <Grid item xs={4}>
                     <Autocomplete
-                        freeSolo options={["v1", "v2"]} value={appRes.deployment.image} renderInput={(params) => (
-                            <TextField {...params} id="image" label="Image:Tag" variant="standard" name="image" onChange={onChange} />
+                        freeSolo
+                        options={["v1", "v2"]}
+                        value={appRes.deployment.image}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                id="image"
+                                label="Image:Tag"
+                                variant="standard"
+                                name="image"
+                                onChange={onChange}
+                            />
                         )}
                     />
                 </Grid>
                 <Grid item xs={2}>
                     <Autocomplete
-                        freeSolo options={["v1", "v2"]} value={appRes.deployment.command} renderInput={(params) => (
-                            <TextField {...params} id="command" label="Command" variant="standard" name="command" onChange={onChange} />
+                        freeSolo
+                        options={["v1", "v2"]}
+                        value={appRes.deployment.command}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                id="command"
+                                label="Command"
+                                variant="standard"
+                                name="command"
+                                onChange={onChange}
+                            />
                         )}
                     />
                 </Grid>
                 <Grid item xs={2}>
                     <Autocomplete
-                        freeSolo options={["v1", "v2"]} value={appRes.deployment.args} renderInput={(params) => (
-                            <TextField {...params} id="args" label="Args" variant="standard" name="args" onChange={onChange} />
+                        freeSolo
+                        options={["v1", "v2"]}
+                        value={appRes.deployment.args}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                id="args"
+                                label="Args"
+                                variant="standard"
+                                name="args"
+                                onChange={onChange}
+                            />
                         )}
                     />
                 </Grid>
             </Grid>
-        </React.Fragment >
-    )
+        </React.Fragment>
+    );
 }
 
-
-function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
+function HealthProbeComponent({
+    appRes,
+    setAppRes,
+    probeKind,
+}: {
     appRes: AppPrimary;
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary | AppCanary>>;
-    probeKind: 'live' | 'ready'
+    probeKind: "live" | "ready";
 }) {
-    const probeType: string = probeKind == "live" ? "livenessProbe" : "readinessProbe"
-    const useProbeType: string = probeKind == "live" ? "useLivenessProbe" : "useReadinessProbe"
-    const labelName: string = probeKind == "live" ? "Liveness Probe" : "Readiness Probe"
+    const probeType: string =
+        probeKind == "live" ? "livenessProbe" : "readinessProbe";
+    const useProbeType: string =
+        probeKind == "live" ? "useLivenessProbe" : "useReadinessProbe";
+    const labelName: string =
+        probeKind == "live" ? "Liveness Probe" : "Readiness Probe";
 
     const handleSwitchChange = () => {
         setAppRes((prevObject: AppPrimary | AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out.deployment[useProbeType] = !out.deployment[useProbeType]
-            return out
+            out.deployment[useProbeType] = !out.deployment[useProbeType];
+            return out;
         });
     };
 
     const onHttpGetChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary | AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out.deployment[probeType].httpGet[name] = value
+            out.deployment[probeType].httpGet[name] = value;
 
-            return out
+            return out;
         });
     };
 
     const onProbeChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary | AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out.deployment[probeType][name] = value
+            out.deployment[probeType][name] = value;
 
-            return out
+            return out;
         });
     };
 
     const renderProbeFields = () => {
         // @ts-ignore
-        if (!appRes.deployment[useProbeType]) return
+        if (!appRes.deployment[useProbeType]) return;
 
         return (
             <Grid container spacing={2} alignItems="center">
@@ -311,50 +511,77 @@ function HealthProbeComponent({ appRes, setAppRes, probeKind }: {
 
                 <Grid item xs={2}>
                     <TextField
-                        label="path" variant="standard"
+                        label="path"
+                        variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.path}
-                        name="path" onChange={onHttpGetChange} />
+                        name="path"
+                        onChange={onHttpGetChange}
+                    />
                 </Grid>
                 <Grid item xs={1}>
-                    <TextField label="port" type="number" variant="standard"
+                    <TextField
+                        label="port"
+                        type="number"
+                        variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].httpGet.port}
-                        name="port" onChange={onHttpGetChange} />
+                        name="port"
+                        onChange={onHttpGetChange}
+                    />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField label="successThreshold" type="number" variant="standard"
+                    <TextField
+                        label="successThreshold"
+                        type="number"
+                        variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].successThreshold}
-                        name="successThreshold" onChange={onProbeChange} />
+                        name="successThreshold"
+                        onChange={onProbeChange}
+                    />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField label="failureThreshold" type="number" variant="standard"
+                    <TextField
+                        label="failureThreshold"
+                        type="number"
+                        variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].failureThreshold}
-                        name="failureThreshold" onChange={onProbeChange} />
+                        name="failureThreshold"
+                        onChange={onProbeChange}
+                    />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField label="timeoutSeconds" type="number" variant="standard"
+                    <TextField
+                        label="timeoutSeconds"
+                        type="number"
+                        variant="standard"
                         // @ts-ignore
                         value={appRes.deployment[probeType].timeoutSeconds}
-                        name="timeoutSeconds" onChange={onProbeChange} />
+                        name="timeoutSeconds"
+                        onChange={onProbeChange}
+                    />
                 </Grid>
             </Grid>
-        )
-    }
+        );
+    };
 
     return (
         <React.Fragment>
-            <FormControlLabel control={
-                // @ts-ignore
-                <Switch checked={appRes.deployment[useProbeType]}
-                    onChange={handleSwitchChange} />}
+            <FormControlLabel
+                control={
+                    <Switch
+                        // @ts-ignore
+                        checked={appRes.deployment[useProbeType]}
+                        onChange={handleSwitchChange}
+                    />
+                }
                 label={labelName}
             />
             {renderProbeFields()}
         </React.Fragment>
-    )
+    );
 }
 
 function EnvVarsComponent({ pairs, setPairs }: EnvVarTableIfx) {
@@ -373,7 +600,7 @@ function EnvVarsComponent({ pairs, setPairs }: EnvVarTableIfx) {
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
-    )
+    );
 }
 
 function SecretComponent({ pairs, setPairs }: KeyValueTableIfx) {
@@ -392,135 +619,244 @@ function SecretComponent({ pairs, setPairs }: KeyValueTableIfx) {
                 </AccordionDetails>
             </Accordion>
         </React.Fragment>
-    )
+    );
 }
 
 function ServiceConfigComponent({ appRes, setAppRes }: AppResourcePropIfx) {
     const handleSwitchChange = () => {
         setAppRes((prevObject: AppPrimary | AppCanary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
-            out.useService = !out.useService
-            return out
+            out.useService = !out.useService;
+            return out;
         });
     };
 
     const onServicesChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setAppRes((prevObject: AppPrimary) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out.service[name] = value
-            return out
+            out.service[name] = value;
+            return out;
         });
     };
 
     return (
         <React.Fragment>
             {/* Services */}
-            <FormControlLabel control={<Switch checked={appRes.useService} onChange={handleSwitchChange} />} label="Service" />
+            <FormControlLabel
+                control={
+                    <Switch
+                        checked={appRes.useService}
+                        onChange={handleSwitchChange}
+                    />
+                }
+                label="Service"
+            />
             {appRes.useService && (
                 <Grid container spacing={2} alignItems="center">
                     {/* Spacer to push text fields to the right */}
                     <Grid item xs={2} />
 
                     <Grid item xs={1}>
-                        <TextField label="Port" variant="standard" value={appRes.service.port} fullWidth name="port" onChange={onServicesChange} />
+                        <TextField
+                            label="Port"
+                            variant="standard"
+                            value={appRes.service.port}
+                            fullWidth
+                            name="port"
+                            onChange={onServicesChange}
+                        />
                     </Grid>
                     <Grid item xs={1}>
-                        <TextField label="Target Port" variant="standard" value={appRes.service.targetPort} fullWidth name="targetPort" onChange={onServicesChange} />
+                        <TextField
+                            label="Target Port"
+                            variant="standard"
+                            value={appRes.service.targetPort}
+                            fullWidth
+                            name="targetPort"
+                            onChange={onServicesChange}
+                        />
                     </Grid>
                 </Grid>
             )}
         </React.Fragment>
-    )
+    );
 }
 
-
-function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, deploymentPlan: FrontendDeploymentPlan, showJobProgress: Function }) {
+function ShowPlanComponent({
+    isOpen,
+    setIsOpen,
+    deploymentPlan,
+    showJobProgress,
+}: {
+    isOpen: boolean;
+    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    deploymentPlan: FrontendDeploymentPlan;
+    showJobProgress: Function;
+}) {
     const onCancel = () => setIsOpen(false);
     const onSubmit = () => {
-        showJobProgress(deploymentPlan.jobId)
+        showJobProgress(deploymentPlan.jobId);
     };
 
-
     const renderPatch = (el: DeltaPatch) => {
-        const key = el.meta.kind + el.meta.namespace + el.meta.name
+        const key = el.meta.kind + el.meta.namespace + el.meta.name;
 
         const renderDiff = (line: string, index: number) => {
-            if (line.startsWith('+')) {
-                return <Typography key={key + index} sx={{ color: green[500], whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{line}</Typography>;
-            } else if (line.startsWith('-')) {
-                return <Typography key={key + index} sx={{ color: red[500], whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{line}</Typography>;
+            if (line.startsWith("+")) {
+                return (
+                    <Typography
+                        key={key + index}
+                        sx={{
+                            color: green[500],
+                            whiteSpace: "pre-wrap",
+                            fontFamily: "monospace",
+                        }}
+                    >
+                        {line}
+                    </Typography>
+                );
+            } else if (line.startsWith("-")) {
+                return (
+                    <Typography
+                        key={key + index}
+                        sx={{
+                            color: red[500],
+                            whiteSpace: "pre-wrap",
+                            fontFamily: "monospace",
+                        }}
+                    >
+                        {line}
+                    </Typography>
+                );
             } else {
-                return <Typography key={key + index} sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{line}</Typography>;
+                return (
+                    <Typography
+                        key={key + index}
+                        sx={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}
+                    >
+                        {line}
+                    </Typography>
+                );
             }
         };
 
-        let out: JSX.Element[] = []
-        out.push(<Typography key={key} sx={{ color: amber[500] }}>Patch {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}</Typography>)
-        out.push(...el.diff.split("\n").map(renderDiff))
-        out.push(<Divider key={key + "sep"} />)
-        return out
-    }
+        let out: JSX.Element[] = [];
+        out.push(
+            <Typography key={key} sx={{ color: amber[500] }}>
+                Patch {el.meta.kind.toUpperCase()} {el.meta.namespace}/
+                {el.meta.name}
+            </Typography>,
+        );
+        out.push(...el.diff.split("\n").map(renderDiff));
+        out.push(<Divider key={key + "sep"} />);
+        return out;
+    };
 
     const renderCreate = (el: DeltaCreate) => {
-        const key = el.meta.kind + el.meta.namespace + el.meta.name
+        const key = el.meta.kind + el.meta.namespace + el.meta.name;
 
         // Header element, eg "Add DEPLOYMENT default/myapp"
-        let out: JSX.Element[] = []
-        out.push(<Typography key={key} sx={{ color: green[500] }}>Add {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}</Typography>)
+        let out: JSX.Element[] = [];
+        out.push(
+            <Typography key={key} sx={{ color: green[500] }}>
+                Add {el.meta.kind.toUpperCase()} {el.meta.namespace}/
+                {el.meta.name}
+            </Typography>,
+        );
 
         // Convert manifest to string and display each line in green.
-        const jsManifest = JSON.stringify(el.manifest, null, 4)
-        const tmp = jsManifest.split("\n").map((line, index) => (<Typography key={key + index} sx={{ color: green[500], whiteSpace: 'pre-wrap' }}>   {line}</Typography>))
-        out.push(...tmp)
-        out.push(<Divider key={key + "sep"} />)
+        const jsManifest = JSON.stringify(el.manifest, null, 4);
+        const tmp = jsManifest.split("\n").map((line, index) => (
+            <Typography
+                key={key + index}
+                sx={{ color: green[500], whiteSpace: "pre-wrap" }}
+            >
+                {" "}
+                {line}
+            </Typography>
+        ));
+        out.push(...tmp);
+        out.push(<Divider key={key + "sep"} />);
 
-        return out
-    }
+        return out;
+    };
 
     const renderDelete = (el: DeltaDelete) => {
-        const key = el.meta.kind + el.meta.namespace + el.meta.name
+        const key = el.meta.kind + el.meta.namespace + el.meta.name;
 
         // Header element, eg "Delete DEPLOYMENT default/myapp"
-        return <Typography key={key} sx={{ color: red[500] }}>Delete {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}</Typography>;
-    }
+        return (
+            <Typography key={key} sx={{ color: red[500] }}>
+                Delete {el.meta.kind.toUpperCase()} {el.meta.namespace}/
+                {el.meta.name}
+            </Typography>
+        );
+    };
 
     const formatDiff = () => {
-        let out: JSX.Element[] = []
+        let out: JSX.Element[] = [];
 
         for (const el of deploymentPlan.create) {
-            out.push(...renderCreate(el))
+            out.push(...renderCreate(el));
         }
 
         for (const el of deploymentPlan.patch) {
-            out.push(...renderPatch(el))
+            out.push(...renderPatch(el));
         }
 
         for (const el of deploymentPlan.delete) {
-            out.push(renderDelete(el))
+            out.push(renderDelete(el));
         }
 
-        const toAdd = `${deploymentPlan.create.length} to add`
-        const toMod = `${deploymentPlan.patch.length} to modify`
-        const toDel = `${deploymentPlan.delete.length} to delete`
+        const toAdd = `${deploymentPlan.create.length} to add`;
+        const toMod = `${deploymentPlan.patch.length} to modify`;
+        const toDel = `${deploymentPlan.delete.length} to delete`;
 
-        out.push(<Divider key={"summary-sep-1"} style={{ marginBottom: '20px' }} />)
+        out.push(
+            <Divider key={"summary-sep-1"} style={{ marginBottom: "20px" }} />,
+        );
         out.push(
             <Typography component="div" variant="body1" key="summary">
-                <span style={{ color: 'inherit', marginRight: '25px' }}>Plan:</span>
-                <span style={{ color: deploymentPlan.create.length ? 'green' : 'inherit', marginRight: '25px' }}>{toAdd}</span>
-                <span style={{ color: deploymentPlan.patch.length ? 'orange' : 'inherit', marginRight: '25px' }}>{toMod}</span>
-                <span style={{ color: deploymentPlan.delete.length ? 'red' : 'inherit', marginRight: '25px' }}>{toDel}</span>
-            </Typography>
-        )
-        return out
-    }
-    const formattedDiffText = formatDiff()
-
-
+                <span style={{ color: "inherit", marginRight: "25px" }}>
+                    Plan:
+                </span>
+                <span
+                    style={{
+                        color: deploymentPlan.create.length
+                            ? "green"
+                            : "inherit",
+                        marginRight: "25px",
+                    }}
+                >
+                    {toAdd}
+                </span>
+                <span
+                    style={{
+                        color: deploymentPlan.patch.length
+                            ? "orange"
+                            : "inherit",
+                        marginRight: "25px",
+                    }}
+                >
+                    {toMod}
+                </span>
+                <span
+                    style={{
+                        color: deploymentPlan.delete.length ? "red" : "inherit",
+                        marginRight: "25px",
+                    }}
+                >
+                    {toDel}
+                </span>
+            </Typography>,
+        );
+        return out;
+    };
+    const formattedDiffText = formatDiff();
 
     return (
         <Dialog
@@ -535,8 +871,8 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
             <DialogTitle id="scroll-dialog-title">Diff</DialogTitle>
             <DialogContent
                 sx={{
-                    overflowY: 'auto',
-                    maxHeight: '300px', // Max height before we get scroll bars.
+                    overflowY: "auto",
+                    maxHeight: "300px", // Max height before we get scroll bars.
                 }}
             >
                 {formattedDiffText}
@@ -545,26 +881,33 @@ function ShowPlanComponent({ isOpen, setIsOpen, deploymentPlan, showJobProgress 
                 <Button onClick={onCancel}>Cancel</Button>
                 <Button onClick={onSubmit}>Submit</Button>
             </DialogActions>
-        </Dialog >
+        </Dialog>
     );
 }
 
-
-function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, setIsOpen: React.Dispatch<React.SetStateAction<boolean>>, jobId: number }) {
+function JobStatusComponent({
+    isOpen,
+    setIsOpen,
+    jobId,
+}: {
+    isOpen: boolean;
+    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    jobId: number;
+}) {
     const [success, setSuccess] = useState<boolean>(false);
 
     const onClose = () => setIsOpen(false);
 
     const sendData = () => {
-        const data = { jobId: jobId }
-        fetch(`/api/crt/v1/jobs`, {
-            method: 'POST',
+        const data = { jobId: jobId };
+        fetch(`/demo/api/crt/v1/jobs`, {
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         })
-            .then(response => {
+            .then((response) => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -573,8 +916,8 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             .then((_) => {
                 setSuccess(true);
             })
-            .catch(error => {
-                console.error('Error fetching job data:', error);
+            .catch((error) => {
+                console.error("Error fetching job data:", error);
                 setSuccess(false);
             });
     };
@@ -583,16 +926,23 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
         if (isOpen) {
             sendData(); // Make initial POST request if the dialog is open and the job is not done
         }
-
     }, [isOpen, jobId]);
 
     const formatContent = () => {
         if (success) {
-            return (<Typography key="jobid" sx={{ color: green[500] }}>Success</Typography>)
+            return (
+                <Typography key="jobid" sx={{ color: green[500] }}>
+                    Success
+                </Typography>
+            );
         } else {
-            return (<Typography key="jobid" sx={{ color: red[500] }}>Error</Typography>)
+            return (
+                <Typography key="jobid" sx={{ color: red[500] }}>
+                    Error
+                </Typography>
+            );
         }
-    }
+    };
 
     return (
         <Dialog
@@ -601,13 +951,13 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             scroll="paper"
             aria-labelledby="scroll-dialog-title"
             aria-describedby="scroll-dialog-description"
-            sx={{ minWidth: '400px' }}
+            sx={{ minWidth: "400px" }}
         >
             <DialogTitle id="scroll-dialog-title">Job</DialogTitle>
             <DialogContent
                 sx={{
-                    overflowY: 'auto',
-                    maxHeight: '300px', // Max height before we get scroll bars.
+                    overflowY: "auto",
+                    maxHeight: "300px", // Max height before we get scroll bars.
                 }}
             >
                 <Typography key={jobId}>ID: {jobId}</Typography>
@@ -616,10 +966,9 @@ function JobStatusComponent({ isOpen, setIsOpen, jobId }: { isOpen: boolean, set
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
             </DialogActions>
-        </Dialog >
+        </Dialog>
     );
 }
-
 
 const initialAppPrimary: AppPrimary = {
     deployment: {
@@ -627,12 +976,12 @@ const initialAppPrimary: AppPrimary = {
         resources: {
             requests: {
                 cpu: "100m",
-                memory: "128M"
+                memory: "128M",
             },
             limits: {
                 cpu: "100m",
-                memory: "128M"
-            }
+                memory: "128M",
+            },
         },
         useResources: true,
         readinessProbe: {
@@ -662,12 +1011,12 @@ const initialAppPrimary: AppPrimary = {
     },
     service: {
         port: 0,
-        targetPort: 0
+        targetPort: 0,
     },
     useService: false,
     hpa: {
-        name: ""
-    }
+        name: "",
+    },
 };
 
 const initialAppCanary: AppCanary = {
@@ -676,12 +1025,12 @@ const initialAppCanary: AppCanary = {
         resources: {
             requests: {
                 cpu: "100m",
-                memory: "128M"
+                memory: "128M",
             },
             limits: {
                 cpu: "100m",
-                memory: "128M"
-            }
+                memory: "128M",
+            },
         },
         useResources: true,
         readinessProbe: {
@@ -711,75 +1060,87 @@ const initialAppCanary: AppCanary = {
     },
     service: {
         port: 0,
-        targetPort: 0
+        targetPort: 0,
     },
     useService: false,
     hpa: {
-        name: ""
+        name: "",
     },
-    trafficPercent: 0
+    trafficPercent: 0,
 };
 
 const initDeploymentPlan = {
     jobId: 10,
     create: [],
     patch: [],
-    delete: []
-}
+    delete: [],
+};
 
-
-export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: React.Dispatch<React.SetStateAction<boolean>> }) {
+export default function K8sAppConfigurationDialog({
+    isLoading,
+    setIsLoading,
+}: {
+    isLoading: boolean;
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
     const { appId, envId } = useParams();
 
     const [primaryEnvars, setPrimaryEnvars] = useState<K8sEnvVar[]>([]);
     const [canaryEnvars, setCanaryEnvars] = useState<K8sEnvVar[]>([]);
 
-    const [primarySecrets, setPrimarySecrets] = useState<KeyValuePairType[]>([]);
+    const [primarySecrets, setPrimarySecrets] = useState<KeyValuePairType[]>(
+        [],
+    );
     const [canarySecrets, setCanarySecrets] = useState<KeyValuePairType[]>([]);
 
     const [primary, setPrimary] = useState<AppPrimary>(initialAppPrimary);
     const [canary, setCanary] = useState<AppCanary>(initialAppCanary);
 
-    const [metaInfo, setMetaInfo] = useState<AppMetadata>({ name: "", env: "", namespace: "" });
+    const [metaInfo, setMetaInfo] = useState<AppMetadata>({
+        name: "",
+        env: "",
+        namespace: "",
+    });
 
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
     const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
     const [jobId, setJobId] = useState(0);
-    const [deploymentPlan, setDeploymentPlan] = useState(initDeploymentPlan)
+    const [deploymentPlan, setDeploymentPlan] = useState(initDeploymentPlan);
 
     const [hasCanary, setHasCanary] = useState<boolean>(false);
 
     const onUpdateFlux = () => {
         setPrimary((prevObject: AppPrimary) => ({
             ...prevObject,
-            isFlux: !prevObject.deployment.isFlux
-        }
-        ));
+            isFlux: !prevObject.deployment.isFlux,
+        }));
     };
 
     const onAddCanary = () => {
-        setHasCanary(!hasCanary)
+        setHasCanary(!hasCanary);
     };
 
     useEffect(() => {
         const fetchData = async () => {
             // setIsLoading(true)
             try {
-                const response = await fetch(`/api/crt/v1/apps/${appId}/${envId}`);
+                const response = await fetch(
+                    `/demo/api/crt/v1/apps/${appId}/${envId}`,
+                );
                 const data: AppSpec = await response.json();
                 console.log("From backend:", data);
 
                 // Update state using the setter functions.
-                setPrimary(() => data.primary)
-                setCanary(() => data.canary)
-                setMetaInfo(() => data.metadata)
-                setHasCanary(() => data.hasCanary)
-                setPrimaryEnvars(() => data.primary.deployment.envVars)
-                setCanaryEnvars(() => data.canary.deployment.envVars)
+                setPrimary(() => data.primary);
+                setCanary(() => data.canary);
+                setMetaInfo(() => data.metadata);
+                setHasCanary(() => data.hasCanary);
+                setPrimaryEnvars(() => data.primary.deployment.envVars);
+                setCanaryEnvars(() => data.canary.deployment.envVars);
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error("Error fetching data:", error);
             } finally {
-                setIsLoading(false)
+                setIsLoading(false);
             }
         };
 
@@ -787,104 +1148,158 @@ export default function K8sAppConfigurationDialog({ isLoading, setIsLoading }: {
         fetchData();
     }, []);
 
-
     const onClickDelete = async () => {
-        setIsLoading(true)
+        setIsLoading(true);
 
         try {
-            const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await fetch(
+                `/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
                 },
-            });
+            );
 
             if (!response.ok) {
-                throw new Error('Failed to fetch');
+                throw new Error("Failed to fetch");
             }
 
             setDeploymentPlan(await response.json());
-            setIsPlanModalOpen(true)
-
+            setIsPlanModalOpen(true);
         } catch (error) {
-            console.error('Error posting data:', error);
+            console.error("Error posting data:", error);
         }
-        setIsLoading(false)
-    }
-
+        setIsLoading(false);
+    };
 
     // Send the current app configuration to the backend and request a plan. Then insert the plan
     // into the `setDeploymentPlan` state variable and activate the modal that shows it.
     const onClickApply = async () => {
-        setIsLoading(true)
+        setIsLoading(true);
         let data: AppSpec = {
             primary: primary,
             canary: canary,
             metadata: metaInfo,
             hasCanary: hasCanary,
-        }
+        };
 
         // Merge the state variables for the environment variable back into the payload.
-        primary.deployment.envVars = primaryEnvars
-        canary.deployment.envVars = canaryEnvars
+        primary.deployment.envVars = primaryEnvars;
+        canary.deployment.envVars = canaryEnvars;
 
-        console.log("To backend: ", data)
+        console.log("To backend: ", data);
         try {
-            const response = await fetch(`/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await fetch(
+                `/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(data),
                 },
-                body: JSON.stringify(data)
-            });
+            );
 
             if (!response.ok) {
-                throw new Error('Failed to fetch');
+                throw new Error("Failed to fetch");
             }
 
             setDeploymentPlan(await response.json());
-            setIsPlanModalOpen(true)
-
+            setIsPlanModalOpen(true);
         } catch (error) {
-            console.error('Error posting data:', error);
+            console.error("Error posting data:", error);
         }
-        setIsLoading(false)
+        setIsLoading(false);
     };
 
     // Close the Plan confirmation dialog and open the progress dialog.
     const showJobProgress = (jobId: number) => {
-        setIsPlanModalOpen(false)
-        setJobId(jobId)
-        setIsProgressModalOpen(true)
-    }
+        setIsPlanModalOpen(false);
+        setJobId(jobId);
+        setIsProgressModalOpen(true);
+    };
 
     return (
         <React.Fragment>
-            <Title>{appId} ({envId})</Title>
+            <Title>
+                {appId} ({envId})
+            </Title>
 
             {/* Flux */}
-            <FormControlLabel control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />} label="Flux" />
-            <FormControlLabel control={<Switch checked={hasCanary} onChange={onAddCanary} />} label="Canary" />
+            <FormControlLabel
+                control={
+                    <Switch
+                        checked={primary.deployment.isFlux}
+                        onChange={onUpdateFlux}
+                    />
+                }
+                label="Flux"
+            />
+            <FormControlLabel
+                control={<Switch checked={hasCanary} onChange={onAddCanary} />}
+                label="Canary"
+            />
 
-            <PrimaryConfigComponent appRes={primary} setAppRes={setPrimary} envars={primaryEnvars} setEnvars={setPrimaryEnvars} secrets={primarySecrets} setSecrets={setPrimarySecrets} />
+            <PrimaryConfigComponent
+                appRes={primary}
+                setAppRes={setPrimary}
+                envars={primaryEnvars}
+                setEnvars={setPrimaryEnvars}
+                secrets={primarySecrets}
+                setSecrets={setPrimarySecrets}
+            />
             {hasCanary && (
-                <CanaryConfigComponent appRes={canary} setAppRes={setCanary} envars={canaryEnvars} setEnvars={setCanaryEnvars} secrets={canarySecrets} setSecrets={setCanarySecrets} />
+                <CanaryConfigComponent
+                    appRes={canary}
+                    setAppRes={setCanary}
+                    envars={canaryEnvars}
+                    setEnvars={setCanaryEnvars}
+                    secrets={canarySecrets}
+                    setSecrets={setCanarySecrets}
+                />
             )}
 
-            <ShowPlanComponent isOpen={isPlanModalOpen} setIsOpen={setIsPlanModalOpen} deploymentPlan={deploymentPlan} showJobProgress={showJobProgress} />
-            <JobStatusComponent isOpen={isProgressModalOpen} setIsOpen={setIsProgressModalOpen} jobId={jobId} />
+            <ShowPlanComponent
+                isOpen={isPlanModalOpen}
+                setIsOpen={setIsPlanModalOpen}
+                deploymentPlan={deploymentPlan}
+                showJobProgress={showJobProgress}
+            />
+            <JobStatusComponent
+                isOpen={isProgressModalOpen}
+                setIsOpen={setIsProgressModalOpen}
+                jobId={jobId}
+            />
 
             {/* Cancel/Apply button to request a plan from the backend.*/}
             <p />
-            <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+            <Grid
+                container
+                spacing={2}
+                alignItems="center"
+                justifyContent="space-between"
+            >
                 <Grid item>
-                    <Button variant="contained" style={{ backgroundColor: '#ff0000', color: '#fff' }} onClick={onClickDelete}>Delete</Button>
+                    <Button
+                        variant="contained"
+                        style={{ backgroundColor: "#ff0000", color: "#fff" }}
+                        onClick={onClickDelete}
+                    >
+                        Delete
+                    </Button>
                 </Grid>
                 <Grid item>
-                    <Button variant="contained" color="primary" onClick={onClickApply}>Apply</Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={onClickApply}
+                    >
+                        Apply
+                    </Button>
                 </Grid>
             </Grid>
-
         </React.Fragment>
     );
 }

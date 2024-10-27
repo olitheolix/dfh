@@ -13,6 +13,10 @@ httpx = "*"
 pyyaml = "*"
 kubernetes-square = "*"
 hypercorn = "*"
+google-auth = "*"
+google-auth-oauthlib = "*"
+google-auth-httplib2 = "*"
+google-api-python-client = "*"
 
 [dev-packages]
 isort = "*"
@@ -25,6 +29,7 @@ pytest-dotenv = "*"
 respx = "*"
 types-pyyaml = "*"
 sh = "*"
+freezegun = "*"
 
 [requires]
 python_version = "3.12"

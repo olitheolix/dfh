@@ -14,6 +14,11 @@ export default defineConfig({
                 target: 'http://localhost:5001',
                 changeOrigin: true,
             },
+            // Proxy all API requests to the backend.
+            '/demo/api': {
+                target: 'http://localhost:5001',
+                changeOrigin: true,
+            },
             '/data': {
                 target: 'http://localhost:5002',
                 changeOrigin: true,

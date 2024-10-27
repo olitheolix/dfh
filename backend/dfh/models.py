@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ----------------------------------------------------------------------
 # Generic Models
@@ -20,6 +20,18 @@ class NameValue(BaseModel):
 
     name: str
     value: str
+
+
+# ----------------------------------------------------------------------
+# Authentication
+# ----------------------------------------------------------------------
+class UserToken(BaseModel):
+    email: str
+    token: str = ""
+
+
+class UserMe(BaseModel):
+    email: str
 
 
 # ----------------------------------------------------------------------
@@ -222,6 +234,9 @@ class ServerConfig(BaseModel):
     host: str
     port: int
 
+    # From Google Cloud Console.
+    google_client_secrets_file: Path
+
 
 class DeploymentInfo(BaseModel):
     """User configurable values for a deployment."""
@@ -417,3 +432,64 @@ class GeneratedManifests(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     resources: Dict[str, WatchedResource] = factory_WatchedResource()
+
+
+# ----------------------------------------------------------------------
+# User Access Management.
+# ----------------------------------------------------------------------
+
+
+class GoogleToken(BaseModel):
+    token: str
+
+
+class UAMUser(BaseModel):
+    email: str = Field(pattern=r"^[a-z0-9_.+-]+@[a-z0-9-]+\.[a-zA-Z0-9-.]+$")  # uid
+    name: str
+    lanid: str
+    slack: str
+
+    @field_validator("name", "lanid", "slack")
+    @classmethod
+    def valid_name(cls, v: str) -> str:
+        if len(v) != len(v.strip()):
+            raise ValueError("must not have leading or trailing whitespace")
+
+        if len(v) == 0:
+            raise ValueError("must be nonempty")
+        return v
+
+
+class UAMGroup(BaseModel):
+    name: str  # uid
+    owner: str
+    provider: str
+    users: Dict[str, UAMUser] = Field(default_factory=dict)
+    children: Dict[str, "UAMGroup"] = Field(default_factory=dict)
+
+    @field_validator("name", "owner")
+    @classmethod
+    def valid_name(cls, v: str) -> str:
+        if len(v) != len(v.strip()):
+            raise ValueError("must not have leading or trailing whitespace")
+
+        if len(v) == 0:
+            raise ValueError("must be nonempty")
+        return v
+
+
+class UAMTreeNode(BaseModel):
+    id: str
+    label: str
+    elId: str
+    children: List["UAMTreeNode"] | None = None
+
+
+class UAMDatabase(BaseModel):
+    users: Dict[str, UAMUser]
+    groups: Dict[str, UAMGroup]
+    root: UAMGroup = UAMGroup(name="Org", owner="none", provider="none")
+
+
+class UAMChild(BaseModel):
+    child: str

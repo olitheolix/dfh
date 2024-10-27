@@ -1,32 +1,43 @@
-import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useState, ChangeEvent } from 'react';
-import { MenuItem, Select } from '@mui/material';
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import { useState, ChangeEvent } from "react";
+import { MenuItem, Select } from "@mui/material";
 import {
-    TextField, Grid, Button, Dialog,
-    DialogActions, DialogContent, DialogTitle,
-} from '@mui/material';
+    TextField,
+    Grid,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+} from "@mui/material";
 
 // Import Custom components.
-import Title from './Title';
-import { Paper, Typography } from '@mui/material';
-import { AppPrimary, AppCanary, AppMetadata, AppSpec } from './BackendInterfaces'
+import Title from "./Title";
+import { Paper, Typography } from "@mui/material";
+import {
+    AppPrimary,
+    AppCanary,
+    AppMetadata,
+    AppSpec,
+} from "./BackendInterfaces";
 
-
-
-function CreateAppComponent({ meta, setMeta }: {
+function CreateAppComponent({
+    meta,
+    setMeta,
+}: {
     meta: AppMetadata;
     setMeta: React.Dispatch<React.SetStateAction<AppMetadata>>;
 }) {
     const onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setMeta((prevObject: AppMetadata) => {
-            let out = { ...prevObject }
+            let out = { ...prevObject };
 
             // @ts-ignore
-            out[name] = value
+            out[name] = value;
 
-            return out
+            return out;
         });
     };
 
@@ -37,34 +48,44 @@ function CreateAppComponent({ meta, setMeta }: {
                 <Grid item xs={2} />
 
                 <Grid item xs={2}>
-                    <TextField label="name" type="string" variant="standard"
+                    <TextField
+                        label="name"
+                        type="string"
+                        variant="standard"
                         // @ts-ignore
                         value={meta.name}
-                        name="name" onChange={onChange} />
+                        name="name"
+                        onChange={onChange}
+                    />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField label="namespace" type="string" variant="standard"
+                    <TextField
+                        label="namespace"
+                        type="string"
+                        variant="standard"
                         // @ts-ignore
                         value={meta.namespace}
-                        name="namespace" onChange={onChange} />
+                        name="namespace"
+                        onChange={onChange}
+                    />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField label="environment" type="string" variant="standard"
+                    <TextField
+                        label="environment"
+                        type="string"
+                        variant="standard"
                         // @ts-ignore
                         value={meta.env}
-                        name="env" onChange={onChange} />
+                        name="env"
+                        onChange={onChange}
+                    />
                 </Grid>
             </Grid>
-        )
-    }
+        );
+    };
 
-    return (
-        <React.Fragment>
-            {renderProbeFields()}
-        </React.Fragment>
-    )
+    return <React.Fragment>{renderProbeFields()}</React.Fragment>;
 }
-
 
 const initialAppPrimary: AppPrimary = {
     deployment: {
@@ -72,12 +93,12 @@ const initialAppPrimary: AppPrimary = {
         resources: {
             requests: {
                 cpu: "100m",
-                memory: "128M"
+                memory: "128M",
             },
             limits: {
                 cpu: "100m",
-                memory: "128M"
-            }
+                memory: "128M",
+            },
         },
         useResources: true,
         readinessProbe: {
@@ -107,12 +128,12 @@ const initialAppPrimary: AppPrimary = {
     },
     service: {
         port: 0,
-        targetPort: 0
+        targetPort: 0,
     },
     useService: false,
     hpa: {
-        name: ""
-    }
+        name: "",
+    },
 };
 
 const initialAppCanary: AppCanary = {
@@ -121,12 +142,12 @@ const initialAppCanary: AppCanary = {
         resources: {
             requests: {
                 cpu: "100m",
-                memory: "128M"
+                memory: "128M",
             },
             limits: {
                 cpu: "100m",
-                memory: "128M"
-            }
+                memory: "128M",
+            },
         },
         useResources: true,
         readinessProbe: {
@@ -156,18 +177,17 @@ const initialAppCanary: AppCanary = {
     },
     service: {
         port: 0,
-        targetPort: 0
+        targetPort: 0,
     },
     useService: false,
     hpa: {
-        name: ""
+        name: "",
     },
-    trafficPercent: 0
+    trafficPercent: 0,
 };
 
-
 const DropdownComponent = () => {
-    const [selectedItem, setSelectedItem] = React.useState('');
+    const [selectedItem, setSelectedItem] = React.useState("");
 
     const handleChange = (event: any) => {
         setSelectedItem(event.target.value);
@@ -175,14 +195,10 @@ const DropdownComponent = () => {
 
     return (
         <div>
-            <Select
-                value={selectedItem}
-                onChange={handleChange}
-                fullWidth
-            >
-                <MenuItem value={'Backend'}>Backend</MenuItem>
-                <MenuItem value={'Frontend'}>Frontend</MenuItem>
-                <MenuItem value={'Infra'}>Infra</MenuItem>
+            <Select value={selectedItem} onChange={handleChange} fullWidth>
+                <MenuItem value={"Backend"}>Backend</MenuItem>
+                <MenuItem value={"Frontend"}>Frontend</MenuItem>
+                <MenuItem value={"Infra"}>Infra</MenuItem>
             </Select>
         </div>
     );
@@ -191,7 +207,11 @@ const DropdownComponent = () => {
 export default function K8sNewAppDialog() {
     const navigate = useNavigate();
 
-    const [meta, setMeta] = useState<AppMetadata>({ name: "", namespace: "", env: "" });
+    const [meta, setMeta] = useState<AppMetadata>({
+        name: "",
+        namespace: "",
+        env: "",
+    });
     const [dialogOpen, setDialogOpen] = useState(false);
 
     const handleCloseDialog = () => {
@@ -206,36 +226,48 @@ export default function K8sNewAppDialog() {
             canary: initialAppCanary,
             metadata: meta,
             hasCanary: false,
-        }
+        };
 
-        console.log("To backend: ", data)
+        console.log("To backend: ", data);
         try {
-            const response = await fetch(`/api/crt/v1/apps/${meta.name}/${meta.env}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await fetch(
+                `/demo/api/crt/v1/apps/${meta.name}/${meta.env}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(data),
                 },
-                body: JSON.stringify(data)
-            });
+            );
 
             if (!response.ok) {
-                throw new Error('Failed to make DELETE request');
+                throw new Error("Failed to make DELETE request");
             }
-            navigate(`/app/${meta.name}/${meta.env}`)
+            navigate(`/app/${meta.name}/${meta.env}`);
         } catch (error) {
             setDialogOpen(true);
-            console.error('App already exists:', error);
+            console.error("App already exists:", error);
         }
     };
 
-
     return (
         <React.Fragment>
-            <Paper style={{ padding: '20px', display: 'flex', flexDirection: 'column', }}>
+            <Paper
+                style={{
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                }}
+            >
                 <Title>Create New Application</Title>
 
-                <Grid container spacing={2} alignItems="left" justifyContent="left">
-
+                <Grid
+                    container
+                    spacing={2}
+                    alignItems="left"
+                    justifyContent="left"
+                >
                     <Grid item xs={4}>
                         <Typography>Project</Typography>
                         <DropdownComponent />
@@ -249,7 +281,13 @@ export default function K8sNewAppDialog() {
                 <p />
                 <Grid container alignItems="center" justifyContent="right">
                     <Grid item>
-                        <Button variant="contained" color="primary" onClick={onClickApply}>Create</Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={onClickApply}
+                        >
+                            Create
+                        </Button>
                     </Grid>
                 </Grid>
 
@@ -266,6 +304,6 @@ export default function K8sNewAppDialog() {
                     </DialogActions>
                 </Dialog>
             </Paper>
-        </React.Fragment >
+        </React.Fragment>
     );
 }
