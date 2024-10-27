@@ -234,9 +234,6 @@ class ServerConfig(BaseModel):
     host: str
     port: int
 
-    # From Google Cloud Console.
-    google_client_secrets_file: Path
-
 
 class DeploymentInfo(BaseModel):
     """User configurable values for a deployment."""

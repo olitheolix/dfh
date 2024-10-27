@@ -63,93 +63,6 @@ def create_session_cookie(data, valid: bool = True):
 
 
 class TestGoogleAuthentication:
-    def test_schema_rewrite(self):
-        fun = auth.rewrite_scheme
-        urls = ["foo.com", "foo.com/", "foo.com/path"]
-
-        with mock.patch.dict("os.environ", values={"LOCAL_DEV": "1"}, clear=True):
-            assert dfh.api.isLocalDev()
-            for url in urls:
-                assert fun(f"http://{url}") == f"http://{url}"
-
-            # Must not touch strings that do not start with http://
-            assert fun("foo.bar") == "foo.bar"
-            assert fun("foo.bar/http://") == "foo.bar/http://"
-            assert fun("foo.bar/https://") == "foo.bar/https://"
-
-        with mock.patch.dict("os.environ", values={}, clear=True):
-            assert not dfh.api.isLocalDev()
-            for url in urls:
-                assert fun(f"http://{url}") == f"https://{url}"
-
-            # Must not touch strings that do not start with https://
-            assert fun("foo.bar") == "foo.bar"
-            assert fun("foo.bar/http://") == "foo.bar/http://"
-            assert fun("foo.bar/https://") == "foo.bar/https://"
-
-    def test_authdemo(self, client: TestClient):
-        assert client.get("/authdemo").status_code == 200
-
-    @mock.patch.object(auth.google_auth_oauthlib.flow, "Flow")
-    def test_login(self, m_flow, client: TestClient):
-        """Basic test of login handler.
-
-        There is little that we can tangibly test here since the implementation
-        is boiler plate code from Google's SDK.
-
-        """
-        # Mock the Google flow calls.
-        m_flow.from_client_secrets_file.return_value = m_flow
-        m_flow.authorization_url.return_value = "http://redirect.com", "foo"
-
-        # Login handler must redirect to some Google URLs which the Flow object
-        # will produce at runtime.
-        resp = client.get("/google-login", follow_redirects=False)
-        assert resp.status_code == 307
-        assert resp.headers["location"] == "http://redirect.com"
-
-        # Our handler must have added a `state` to the session.
-        cookies = get_session_cookie(resp)
-        assert cookies is not None and cookies["state"] == "foo"
-
-    @mock.patch.object(auth.google_auth_oauthlib.flow, "Flow")
-    @mock.patch.object(auth, "fetch_user_email")
-    def test_oauth2callback(self, m_email, m_flow, client: TestClient):
-        """Basic test of OAuth2Callback handler.
-
-        There is little that we can tangibly test here since the implementation
-        is boiler plate code from Google's SDK.
-
-        """
-        # Mock the Google flow attributes the handler needs.
-        m_email.return_value = "foo@bar.com"
-        m_flow.from_client_secrets_file.return_value = m_flow
-        m_flow.credentials.token = "token"
-        m_flow.credentials.refresh_token = "refresh-token"
-        m_flow.credentials.token_uri = "token-uri"
-        m_flow.credentials.client_id = "client-id"
-        m_flow.credentials.client_secret = "client-secret"
-        m_flow.credentials.scopes = "scopes"
-
-        # Handler must redirect us to one of our own endpoints.
-        resp = client.get(
-            "/oauth2callback",
-            cookies=create_session_cookie({"state": "foo"}),
-            follow_redirects=False,
-        )
-        assert resp.status_code == 307
-        expected_redirect = "http://testserver/demo/api/auth/test-google-api-request"
-        assert resp.headers["location"] == expected_redirect
-
-        # Callback must add the `email`, `credentials` and `state` entries.
-        cookies = get_session_cookie(resp)
-        assert cookies is not None
-        assert set(cookies.keys()) == {"email", "credentials", "state"}
-
-        # Validate the email and credentials.
-        assert cookies["email"] == "foo@bar.com"
-        assert cookies["credentials"] == auth.credentials_to_dict(m_flow.credentials)
-
     @mock.patch.object(auth.google.oauth2.credentials, "Credentials")
     @mock.patch("httpx.AsyncClient.post", new_callable=mock.AsyncMock)
     def test_revoke(self, m_requests, m_oauth2, client: TestClient):
@@ -229,21 +142,6 @@ class TestGoogleAuthentication:
         err = HttpError(resp=mock.MagicMock(status=403), content=error_content)
         m_build.execute.side_effect = err
         assert auth.fetch_user_email(creds) == ""
-
-    @mock.patch.object(auth, "fetch_user_email")
-    def test_google_api_request(self, m_email, client: TestClient):
-        url = "/test-google-api-request"
-        m_email.return_value = "foo@bar.com"
-        creds = auth.credentials_to_dict(google.oauth2.credentials.Credentials(None))
-        cookies: dict = {"credentials": creds, "email": ""}
-        resp = client.get(url, cookies=create_session_cookie(cookies))
-        assert resp.status_code == 403
-        assert resp.json() == {"detail": "not logged in"}
-
-        cookies["email"] = "authenticated@user.com"
-        resp = client.get(url, cookies=create_session_cookie(cookies))
-        assert resp.status_code == 200
-        assert resp.read() == b"User: foo@bar.com"
 
 
 class TestAPIAuthentication:
