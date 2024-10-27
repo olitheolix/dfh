@@ -43,7 +43,6 @@ def compile_server_config():
         host="",
         port=-1,
         loglevel="",
-        google_client_secrets_file=Path("."),
     )
 
     try:
@@ -55,14 +54,7 @@ def compile_server_config():
             loglevel=os.getenv("DFH_LOGLEVEL", "info"),
             host=os.getenv("DFH_HOST", "0.0.0.0"),
             port=int(os.getenv("DFH_PORT", "5001")),
-            google_client_secrets_file=Path(os.environ["GOOGLE_CLIENT_SECRETS_FILE"]),
         )
-
-        # Verify the Google Client Secrets file exists.
-        gfile = cfg.google_client_secrets_file
-        if not (gfile.exists() and gfile.is_file()):
-            logit.error("cannot load Google Client Secrets File <{gfile}>")
-            return default, True
 
         return cfg, False
     except (KeyError, ValueError) as e:

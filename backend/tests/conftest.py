@@ -17,11 +17,6 @@ def pytest_configure(*args, **kwargs):
     # Set log level to DEBUG for all unit tests.
     dfh.logstreams.setup("DEBUG")
 
-    # Create a dummy Google Client Secrets file.
-    dummy = Path("/tmp/dummy-client-secret.txt")
-    dummy.write_text("Google Client Secret")
-    os.environ["GOOGLE_CLIENT_SECRETS_FILE"] = str(dummy)
-
 
 def get_server_config():
     return ServerConfig(
@@ -32,7 +27,6 @@ def get_server_config():
         host="0.0.0.0",
         port=5001,
         loglevel="info",
-        google_client_secrets_file=Path("."),
     )
 
 
