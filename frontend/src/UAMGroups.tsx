@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
     DataGrid,
     GridToolbar,
@@ -27,6 +27,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Title from "./Title";
 import EditIcon from "@mui/icons-material/Edit";
+import {
+    httpGet,
+    httpPost,
+    HTTPErrorContext,
+    HTTPErrorContextType,
+} from "./WebRequests";
 
 const DataGridGroupColumns = [{ field: "name", headerName: "Name", flex: 1 }];
 const DataGridUserColumns = [
@@ -67,37 +73,41 @@ function ShowAddGroup({
     isOpen,
     setIsOpen,
     setReloadGroups,
+    errCtx,
 }: {
     isOpen: boolean;
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setReloadGroups: React.Dispatch<React.SetStateAction<boolean>>;
+    errCtx: HTTPErrorContextType;
 }) {
     const [options, setOptions] = useState<string[]>([]);
     const [groupOwner, setGroupOwner] = useState<string>("");
     const [groupName, setGroupName] = useState<string>("");
 
     useEffect(() => {
-        // Fetch the list of all users when the dialog opens.
-        if (isOpen) {
-            fetch("/demo/api/uam/v1/users")
-                .then((response) => response.json())
-                .then((data) => {
-                    const userList = data.map((user: UAMUser) => {
-                        return user.name;
-                    });
-                    setOptions(userList);
-                })
-                .catch((error) =>
-                    console.error("Error fetching users:", error),
-                );
-        }
+        const fetchData = async () => {
+            // Fetch the list of all users when the dialog opens.
+            if (isOpen) {
+                const ret = await httpGet("/demo/api/uam/v1/users");
+                if (ret.err) {
+                    errCtx.showError(ret.err);
+                    return;
+                }
+                const userList = ret.data.map((user: UAMUser) => {
+                    return user.name;
+                });
+                setOptions(userList);
+            }
+        };
+
+        fetchData();
     }, [isOpen]);
 
     const handleClose = () => {
         setIsOpen(false);
     };
 
-    const handleOk = () => {
+    const handleOk = async () => {
         if (groupOwner) {
             const payload: UAMGroup = {
                 owner: groupOwner,
@@ -107,20 +117,14 @@ function ShowAddGroup({
                 children: {},
             };
 
-            fetch("/demo/api/uam/v1/groups", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+            const ret = await httpPost("/demo/api/uam/v1/groups", {
                 body: JSON.stringify(payload),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(
-                            `HTTP error! status: ${response.status}`,
-                        );
-                    }
-                    setReloadGroups(true);
-                })
-                .catch((error) => console.error("Error adding user:", error));
+            });
+            if (ret.err) {
+                errCtx.showError(ret.err);
+                return;
+            }
+            setReloadGroups(true);
         } else {
             console.warn("No user selected");
         }
@@ -202,21 +206,22 @@ export default function UAMGroups() {
         users: {},
         children: {},
     });
+    const [errCtx, _] = React.useState<HTTPErrorContextType>(
+        useContext(HTTPErrorContext),
+    );
 
-    const loadGroups = () => {
-        fetch("/demo/api/uam/v1/groups")
-            .then((response) => response.json())
-            .then((jsonData) => {
-                const data = jsonData.map((group: UAMGroup) => {
-                    return { id: group.name, ...group } as DGGroupRow;
-                });
-                setGroupRows(data);
-                setLoading(false);
-                setReloadGroups(false);
-            })
-            .catch((error) => {
-                console.error("Error fetching data:", error);
-            });
+    const loadGroups = async () => {
+        const ret = await httpGet("/demo/api/uam/v1/groups");
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+        const data = ret.data.map((group: UAMGroup) => {
+            return { id: group.name, ...group } as DGGroupRow;
+        });
+        setGroupRows(data);
+        setLoading(false);
+        setReloadGroups(false);
     };
 
     // Populate the groups upon mounting the component.
@@ -232,66 +237,74 @@ export default function UAMGroups() {
         // DataGrid of the groups yet.
         if (selectedGroup.id == "") return;
 
-        // Set the users of the selected group based on the new content in the left grid.
-        fetch(`/demo/api/uam/v1/groups/${selectedGroup.id}/users`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(leftUserRows.map((user) => user.email)),
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+        const loadGroups = async () => {
+            // ----------------------------------------------------------------------
+            // Set the users of the selected group based on the new content in the left grid.
+            // ----------------------------------------------------------------------
+            let ret = await httpPost(
+                `/demo/api/uam/v1/groups/${selectedGroup.id}/users`,
+                {
+                    body: JSON.stringify(
+                        leftUserRows.map((user) => user.email),
+                    ),
+                },
+            );
+            if (ret.err) {
+                errCtx.showError(ret.err);
+                return;
+            }
+
+            // ----------------------------------------------------------------------
+            // Load all users in the system and remove those already displayed in
+            // the left grid.
+            // ----------------------------------------------------------------------
+            ret = await httpGet("/demo/api/uam/v1/users");
+            if (ret.err) {
+                errCtx.showError(ret.err);
+                return;
+            }
+            // Compile set of IDs in left grid.
+            const seen: Set<string> = new Set(
+                leftUserRows.map((user) => user.email),
+            );
+
+            // Compute all users not in the left grid.
+            let users: DGUserRow[] = [];
+            for (const user of ret.data) {
+                if (!seen.has(user.email)) {
+                    const newRow: DGUserRow = {
+                        id: user.email,
+                        ...user,
+                    };
+                    users = [...users, newRow];
                 }
-            })
-            .then(() => {
-                console.log("User successfully added");
-            })
-            .catch((error) => console.error("Error adding user:", error));
+            }
 
-        // Load all users in the system and remove those already displayed in
-        // the left grid.
-        fetch(`/demo/api/uam/v1/users`)
-            .then((response) => response.json())
-            .then((jsonData) => {
-                // Compile set of IDs in left grid.
-                const seen: Set<string> = new Set(
-                    leftUserRows.map((user) => user.email),
-                );
+            // Update the right grid.
+            setRightUserRows(users);
+            setLoading(false);
+        };
 
-                // Compute all users not in the left grid.
-                let users: DGUserRow[] = [];
-                for (const user of jsonData) {
-                    if (!seen.has(user.email)) {
-                        const newRow: DGUserRow = { id: user.email, ...user };
-                        users = [...users, newRow];
-                    }
-                }
-
-                // Update the right grid.
-                setRightUserRows(users);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error("Error fetching data:", error);
-            });
+        loadGroups();
     }, [leftUserRows]);
 
     // When user clicks on a group we load all the users of that group into
     // the left list.
-    const handleGroupRowClick: GridEventListener<"rowClick"> = (params) => {
+    const handleGroupRowClick: GridEventListener<"rowClick"> = async (
+        params,
+    ) => {
         setSelectedGroup(params.row);
-        fetch(`/demo/api/uam/v1/groups/${params.id}/users`)
-            .then((response) => response.json())
-            .then((jsonData) => {
-                const rowData = jsonData.map((user: UAMUser) => {
-                    return { id: user.email, ...user } as DGUserRow;
-                });
-                setLeftUserRows(rowData);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error("Error fetching data:", error);
-            });
+
+        const ret = await httpGet(`/demo/api/uam/v1/groups/${params.id}/users`);
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+        const rowData = ret.data.map((user: UAMUser) => {
+            return { id: user.email, ...user } as DGUserRow;
+        });
+        setLeftUserRows(rowData);
+        setLoading(false);
     };
 
     const onMoveRightToLeft = () => {
@@ -379,6 +392,7 @@ export default function UAMGroups() {
                             isOpen={showAddGroup}
                             setIsOpen={setShowAddGroup}
                             setReloadGroups={setReloadGroups}
+                            errCtx={errCtx}
                         />
                     </Paper>
                 </Grid>
