@@ -110,7 +110,7 @@ async def revoke(request: Request):
     )
 
     # Revoke the user session.
-    del request.session["credentials"]
+    request.session.pop("credentials", None)
 
     if resp.status_code == 200:
         return "Credentials successfully revoked."
@@ -119,10 +119,11 @@ async def revoke(request: Request):
 
 
 @router.get("/clear-session")
-def clear_session_credentials(request: Request):
+def clear_session_credentials(request: Request, response: Response):
     """Clear the browser session."""
-    if "credentials" in request.session:
-        del request.session["credentials"]
+    request.session.pop("credentials", None)
+    request.session.pop("email", None)
+    response.delete_cookie("email")
     return "Credentials have been cleared.<br><br>"
 
 
