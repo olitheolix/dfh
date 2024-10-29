@@ -63,25 +63,61 @@ export const HTTPErrorContext = createContext<HTTPErrorContextType>({
  * response automatically raises an error with the status and response payload for improved
  * error management in calling components.
  */
-export const fetchApi = async (url: string, options: any) => {
+interface FetchApiResponse<T = any> {
+    data: T | null;
+    err: HTTPErrorType | null;
+}
+
+export const fetchApi = async <T = any,>(
+    url: string,
+    options: any,
+): Promise<FetchApiResponse<T>> => {
     try {
         const response = await fetch(url, options);
 
         if (!response.ok) {
             const errorData = await response.text();
-
-            throw {
+            const err: HTTPErrorType = {
                 status: response.status,
                 payload: errorData,
                 url: new URL(response.url),
                 method: options.method,
-            } as HTTPErrorType;
+            };
+            return { data: null, err }; // Return error with data as null
         }
 
-        return await response.json(); // Return the JSON payload for successful responses
+        const data = await response.json(); // Parse and return JSON payload
+        return { data, err: null }; // Return data with no error
     } catch (error) {
-        throw error; // Rethrow the error for handling in your component
+        const err: HTTPErrorType = {
+            status: 500, // Default to 500 for network or unexpected errors
+            payload: (error as Error).message,
+            url: new URL(url),
+            method: options.method,
+        };
+        return { data: null, err: err }; // Return error with data as null
     }
+};
+
+// Convenience wrappers.
+export const httpGet = async (url: string, options: any = {}) => {
+    options = { ...options, method: "GET" };
+    return await fetchApi(url, options);
+};
+
+export const httpPost = async (url: string, options: any = {}) => {
+    // Method is *always* POST whereas the user is free override the content type.
+    options = {
+        headers: { "Content-Type": "application/json", ...options.headers },
+        ...options,
+        method: "POST",
+    };
+    return await fetchApi(url, options);
+};
+
+export const httpDelete = async (url: string, options: any = {}) => {
+    options = { ...options, method: "DELETE" };
+    return await fetchApi(url, options);
 };
 
 /**

@@ -47,7 +47,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import { fetchApi, HTTPErrorContext } from "./WebRequests";
+import { httpGet, httpPost, HTTPErrorContext } from "./WebRequests";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -171,32 +171,26 @@ const GoogleSignInButton = ({
 }: {
     setUserEmail: React.Dispatch<React.SetStateAction<string>>;
 }) => {
+    const { showError } = useContext(HTTPErrorContext);
+
     const handleSuccess = async (response: any) => {
         console.log("Login Success:", response);
         // You can use the access token or profile data as per your need
 
         const token = response.access_token; // This is the ID token
 
-        try {
-            const apiResponse = await fetch(
-                "/demo/api/auth/validate-google-bearer-token",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ token: token }),
-                },
-            );
-
-            if (apiResponse.ok) {
-                const data = await apiResponse.json();
-                console.log("User authenticated:", data);
-                setUserEmail(Cookies.get("email") || "");
-            } else {
-                console.error("Failed to authenticate user");
-            }
-        } catch (error) {
-            console.error("Error sending token to backend:", error);
+        const ret = await httpPost(
+            "/demo/api/auth/validate-google-bearer-token",
+            {
+                body: JSON.stringify({ token: token }),
+            },
+        );
+        if (ret.err) {
+            showError(ret.err);
+            return;
         }
+        console.log("User authenticated:", ret.data);
+        setUserEmail(Cookies.get("email") || "");
     };
 
     const handleError = () => {
@@ -243,32 +237,29 @@ function ContextMenuLogout({
         setAnchorEl(null);
     };
 
-    const onLogout = () => {
+    const { showError } = useContext(HTTPErrorContext);
+    const onLogout = async () => {
         handleClose();
-        fetch("/demo/api/auth/clear-session")
-            .then((_) => {
-                setUserEmail("");
-            })
-            .catch((error) => {
-                console.error("Error fetching data: ", error);
-            });
+
+        const ret = await httpGet("/demo/api/auth/clear-session");
+        if (ret.err) {
+            showError(ret.err);
+            return;
+        }
+        setUserEmail("");
     };
 
-    const { showError } = useContext(HTTPErrorContext);
     const onLoadToken = async () => {
-        try {
-            const data: DFHToken = await fetchApi(
-                "/demo/api/auth/users/token",
-                {
-                    method: "GET",
-                },
-            );
-            setOpenTokenDialog(true);
-            setTokenValue(data.token);
-            handleClose();
-        } catch (error: any) {
-            showError(error);
+        const ret = await httpGet("/demo/api/auth/users/token");
+        if (ret.err) {
+            showError(ret.err);
+            return;
         }
+
+        const data: DFHToken = ret.data;
+        setOpenTokenDialog(true);
+        setTokenValue(data.token);
+        handleClose();
     };
 
     return (
