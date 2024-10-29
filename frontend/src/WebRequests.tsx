@@ -22,7 +22,7 @@ import {
 
 // The error context will provide access to a `showError` function. The child
 // components can then access that function via `HTTPErrorContext` defined below.
-interface HTTPErrorContextType {
+export interface HTTPErrorContextType {
     showError: (err: HTTPErrorType) => void;
 }
 

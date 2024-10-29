@@ -47,7 +47,12 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import { httpGet, httpPost, HTTPErrorContext } from "./WebRequests";
+import {
+    httpGet,
+    httpPost,
+    HTTPErrorContext,
+    HTTPErrorContextType,
+} from "./WebRequests";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -168,11 +173,11 @@ const defaultTheme = createTheme();
 // Show a Google signin button to trigger the
 const GoogleSignInButton = ({
     setUserEmail,
+    errCtx,
 }: {
     setUserEmail: React.Dispatch<React.SetStateAction<string>>;
+    errCtx: HTTPErrorContextType;
 }) => {
-    const { showError } = useContext(HTTPErrorContext);
-
     const handleSuccess = async (response: any) => {
         console.log("Login Success:", response);
         // You can use the access token or profile data as per your need
@@ -186,7 +191,7 @@ const GoogleSignInButton = ({
             },
         );
         if (ret.err) {
-            showError(ret.err);
+            errCtx.showError(ret.err);
             return;
         }
         console.log("User authenticated:", ret.data);
@@ -220,9 +225,11 @@ const GoogleSignInButton = ({
 function ContextMenuLogout({
     userEmail,
     setUserEmail,
+    errCtx,
 }: {
     userEmail: string;
     setUserEmail: React.Dispatch<React.SetStateAction<string>>;
+    errCtx: HTTPErrorContextType;
 }) {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [openTokenDialog, setOpenTokenDialog] =
@@ -237,13 +244,12 @@ function ContextMenuLogout({
         setAnchorEl(null);
     };
 
-    const { showError } = useContext(HTTPErrorContext);
     const onLogout = async () => {
         handleClose();
 
         const ret = await httpGet("/demo/api/auth/clear-session");
         if (ret.err) {
-            showError(ret.err);
+            errCtx.showError(ret.err);
             return;
         }
         setUserEmail("");
@@ -252,7 +258,7 @@ function ContextMenuLogout({
     const onLoadToken = async () => {
         const ret = await httpGet("/demo/api/auth/users/token");
         if (ret.err) {
-            showError(ret.err);
+            errCtx.showError(ret.err);
             return;
         }
 
@@ -411,6 +417,10 @@ export default function Dashboard() {
     const [userEmail, setUserEmail] = React.useState(
         Cookies.get("email") || "",
     );
+    const [errCtx, _] = React.useState<HTTPErrorContextType>(
+        useContext(HTTPErrorContext),
+    );
+
     const toggleDrawer = () => {
         setOpen(!open);
     };
@@ -503,6 +513,7 @@ export default function Dashboard() {
                                 <ContextMenuLogout
                                     userEmail={userEmail}
                                     setUserEmail={setUserEmail}
+                                    errCtx={errCtx}
                                 />
                             ) : null}
                         </Toolbar>
@@ -540,6 +551,7 @@ export default function Dashboard() {
                             {userEmail == "" ? (
                                 <GoogleSignInButton
                                     setUserEmail={setUserEmail}
+                                    errCtx={errCtx}
                                 />
                             ) : (
                                 <Outlet />
