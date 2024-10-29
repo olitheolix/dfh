@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid2";
 import Title from "./Title";
@@ -8,6 +8,7 @@ import { DataGrid, GridColDef, GridToolbar } from "@mui/x-data-grid";
 import { CircularProgress, Paper } from "@mui/material";
 import { UAMUser, UAMGroup, DGUserRow } from "./UAMInterfaces";
 import { GroupInfo } from "./UAMGroups";
+import { httpGet, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
 
 // Column headers of user table.
 const DataGridUserColumns = [
@@ -20,7 +21,7 @@ const DataGridUserColumns = [
 export default function UAMHierarchy() {
     const [loading, setLoading] = useState<boolean>(true);
     const [userGridRows, setUserGridRows] = useState<DGUserRow[]>([]);
-    const [userGridColumns, _] = useState<GridColDef[]>(DataGridUserColumns);
+    const [userGridColumns] = useState<GridColDef[]>(DataGridUserColumns);
     const [groupHierarchy, setGroupHierarchy] = useState<UAMGroup>({
         name: "n/a",
         owner: "n/a",
@@ -35,35 +36,39 @@ export default function UAMHierarchy() {
         children: {},
         users: {},
     });
+    const [errCtx, _] = useState<HTTPErrorContextType>(
+        useContext(HTTPErrorContext),
+    );
 
     // Load the group hierarchy upon mounting the component.
     useEffect(() => {
-        fetch("/demo/api/uam/v1/tree")
-            .then((response) => response.json())
-            .then((jsonData) => {
-                setGroupHierarchy(jsonData);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error("Error fetching data:", error);
-            });
+        const fetchTree = async () => {
+            const ret = await httpGet("/demo/api/uam/v1/tree");
+            if (ret.err) {
+                errCtx.showError(ret.err);
+                return;
+            }
+            setGroupHierarchy(ret.data);
+            setLoading(false);
+        };
+        fetchTree();
     }, []);
 
     // User clicks on a group in the tree:
     // * load all the users of that group into the data grid.
-    const onGroupTreeClick = (group: UAMGroup) => {
-        fetch(`/demo/api/uam/v1/groups/${group.name}/users?recursive=1`)
-            .then((response) => response.json())
-            .then((data) => {
-                const users: DGUserRow[] = data.map((user: UAMUser) => {
-                    return { id: user.email, ...user } as DGUserRow;
-                });
-                setUserGridRows(users);
-                setSelectedGroup(group);
-            })
-            .catch((error) => {
-                console.error("Error fetching data:", error);
-            });
+    const onGroupTreeClick = async (group: UAMGroup) => {
+        const ret = await httpGet(
+            `/demo/api/uam/v1/groups/${group.name}/users?recursive=1`,
+        );
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+        const users: DGUserRow[] = ret.data.map((user: UAMUser) => {
+            return { id: user.email, ...user } as DGUserRow;
+        });
+        setUserGridRows(users);
+        setSelectedGroup(group);
     };
 
     // Recursive function to render the group hierarchy.
