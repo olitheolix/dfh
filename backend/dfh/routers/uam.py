@@ -142,7 +142,7 @@ def post_group_members(name: str, emails: List[str]):
     The supplied email list is canonical and will replace the existing users of
     that list.
 
-    This endpoint does nothing if one or more `emails` do not exist.
+    This endpoint does nothing unless all `emails` exist.
 
     """
     if name not in UAM_DB.groups:
