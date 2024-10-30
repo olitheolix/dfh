@@ -2,24 +2,24 @@ import React from "react";
 import { useState, useEffect, useContext } from "react";
 import {
     DataGrid,
-    GridToolbar,
     GridEventListener,
-    GridSortModel,
     GridRowSelectionModel,
+    GridSortModel,
+    GridToolbar,
 } from "@mui/x-data-grid";
 import {
-    IconButton,
-    CircularProgress,
-    Button,
-    Paper,
-    Typography,
-    Box,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     Autocomplete,
+    Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    Paper,
     TextField,
+    Typography,
 } from "@mui/material";
 import { UAMUser, UAMGroup, DGUserRow, DGGroupRow } from "./UAMInterfaces";
 import Grid from "@mui/material/Grid2";

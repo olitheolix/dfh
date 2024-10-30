@@ -86,9 +86,13 @@ export const fetchApi = async <T = any,>(
             return { data: null, err }; // Return error with data as null
         }
 
+        if (options.method == "DELETE") {
+            return { data: null, err: null };
+        }
         const data = await response.json(); // Parse and return JSON payload
         return { data, err: null }; // Return data with no error
     } catch (error) {
+        console.log(error);
         const err: HTTPErrorType = {
             status: 500, // Default to 500 for network or unexpected errors
             payload: (error as Error).message,
