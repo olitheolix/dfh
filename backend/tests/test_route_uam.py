@@ -272,6 +272,7 @@ class TestUserAccessManagement:
         for group in groups:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
 
+        foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         blahchild = UAMChild(child="blah").model_dump()
 
@@ -283,7 +284,12 @@ class TestUserAccessManagement:
         assert client.post("/groups/foo/children", json=blahchild).status_code == 404
         assert len(get_groups(client)) == 2
 
-        # Make `bar` a child of `foo` to test basic deletion scenarios.
+        # Create root -> `foo` -> `bar` for basic deletion tests.
+        root_name = uam.UAM_DB.root.name
+        assert (
+            client.post(f"/groups/{root_name}/children", json=foochild).status_code
+            == 201
+        )
         assert client.post("/groups/foo/children", json=barchild).status_code == 201
 
         # Must reject attempt to delete an existing child of a non-existing group.

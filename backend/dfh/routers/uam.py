@@ -168,7 +168,7 @@ def post_add_child_group(name: str, new: UAMChild):
 
     """
     try:
-        parent = UAM_DB.groups[name]
+        parent = UAM_DB.root if name == UAM_DB.root.name else UAM_DB.groups[name]
         child = UAM_DB.groups[new.child]
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
@@ -183,7 +183,7 @@ def post_add_child_group(name: str, new: UAMChild):
 
     # Ensure the descendants of the child do not contain the parent.
     if is_descendant(parent.name, child):
-        raise HTTPException(status_code=409, detail=f"parent is a descendant of child")
+        raise HTTPException(status_code=409, detail="parent is a descendant of child")
 
     parent.children[child.name] = child
 
