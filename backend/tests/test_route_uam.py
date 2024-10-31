@@ -268,7 +268,7 @@ class TestUserAccessManagement:
             UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
         ]
 
-        # Create the groups and users.
+        # Create the groups.
         for group in groups:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
 
@@ -277,18 +277,32 @@ class TestUserAccessManagement:
 
         # Must reject attempt to add an existing child to a non-existing group.
         assert client.post("/groups/blah/children", json=barchild).status_code == 404
+        assert len(get_groups(client)) == 2
 
         # Must reject attempt to add a non-existing child to an existing group.
         assert client.post("/groups/foo/children", json=blahchild).status_code == 404
+        assert len(get_groups(client)) == 2
 
         # Make `bar` a child of `foo` to test basic deletion scenarios.
         assert client.post("/groups/foo/children", json=barchild).status_code == 201
 
         # Must reject attempt to delete an existing child of a non-existing group.
         assert client.delete("/groups/blah/children/bar").status_code == 404
+        assert len(get_groups(client)) == 2
 
         # Must permit attempt to remove a non-existing child (just does nothing).
         assert client.delete("/groups/bar/children/blah").status_code == 204
+        assert len(get_groups(client)) == 2
+
+        # Must permit to remove `bar` from `foo`. Note: this must not delete
+        # the group, merely unlink it.
+        assert client.delete("/groups/foo/children/bar").status_code == 204
+        assert len(get_groups(client)) == 2
+
+        # Must permit to remove `foo` from root node.
+        root_name = uam.UAM_DB.root.name
+        assert client.delete(f"/groups/{root_name}/children/foo").status_code == 204
+        assert len(get_groups(client)) == 2
 
     def test_add_remove_children(self, client: TestClient):
         """Add and remove child groups."""
@@ -297,7 +311,7 @@ class TestUserAccessManagement:
             UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
         ]
 
-        # Create the groups and users.
+        # Create the groups.
         for group in groups:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
 

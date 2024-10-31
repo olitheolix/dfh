@@ -193,10 +193,13 @@ def post_add_child_group(name: str, new: UAMChild):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={404: RESPONSE_404},
 )
-def delete_child_from_group(parent: str, child: str):
-    """Remove the child group from the parent."""
+def unlink_child_from_group(parent: str, child: str):
+    """Remove the child group from the parent.
+
+    This does *not* delete the group, only remove it as a child of the parent group.
+    """
     try:
-        group = UAM_DB.groups[parent]
+        group = UAM_DB.root if parent == UAM_DB.root.name else UAM_DB.groups[parent]
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
 
