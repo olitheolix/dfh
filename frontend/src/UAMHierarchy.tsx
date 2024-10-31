@@ -305,9 +305,9 @@ export default function UAMHierarchy() {
                     showAddRemoveMenu(event, parentName, node.name)
                 }
             >
-                {Object.entries(node.children).map(([_, child]) =>
-                    renderTree(child, cur, node.name),
-                )}
+                {Object.entries(node.children)
+                    .sort(([, a], [, b]) => a.name.localeCompare(b.name)) // Sort by `name` of each child node
+                    .map(([_, child]) => renderTree(child, cur, node.name))}
             </TreeItem>
         );
     };
