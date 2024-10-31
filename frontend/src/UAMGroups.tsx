@@ -6,6 +6,7 @@ import {
     GridRowSelectionModel,
     GridSortModel,
     GridToolbar,
+    useGridApiRef,
 } from "@mui/x-data-grid";
 import {
     Autocomplete,
@@ -178,6 +179,9 @@ function removeDuplicateIds(data: any[]) {
 }
 
 export default function UAMGroups() {
+    const apiRefLeft = useGridApiRef();
+    const apiRefRight = useGridApiRef();
+
     const [loading, setLoading] = useState<boolean>(true);
     const [reloadGroups, setReloadGroups] = useState<boolean>(false);
     const [groupRows, setGroupRows] = useState<DGGroupRow[]>([]);
@@ -219,8 +223,7 @@ export default function UAMGroups() {
     // users were added/removed from the selected group.
     useEffect(() => {
         // Do nothing unless a group was selected. This special case occurs when
-        // the component initially mounts and no record is selected in the
-        // DataGrid of the groups yet.
+        // the component mounts and has no record selected yet.
         if (selectedGroup.id == "") return;
 
         const loadGroups = async () => {
@@ -286,13 +289,23 @@ export default function UAMGroups() {
 
     const onMoveRightToLeft = () => {
         const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
-        setLeftUserRows(removeDuplicateIds([...leftUserRows, ...itemsToMove]));
         setRightSelected([]);
+        setLeftUserRows(removeDuplicateIds([...leftUserRows, ...itemsToMove]));
+
+        // Ensure that all items on the right are now deselected. This works
+        // around the problem where removed rows remain selected which creates
+        // an odd UX when moving users back and forth.
+        apiRefRight.current?.setRowSelectionModel([]);
     };
 
     const onMoveLeftToRight = () => {
-        setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
         setLeftSelected([]);
+        setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
+
+        // Ensure that all items on the left are now deselected. This works
+        // around the problem where removed rows remain selected which creates
+        // an odd UX when moving users back and forth.
+        apiRefLeft.current?.setRowSelectionModel([]);
     };
 
     const onSelectLeft = (selection: GridRowSelectionModel) => {
@@ -377,6 +390,7 @@ export default function UAMGroups() {
                         <Title>Users in {selectedGroup.name}</Title>
                         <Box height="70vh">
                             <DataGrid
+                                apiRef={apiRefLeft}
                                 checkboxSelection
                                 disableColumnSelector
                                 rows={leftUserRows}
@@ -417,6 +431,7 @@ export default function UAMGroups() {
                         <Title>Unassigned Users</Title>
                         <Box height="70vh">
                             <DataGrid
+                                apiRef={apiRefRight}
                                 checkboxSelection
                                 disableColumnSelector
                                 rows={rightUserRows}
