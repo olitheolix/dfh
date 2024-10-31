@@ -20,11 +20,7 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
         setPairs(updatedPairs);
     };
 
-    const handleChange = (
-        index: number,
-        field: "name" | "value",
-        value: string,
-    ) => {
+    const handleChange = (index: number, field: "name" | "value", value: string) => {
         const updatedPairs: K8sEnvVar[] = [...pairs];
         updatedPairs[index][field] = value;
         setPairs(updatedPairs);
@@ -40,9 +36,7 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.name}
-                            onChange={(e) =>
-                                handleChange(index, "name", e.target.value)
-                            }
+                            onChange={(e) => handleChange(index, "name", e.target.value)}
                         />
                     </Grid>
                     <Grid item xs={4}>
@@ -51,9 +45,7 @@ export default function EnvVarTable({ pairs, setPairs }: EnvVarTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.value}
-                            onChange={(e) =>
-                                handleChange(index, "value", e.target.value)
-                            }
+                            onChange={(e) => handleChange(index, "value", e.target.value)}
                         />
                     </Grid>
                     <Grid item>

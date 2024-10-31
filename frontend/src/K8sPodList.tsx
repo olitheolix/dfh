@@ -7,13 +7,7 @@ import { PodList } from "./BackendInterfaces";
 
 const label = { inputProps: { "aria-label": "Switch demo" } };
 
-export default function K8sPodList({
-    appId,
-    envId,
-}: {
-    appId: string;
-    envId: string;
-}) {
+export default function K8sPodList({ appId, envId }: { appId: string; envId: string }) {
     const columnDefs: GridColDef[] = [
         { field: "namespace", headerName: "Namespace", width: 150 },
         { field: "name", headerName: "Name", width: 350 },

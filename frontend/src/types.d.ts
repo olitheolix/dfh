@@ -7,11 +7,7 @@ declare module "js-cookie" {
         sameSite?: "lax" | "strict" | "none";
     }
 
-    function set(
-        name: string,
-        value: string | object,
-        options?: CookieAttributes,
-    ): string;
+    function set(name: string, value: string | object, options?: CookieAttributes): string;
     function get(name: string): string | undefined;
     function remove(name: string, options?: CookieAttributes): void;
     function getJSON(name: string): any | undefined;

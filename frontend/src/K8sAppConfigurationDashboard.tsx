@@ -15,9 +15,7 @@ export default function K8sAppConfigurationDashboard() {
             <Grid container spacing={3}>
                 {/* Configure App */}
                 <Grid item xs={12}>
-                    <Paper
-                        sx={{ p: 2, display: "flex", flexDirection: "column" }}
-                    >
+                    <Paper sx={{ p: 2, display: "flex", flexDirection: "column" }}>
                         <K8sAppConfigurationDialog
                             isLoading={isLoading}
                             setIsLoading={setIsLoading}
@@ -27,13 +25,8 @@ export default function K8sAppConfigurationDashboard() {
 
                 {/* Show Pods */}
                 <Grid item xs={12}>
-                    <Paper
-                        sx={{ p: 2, display: "flex", flexDirection: "column" }}
-                    >
-                        <K8sPodList
-                            appId={appId as string}
-                            envId={envId as string}
-                        />
+                    <Paper sx={{ p: 2, display: "flex", flexDirection: "column" }}>
+                        <K8sPodList appId={appId as string} envId={envId as string} />
                     </Paper>
                 </Grid>
             </Grid>

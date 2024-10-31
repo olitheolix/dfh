@@ -27,12 +27,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Title from "./Title";
 import EditIcon from "@mui/icons-material/Edit";
-import {
-    httpGet,
-    httpPost,
-    HTTPErrorContext,
-    HTTPErrorContextType,
-} from "./WebRequests";
+import { httpGet, httpPost, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
 
 const DataGridGroupColumns = [{ field: "name", headerName: "Name", flex: 1 }];
 const DataGridUserColumns = [
@@ -144,12 +139,7 @@ function ShowAddGroup({
                                 setGroupOwner(newValue || "");
                             }}
                             renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="owner"
-                                    variant="standard"
-                                    fullWidth
-                                />
+                                <TextField {...params} label="owner" variant="standard" fullWidth />
                             )}
                         />
                     </Grid>
@@ -194,9 +184,7 @@ export default function UAMGroups() {
     const [leftUserRows, setLeftUserRows] = useState<DGUserRow[]>([]);
     const [rightUserRows, setRightUserRows] = useState<DGUserRow[]>([]);
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
-    const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>(
-        [],
-    );
+    const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
     const [showAddGroup, setShowAddGroup] = useState<boolean>(false);
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
@@ -206,9 +194,7 @@ export default function UAMGroups() {
         users: {},
         children: {},
     });
-    const [errCtx, _] = React.useState<HTTPErrorContextType>(
-        useContext(HTTPErrorContext),
-    );
+    const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));
 
     const loadGroups = async () => {
         const ret = await httpGet("/demo/api/uam/v1/groups");
@@ -241,14 +227,9 @@ export default function UAMGroups() {
             // ----------------------------------------------------------------------
             // Set the users of the selected group based on the new content in the left grid.
             // ----------------------------------------------------------------------
-            let ret = await httpPost(
-                `/demo/api/uam/v1/groups/${selectedGroup.id}/users`,
-                {
-                    body: JSON.stringify(
-                        leftUserRows.map((user) => user.email),
-                    ),
-                },
-            );
+            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.id}/users`, {
+                body: JSON.stringify(leftUserRows.map((user) => user.email)),
+            });
             if (ret.err) {
                 errCtx.showError(ret.err);
                 return;
@@ -264,9 +245,7 @@ export default function UAMGroups() {
                 return;
             }
             // Compile set of IDs in left grid.
-            const seen: Set<string> = new Set(
-                leftUserRows.map((user) => user.email),
-            );
+            const seen: Set<string> = new Set(leftUserRows.map((user) => user.email));
 
             // Compute all users not in the left grid.
             let users: DGUserRow[] = [];
@@ -290,9 +269,7 @@ export default function UAMGroups() {
 
     // When user clicks on a group we load all the users of that group into
     // the left list.
-    const handleGroupRowClick: GridEventListener<"rowClick"> = async (
-        params,
-    ) => {
+    const handleGroupRowClick: GridEventListener<"rowClick"> = async (params) => {
         setSelectedGroup(params.row);
 
         const ret = await httpGet(`/demo/api/uam/v1/groups/${params.id}/users`);
@@ -308,17 +285,13 @@ export default function UAMGroups() {
     };
 
     const onMoveRightToLeft = () => {
-        const itemsToMove = rightUserRows.filter((item) =>
-            rightSelected.includes(item.id),
-        );
+        const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
         setLeftUserRows(removeDuplicateIds([...leftUserRows, ...itemsToMove]));
         setRightSelected([]);
     };
 
     const onMoveLeftToRight = () => {
-        setLeftUserRows(
-            leftUserRows.filter((item) => !leftSelected.includes(item.id)),
-        );
+        setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
         setLeftSelected([]);
     };
 
@@ -338,12 +311,7 @@ export default function UAMGroups() {
     // Either show the spinner or the page content.
     if (loading) {
         return (
-            <Grid
-                container
-                justifyContent="center"
-                alignItems="center"
-                style={{ height: "100vh" }}
-            >
+            <Grid container justifyContent="center" alignItems="center" style={{ height: "100vh" }}>
                 <Grid>
                     {" "}
                     <CircularProgress />{" "}
@@ -428,24 +396,11 @@ export default function UAMGroups() {
                 </Grid>
 
                 {/* Show left/right buttons to transfer users. */}
-                <Grid
-                    container
-                    size={0.5}
-                    justifyContent="center"
-                    direction="column"
-                >
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={onMoveLeftToRight}
-                    >
+                <Grid container size={0.5} justifyContent="center" direction="column">
+                    <Button variant="contained" color="primary" onClick={onMoveLeftToRight}>
                         <ArrowForwardIcon />
                     </Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={onMoveRightToLeft}
-                    >
+                    <Button variant="contained" color="primary" onClick={onMoveRightToLeft}>
                         <ArrowBackIcon />
                     </Button>
                 </Grid>

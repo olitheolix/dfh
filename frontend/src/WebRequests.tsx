@@ -138,9 +138,7 @@ export const httpDelete = async (url: string, options: any = {}) => {
  *
  * - `showError(status: number, payload: any)`: Function to trigger an error dialog with a status code and additional error data.
  */
-export const HTTPErrorProvider: React.FC<{ children: React.ReactNode }> = ({
-    children,
-}) => {
+export const HTTPErrorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Convenience: default error value that is tantamount to no error.
     const NoError: HTTPErrorType = {
         status: 0,
@@ -164,9 +162,7 @@ export const HTTPErrorProvider: React.FC<{ children: React.ReactNode }> = ({
     return (
         <HTTPErrorContext.Provider value={{ showError }}>
             {/* Insert the error dialog whenever the error status is non-zero.*/}
-            {error.status ? (
-                <HTTPErrorDialog httpError={error} onClose={clearError} />
-            ) : null}
+            {error.status ? <HTTPErrorDialog httpError={error} onClose={clearError} /> : null}
             {children}
         </HTTPErrorContext.Provider>
     );
