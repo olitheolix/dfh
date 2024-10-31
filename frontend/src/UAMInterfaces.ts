@@ -27,3 +27,7 @@ export interface DFHToken {
     email: string;
     token: string;
 }
+
+export interface UAMChild {
+    child: string;
+}
