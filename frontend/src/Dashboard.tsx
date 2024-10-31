@@ -6,12 +6,7 @@ import Cookies from "js-cookie";
 
 import MuiDrawer from "@mui/material/Drawer";
 import AccountTree from "@mui/icons-material/AccountTree";
-import {
-    alpha,
-    styled,
-    createTheme,
-    ThemeProvider,
-} from "@mui/material/styles";
+import { alpha, styled, createTheme, ThemeProvider } from "@mui/material/styles";
 import {
     Box,
     Button,
@@ -47,12 +42,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import {
-    httpGet,
-    httpPost,
-    HTTPErrorContext,
-    HTTPErrorContextType,
-} from "./WebRequests";
+import { httpGet, httpPost, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -101,12 +91,7 @@ const StyledMenu = styled((props: MenuProps) => (
 
 function Copyright(props: any) {
     return (
-        <Typography
-            variant="body2"
-            color="text.secondary"
-            align="center"
-            {...props}
-        >
+        <Typography variant="body2" color="text.secondary" align="center" {...props}>
             {"Copyright © "}
             <Link color="inherit" href="https://github.com/olitheolix/dfh">
                 Oliver Nagy
@@ -184,12 +169,9 @@ const GoogleSignInButton = ({
 
         const token = response.access_token; // This is the ID token
 
-        const ret = await httpPost(
-            "/demo/api/auth/validate-google-bearer-token",
-            {
-                body: JSON.stringify({ token: token }),
-            },
-        );
+        const ret = await httpPost("/demo/api/auth/validate-google-bearer-token", {
+            body: JSON.stringify({ token: token }),
+        });
         if (ret.err) {
             errCtx.showError(ret.err);
             return;
@@ -209,12 +191,7 @@ const GoogleSignInButton = ({
     });
 
     return (
-        <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            height="80vh"
-        >
+        <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
             <Button variant="contained" color="primary" onClick={() => login()}>
                 Sign in with Google
             </Button>
@@ -232,8 +209,7 @@ function ContextMenuLogout({
     errCtx: HTTPErrorContextType;
 }) {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    const [openTokenDialog, setOpenTokenDialog] =
-        React.useState<boolean>(false);
+    const [openTokenDialog, setOpenTokenDialog] = React.useState<boolean>(false);
     const [tokenValue, setTokenValue] = React.useState<string>("");
     const open = Boolean(anchorEl);
 
@@ -318,9 +294,7 @@ function ShowAPITokenDialog({
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     tokenValue: string;
 }) {
-    const [curlExample, setCurlExample] = React.useState(
-        Cookies.get("email") || "",
-    );
+    const [curlExample, setCurlExample] = React.useState(Cookies.get("email") || "");
 
     const handleClose = () => {
         setIsOpen(false);
@@ -341,12 +315,7 @@ function ShowAPITokenDialog({
     }, [tokenValue]);
 
     return (
-        <Dialog
-            open={isOpen}
-            onClose={handleClose}
-            maxWidth="xl"
-            fullWidth={true}
-        >
+        <Dialog open={isOpen} onClose={handleClose} maxWidth="xl" fullWidth={true}>
             <DialogTitle>API Token</DialogTitle>
             <DialogContent>
                 <Typography variant="body1" gutterBottom>
@@ -388,10 +357,7 @@ function ShowAPITokenDialog({
                         style={{ margin: 0, fontFamily: "monospace" }}
                     >
                         <Tooltip title="Copy to Clipboard" arrow>
-                            <IconButton
-                                onClick={handleCopyCurlExample}
-                                size="small"
-                            >
+                            <IconButton onClick={handleCopyCurlExample} size="small">
                                 <ContentCopyIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
@@ -400,11 +366,7 @@ function ShowAPITokenDialog({
                 </Box>
             </DialogContent>
             <DialogActions>
-                <Button
-                    onClick={handleClose}
-                    color="primary"
-                    variant="contained"
-                >
+                <Button onClick={handleClose} color="primary" variant="contained">
                     OK
                 </Button>
             </DialogActions>
@@ -414,12 +376,8 @@ function ShowAPITokenDialog({
 
 export default function Dashboard() {
     const [open, setOpen] = React.useState(true);
-    const [userEmail, setUserEmail] = React.useState(
-        Cookies.get("email") || "",
-    );
-    const [errCtx, _] = React.useState<HTTPErrorContextType>(
-        useContext(HTTPErrorContext),
-    );
+    const [userEmail, setUserEmail] = React.useState(Cookies.get("email") || "");
+    const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));
 
     const toggleDrawer = () => {
         setOpen(!open);
@@ -549,10 +507,7 @@ export default function Dashboard() {
                         <Toolbar />
                         <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
                             {userEmail == "" ? (
-                                <GoogleSignInButton
-                                    setUserEmail={setUserEmail}
-                                    errCtx={errCtx}
-                                />
+                                <GoogleSignInButton setUserEmail={setUserEmail} errCtx={errCtx} />
                             ) : (
                                 <Outlet />
                             )}

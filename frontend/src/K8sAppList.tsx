@@ -33,9 +33,7 @@ export default function K8sAppList() {
                             </Link>
 
                             {/*Add some white space after each Link except the last one*/}
-                            {index !== params.value.length - 1 && (
-                                <span>&nbsp;&nbsp;</span>
-                            )}
+                            {index !== params.value.length - 1 && <span>&nbsp;&nbsp;</span>}
                         </React.Fragment>
                     ))}
                 </div>
@@ -51,17 +49,14 @@ export default function K8sAppList() {
             fetch("/demo/api/crt/v1/apps")
                 .then((response) => response.json())
                 .then((jsonData) => {
-                    const appList: AppEnvOverview[] =
-                        jsonData as AppEnvOverview[];
+                    const appList: AppEnvOverview[] = jsonData as AppEnvOverview[];
 
                     // Augment each row with a third column that houses a Switch.
                     const rowsWithId: RowWithId[] = appList.map((row) => {
-                        const envLinks: EnvLink[] = row.envs.map(
-                            (env: string) => ({
-                                url: `/demo/app/${row.name}/${env}`,
-                                label: env,
-                            }),
-                        );
+                        const envLinks: EnvLink[] = row.envs.map((env: string) => ({
+                            url: `/demo/app/${row.name}/${env}`,
+                            label: env,
+                        }));
 
                         return {
                             id: row.id,

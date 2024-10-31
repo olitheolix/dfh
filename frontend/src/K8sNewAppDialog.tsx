@@ -15,12 +15,7 @@ import {
 // Import Custom components.
 import Title from "./Title";
 import { Paper, Typography } from "@mui/material";
-import {
-    AppPrimary,
-    AppCanary,
-    AppMetadata,
-    AppSpec,
-} from "./BackendInterfaces";
+import { AppPrimary, AppCanary, AppMetadata, AppSpec } from "./BackendInterfaces";
 
 function CreateAppComponent({
     meta,
@@ -230,16 +225,13 @@ export default function K8sNewAppDialog() {
 
         console.log("To backend: ", data);
         try {
-            const response = await fetch(
-                `/demo/api/crt/v1/apps/${meta.name}/${meta.env}`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(data),
+            const response = await fetch(`/demo/api/crt/v1/apps/${meta.name}/${meta.env}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-            );
+                body: JSON.stringify(data),
+            });
 
             if (!response.ok) {
                 throw new Error("Failed to make DELETE request");
@@ -262,12 +254,7 @@ export default function K8sNewAppDialog() {
             >
                 <Title>Create New Application</Title>
 
-                <Grid
-                    container
-                    spacing={2}
-                    alignItems="left"
-                    justifyContent="left"
-                >
+                <Grid container spacing={2} alignItems="left" justifyContent="left">
                     <Grid item xs={4}>
                         <Typography>Project</Typography>
                         <DropdownComponent />
@@ -281,11 +268,7 @@ export default function K8sNewAppDialog() {
                 <p />
                 <Grid container alignItems="center" justifyContent="right">
                     <Grid item>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={onClickApply}
-                        >
+                        <Button variant="contained" color="primary" onClick={onClickApply}>
                             Create
                         </Button>
                     </Grid>

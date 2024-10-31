@@ -19,11 +19,7 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
         setPairs(updatedPairs);
     };
 
-    const handleChange = (
-        index: number,
-        field: "key" | "value",
-        value: string,
-    ) => {
+    const handleChange = (index: number, field: "key" | "value", value: string) => {
         const updatedPairs = [...pairs];
         updatedPairs[index][field] = value;
         setPairs(updatedPairs);
@@ -39,9 +35,7 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.key}
-                            onChange={(e) =>
-                                handleChange(index, "key", e.target.value)
-                            }
+                            onChange={(e) => handleChange(index, "key", e.target.value)}
                         />
                     </Grid>
                     <Grid item xs={4}>
@@ -50,9 +44,7 @@ export default function KeyValueTable({ pairs, setPairs }: KeyValueTableIfx) {
                             variant="standard"
                             fullWidth
                             value={pair.value}
-                            onChange={(e) =>
-                                handleChange(index, "value", e.target.value)
-                            }
+                            onChange={(e) => handleChange(index, "value", e.target.value)}
                         />
                     </Grid>
                     <Grid item>

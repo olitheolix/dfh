@@ -218,9 +218,7 @@ function CanaryConfigComponent({
                         <ContainerImageComponent
                             appRes={appRes}
                             setAppRes={
-                                setAppRes as React.Dispatch<
-                                    React.SetStateAction<AppPrimary>
-                                >
+                                setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>
                             }
                         />
                     </div>
@@ -228,9 +226,7 @@ function CanaryConfigComponent({
                         <RequestAndLimitsComponent
                             appRes={appRes}
                             setAppRes={
-                                setAppRes as React.Dispatch<
-                                    React.SetStateAction<AppPrimary>
-                                >
+                                setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>
                             }
                         />
                     </div>
@@ -238,9 +234,7 @@ function CanaryConfigComponent({
                         <ServiceConfigComponent
                             appRes={appRes}
                             setAppRes={
-                                setAppRes as React.Dispatch<
-                                    React.SetStateAction<AppPrimary>
-                                >
+                                setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>
                             }
                         />
                     </div>
@@ -249,9 +243,7 @@ function CanaryConfigComponent({
                             appRes={appRes}
                             probeKind="live"
                             setAppRes={
-                                setAppRes as React.Dispatch<
-                                    React.SetStateAction<AppPrimary>
-                                >
+                                setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>
                             }
                         />
                     </div>
@@ -260,9 +252,7 @@ function CanaryConfigComponent({
                             appRes={appRes}
                             probeKind="ready"
                             setAppRes={
-                                setAppRes as React.Dispatch<
-                                    React.SetStateAction<AppPrimary>
-                                >
+                                setAppRes as React.Dispatch<React.SetStateAction<AppPrimary>>
                             }
                         />
                     </div>
@@ -270,16 +260,10 @@ function CanaryConfigComponent({
                         <EnvVarsComponent pairs={envars} setPairs={setEnvars} />
                     </div>
                     <div>
-                        <SecretComponent
-                            pairs={secrets}
-                            setPairs={setSecrets}
-                        />
+                        <SecretComponent pairs={secrets} setPairs={setSecrets} />
                     </div>
                     <div>
-                        <CanaryTrafficComponent
-                            appRes={appRes}
-                            setAppRes={setAppRes}
-                        />
+                        <CanaryTrafficComponent appRes={appRes} setAppRes={setAppRes} />
                     </div>
                 </AccordionDetails>
             </Accordion>
@@ -314,22 +298,13 @@ function PrimaryConfigComponent({
                 </AccordionSummary>
                 <AccordionDetails>
                     <div>
-                        <ContainerImageComponent
-                            appRes={appRes}
-                            setAppRes={setAppRes}
-                        />
+                        <ContainerImageComponent appRes={appRes} setAppRes={setAppRes} />
                     </div>
                     <div>
-                        <RequestAndLimitsComponent
-                            appRes={appRes}
-                            setAppRes={setAppRes}
-                        />
+                        <RequestAndLimitsComponent appRes={appRes} setAppRes={setAppRes} />
                     </div>
                     <div>
-                        <ServiceConfigComponent
-                            appRes={appRes}
-                            setAppRes={setAppRes}
-                        />
+                        <ServiceConfigComponent appRes={appRes} setAppRes={setAppRes} />
                     </div>
                     <div>
                         <HealthProbeComponent
@@ -349,10 +324,7 @@ function PrimaryConfigComponent({
                         <EnvVarsComponent pairs={envars} setPairs={setEnvars} />
                     </div>
                     <div>
-                        <SecretComponent
-                            pairs={secrets}
-                            setPairs={setSecrets}
-                        />
+                        <SecretComponent pairs={secrets} setPairs={setSecrets} />
                     </div>
                 </AccordionDetails>
             </Accordion>
@@ -375,8 +347,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
     return (
         <React.Fragment>
             <Grid container spacing={3} alignItems="center">
-                <Grid item xs={1} />{" "}
-                {/* Spacer to push text fields to the right */}
+                <Grid item xs={1} /> {/* Spacer to push text fields to the right */}
                 <Grid item xs={2}>
                     <Autocomplete
                         freeSolo
@@ -459,12 +430,9 @@ function HealthProbeComponent({
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary | AppCanary>>;
     probeKind: "live" | "ready";
 }) {
-    const probeType: string =
-        probeKind == "live" ? "livenessProbe" : "readinessProbe";
-    const useProbeType: string =
-        probeKind == "live" ? "useLivenessProbe" : "useReadinessProbe";
-    const labelName: string =
-        probeKind == "live" ? "Liveness Probe" : "Readiness Probe";
+    const probeType: string = probeKind == "live" ? "livenessProbe" : "readinessProbe";
+    const useProbeType: string = probeKind == "live" ? "useLivenessProbe" : "useReadinessProbe";
+    const labelName: string = probeKind == "live" ? "Liveness Probe" : "Readiness Probe";
 
     const handleSwitchChange = () => {
         setAppRes((prevObject: AppPrimary | AppCanary) => {
@@ -647,12 +615,7 @@ function ServiceConfigComponent({ appRes, setAppRes }: AppResourcePropIfx) {
         <React.Fragment>
             {/* Services */}
             <FormControlLabel
-                control={
-                    <Switch
-                        checked={appRes.useService}
-                        onChange={handleSwitchChange}
-                    />
-                }
+                control={<Switch checked={appRes.useService} onChange={handleSwitchChange} />}
                 label="Service"
             />
             {appRes.useService && (
@@ -747,8 +710,7 @@ function ShowPlanComponent({
         let out: JSX.Element[] = [];
         out.push(
             <Typography key={key} sx={{ color: amber[500] }}>
-                Patch {el.meta.kind.toUpperCase()} {el.meta.namespace}/
-                {el.meta.name}
+                Patch {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}
             </Typography>,
         );
         out.push(...el.diff.split("\n").map(renderDiff));
@@ -763,18 +725,14 @@ function ShowPlanComponent({
         let out: JSX.Element[] = [];
         out.push(
             <Typography key={key} sx={{ color: green[500] }}>
-                Add {el.meta.kind.toUpperCase()} {el.meta.namespace}/
-                {el.meta.name}
+                Add {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}
             </Typography>,
         );
 
         // Convert manifest to string and display each line in green.
         const jsManifest = JSON.stringify(el.manifest, null, 4);
         const tmp = jsManifest.split("\n").map((line, index) => (
-            <Typography
-                key={key + index}
-                sx={{ color: green[500], whiteSpace: "pre-wrap" }}
-            >
+            <Typography key={key + index} sx={{ color: green[500], whiteSpace: "pre-wrap" }}>
                 {" "}
                 {line}
             </Typography>
@@ -791,8 +749,7 @@ function ShowPlanComponent({
         // Header element, eg "Delete DEPLOYMENT default/myapp"
         return (
             <Typography key={key} sx={{ color: red[500] }}>
-                Delete {el.meta.kind.toUpperCase()} {el.meta.namespace}/
-                {el.meta.name}
+                Delete {el.meta.kind.toUpperCase()} {el.meta.namespace}/{el.meta.name}
             </Typography>
         );
     };
@@ -816,19 +773,13 @@ function ShowPlanComponent({
         const toMod = `${deploymentPlan.patch.length} to modify`;
         const toDel = `${deploymentPlan.delete.length} to delete`;
 
-        out.push(
-            <Divider key={"summary-sep-1"} style={{ marginBottom: "20px" }} />,
-        );
+        out.push(<Divider key={"summary-sep-1"} style={{ marginBottom: "20px" }} />);
         out.push(
             <Typography component="div" variant="body1" key="summary">
-                <span style={{ color: "inherit", marginRight: "25px" }}>
-                    Plan:
-                </span>
+                <span style={{ color: "inherit", marginRight: "25px" }}>Plan:</span>
                 <span
                     style={{
-                        color: deploymentPlan.create.length
-                            ? "green"
-                            : "inherit",
+                        color: deploymentPlan.create.length ? "green" : "inherit",
                         marginRight: "25px",
                     }}
                 >
@@ -836,9 +787,7 @@ function ShowPlanComponent({
                 </span>
                 <span
                     style={{
-                        color: deploymentPlan.patch.length
-                            ? "orange"
-                            : "inherit",
+                        color: deploymentPlan.patch.length ? "orange" : "inherit",
                         marginRight: "25px",
                     }}
                 >
@@ -1088,9 +1037,7 @@ export default function K8sAppConfigurationDialog({
     const [primaryEnvars, setPrimaryEnvars] = useState<K8sEnvVar[]>([]);
     const [canaryEnvars, setCanaryEnvars] = useState<K8sEnvVar[]>([]);
 
-    const [primarySecrets, setPrimarySecrets] = useState<KeyValuePairType[]>(
-        [],
-    );
+    const [primarySecrets, setPrimarySecrets] = useState<KeyValuePairType[]>([]);
     const [canarySecrets, setCanarySecrets] = useState<KeyValuePairType[]>([]);
 
     const [primary, setPrimary] = useState<AppPrimary>(initialAppPrimary);
@@ -1124,9 +1071,7 @@ export default function K8sAppConfigurationDialog({
         const fetchData = async () => {
             // setIsLoading(true)
             try {
-                const response = await fetch(
-                    `/demo/api/crt/v1/apps/${appId}/${envId}`,
-                );
+                const response = await fetch(`/demo/api/crt/v1/apps/${appId}/${envId}`);
                 const data: AppSpec = await response.json();
                 console.log("From backend:", data);
 
@@ -1152,15 +1097,12 @@ export default function K8sAppConfigurationDialog({
         setIsLoading(true);
 
         try {
-            const response = await fetch(
-                `/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+            const response = await fetch(`/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-            );
+            });
 
             if (!response.ok) {
                 throw new Error("Failed to fetch");
@@ -1191,16 +1133,13 @@ export default function K8sAppConfigurationDialog({
 
         console.log("To backend: ", data);
         try {
-            const response = await fetch(
-                `/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`,
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(data),
+            const response = await fetch(`/demo/api/crt/v1/apps/${metaInfo.name}/${metaInfo.env}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-            );
+                body: JSON.stringify(data),
+            });
 
             if (!response.ok) {
                 throw new Error("Failed to fetch");
@@ -1229,12 +1168,7 @@ export default function K8sAppConfigurationDialog({
 
             {/* Flux */}
             <FormControlLabel
-                control={
-                    <Switch
-                        checked={primary.deployment.isFlux}
-                        onChange={onUpdateFlux}
-                    />
-                }
+                control={<Switch checked={primary.deployment.isFlux} onChange={onUpdateFlux} />}
                 label="Flux"
             />
             <FormControlLabel
@@ -1275,12 +1209,7 @@ export default function K8sAppConfigurationDialog({
 
             {/* Cancel/Apply button to request a plan from the backend.*/}
             <p />
-            <Grid
-                container
-                spacing={2}
-                alignItems="center"
-                justifyContent="space-between"
-            >
+            <Grid container spacing={2} alignItems="center" justifyContent="space-between">
                 <Grid item>
                     <Button
                         variant="contained"
@@ -1291,11 +1220,7 @@ export default function K8sAppConfigurationDialog({
                     </Button>
                 </Grid>
                 <Grid item>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={onClickApply}
-                    >
+                    <Button variant="contained" color="primary" onClick={onClickApply}>
                         Apply
                     </Button>
                 </Grid>
