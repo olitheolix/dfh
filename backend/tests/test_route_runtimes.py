@@ -551,7 +551,7 @@ class TestIntegration:
 
             # --- Request to implement the plan ---
             jd = JobDescription(jobId=plan.jobId)
-            ret = client.post(f"/v1/jobs", json=jd.model_dump())
+            ret = client.post("/v1/jobs", json=jd.model_dump())
             assert ret.status_code == 200
 
             for _ in range(10):
