@@ -226,41 +226,6 @@ class TestUserAccessManagement:
         group = UAMGroup.model_validate(resp.json())
         assert group.users == {_.email: _ for _ in demo_users[1:]}
 
-    def test_tree(self, client: TestClient):
-        # Root node must always exist and be empty initially.
-        root = get_tree(client)
-        assert root.provider == "none"
-        assert root.owner == "none"
-        assert len(root.users) == 0
-        assert len(root.children) == 0
-
-        groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
-        ]
-        users = [
-            UAMUser(email="foo@blah.com", name="n1", lanid=f"l1", slack=f"s1"),
-            UAMUser(email="bar@blah.com", name="n2", lanid=f"l2", slack=f"s2"),
-        ]
-
-        # Create the groups and users.
-        for user in users:
-            assert client.post("/users", json=user.model_dump()).status_code == 201
-        for group in groups:
-            assert client.post("/groups", json=group.model_dump()).status_code == 201
-        assert add_users_to_group(client, "foo", users[:1]).status_code == 201
-        assert add_users_to_group(client, "bar", users[1:]).status_code == 201
-
-        # Root node must now contain the two groups. However, those groups must
-        # not contain any users to save space when transmitting this to the client.
-        root = get_tree(client)
-        assert root.provider == "none"
-        assert root.owner == "none"
-        assert len(root.users) == 0
-        assert set(root.children) == {"foo", "bar"}
-        assert len(root.children["foo"].users) == 0
-        assert len(root.children["bar"].users) == 0
-
     def test_add_remove_children_basic(self, client: TestClient):
         """Add and remove child groups."""
         groups = [
@@ -365,6 +330,7 @@ class TestUserAccessManagement:
         ]
 
         # Must reject to create children for non-existing groups.
+        foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         assert client.get("/groups/foo/users?recursive=0").status_code == 404
         assert client.post("/groups/foo/children", json=barchild).status_code == 404
@@ -380,7 +346,9 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "foo", demo_users[:2]).status_code == 201
         assert add_users_to_group(client, "bar", demo_users[1:]).status_code == 201
 
-        # Make `bar` a child of `foo`: foo -> bar
+        # Create root -> `foo` -> `bar` for basic deletion tests.
+        root = uam.UAM_DB.root.name
+        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
         assert client.post("/groups/foo/children", json=barchild).status_code == 201
         groups = get_groups(client)
         foogroup = [_ for _ in groups if _.name == "foo"][0]
@@ -457,7 +425,14 @@ class TestUserAccessManagement:
         reparent = UAMChild(child="g1").model_dump()
         assert client.post("/groups/g4/children", json=reparent).status_code == 409
 
-    def test_group_tree(self, client: TestClient):
+    def test_tree(self, client: TestClient):
+        # Root node must always exist and be empty initially.
+        root = get_tree(client)
+        assert root.provider == "none"
+        assert root.owner == "none"
+        assert len(root.users) == 0
+        assert len(root.children) == 0
+
         groups = [
             UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
             UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
@@ -475,22 +450,29 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "foo", users[:1]).status_code == 201
         assert add_users_to_group(client, "bar", users[1:]).status_code == 201
 
-        # Root node must now contain both groups.
+        # Root node must still be empty because the groups have not been linked
+        # into the org.
         root = get_tree(client)
-        assert set(root.children) == {"foo", "bar"}
-        assert len(root.children["foo"].users) == 0
-        assert len(root.children["bar"].users) == 0
+        assert root.provider == "none"
+        assert root.owner == "none"
+        assert len(root.users) == 0
+        assert len(root.children) == 0
 
-        # Create foo -> bar
-        reparent = UAMChild(child="bar").model_dump()
-        assert client.post("/groups/foo/children", json=reparent).status_code == 201
+        # Create root -> `foo` -> `bar` for basic deletion tests.
+        root = uam.UAM_DB.root.name
+        foochild = UAMChild(child="foo").model_dump()
+        barchild = UAMChild(child="bar").model_dump()
+        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
+        assert client.post("/groups/foo/children", json=barchild).status_code == 201
 
-        # Both groups must still be a child of the root node because nothing
-        # short of deleting the node will remove it from there.
+        # Root node must now contain the `foo` group but without any of its
+        # users to save space when transmitting this to the client.
         root = get_tree(client)
-        assert set(root.children) == {"foo", "bar"}
+        assert root.provider == "none"
+        assert root.owner == "none"
+        assert len(root.users) == 0
+        assert set(root.children) == {"foo"}
         assert len(root.children["foo"].users) == 0
-        assert root.children["foo"].children["bar"] == groups[1]
 
     def test_reparent_multiple_times(self, client: TestClient):
         demo_groups = [
@@ -504,12 +486,20 @@ class TestUserAccessManagement:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
 
         root = get_tree(client)
-        assert set(root.children) == {"foo", "bar", "abc"}
+        assert len(root.children) == 0
+
+        # Create root -> `foo` -> `bar` for basic deletion tests.
+        root = uam.UAM_DB.root.name
+        foochild = UAMChild(child="foo").model_dump()
+        barchild = UAMChild(child="bar").model_dump()
+        abcchild = UAMChild(child="abc").model_dump()
+        assert client.post(f"/groups/{root}/children", json=abcchild).status_code == 201
+        assert client.post(f"/groups/{root}/children", json=barchild).status_code == 201
+        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
 
         # Make `abc` a child of both `foo` and `bar`:
         # foo -> abc
         # bar -> abc
-        abcchild = UAMChild(child="abc").model_dump()
         assert client.post("/groups/foo/children", json=abcchild).status_code == 201
         assert client.post("/groups/bar/children", json=abcchild).status_code == 201
         root = get_tree(client)
@@ -553,12 +543,20 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "abc", demo_users[2:]).status_code == 201
 
         # Construct the following group layout.
-        # foo:
-        #   abc
-        #   bar:
+        # root:
+        #   foo:
         #     abc
+        #     bar:
+        #       abc
         abcchild = UAMChild(child="abc").model_dump()
         barchild = UAMChild(child="bar").model_dump()
+        foochild = UAMChild(child="foo").model_dump()
+        assert (
+            client.post(
+                f"/groups/{uam.UAM_DB.root.name}/children", json=foochild
+            ).status_code
+            == 201
+        )
         assert client.post("/groups/foo/children", json=abcchild).status_code == 201
         assert client.post("/groups/bar/children", json=abcchild).status_code == 201
         assert client.post("/groups/foo/children", json=barchild).status_code == 201
@@ -578,8 +576,9 @@ class TestUserAccessManagement:
         assert set(groups["abc"].users) == {"abc@blah.com"}
 
         # Remove the `bar` group from the system. This must shrink the hierarchy:
-        # foo:
-        #   abc
+        # root:
+        #   foo:
+        #     abc
         assert client.delete("/groups/bar").status_code == 204
         groups = {_.name: _ for _ in get_groups(client)}
         assert len(groups) == 2

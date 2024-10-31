@@ -97,7 +97,6 @@ def post_group(group: UAMGroup):
 
     # Add the group to our DB.
     UAM_DB.groups[group.name] = group
-    UAM_DB.root.children[group.name] = group
 
 
 @router.get(
@@ -162,7 +161,7 @@ def post_group_members(name: str, emails: List[str]):
     responses={404: RESPONSE_404, 409: RESPONSE_409},
 )
 def post_add_child_group(name: str, new: UAMChild):
-    """Add a new child group to an existing group.
+    """Nest an existing group inside another group.
 
     Returns 409 if the new group would create a cycle.
 
@@ -194,9 +193,10 @@ def post_add_child_group(name: str, new: UAMChild):
     responses={404: RESPONSE_404},
 )
 def unlink_child_from_group(parent: str, child: str):
-    """Remove the child group from the parent.
+    """Unlink the specified child group from its parent.
 
     This does *not* delete the group, only remove it as a child of the parent group.
+
     """
     try:
         group = UAM_DB.root if parent == UAM_DB.root.name else UAM_DB.groups[parent]
