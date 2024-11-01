@@ -1,3 +1,4 @@
+import httpx
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -219,7 +220,7 @@ class K8sDeployment(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     kubeconfig: Path
     kubecontext: str
@@ -233,6 +234,9 @@ class ServerConfig(BaseModel):
     loglevel: str
     host: str
     port: int
+
+    # A single reusable HTTP client for the entire app.
+    httpclient: httpx.AsyncClient
 
 
 class DeploymentInfo(BaseModel):

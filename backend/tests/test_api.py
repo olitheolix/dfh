@@ -32,61 +32,68 @@ class TestConfiguration:
         gsecrets = tmp_path / "google-client-secrets.json"
         gsecrets.write_text("google-client-secrets.json")
 
-        # Minimum required environment variables.
-        # NOTE: it is valid to not specify a Kubeconfig file, most notably when
-        # running inside a Pod.
-        new_env = {
-            "DFH_MANAGED_BY": "foo",
-            "DFH_ENV_LABEL": "bar",
-        }
-        with mock.patch.dict("os.environ", values=new_env, clear=True):
-            cfg, err = dfh.api.compile_server_config()
-            assert not err
-            assert cfg == dfh.api.ServerConfig(
-                kubeconfig=Path(""),
-                kubecontext="",
-                managed_by="foo",
-                env_label="bar",
-                host="0.0.0.0",
-                port=5001,
-                loglevel="info",
-            )
+        ac = dfh.api.httpx.AsyncClient()
+        with mock.patch.object(dfh.api.httpx, "AsyncClient") as m_client:
+            m_client.return_value = ac
 
-        # Explicit values for everything.
-        new_env = {
-            "KUBECONFIG": "/tmp/kind-kubeconf.yaml",
-            "KUBECONTEXT": "kind-kind",
-            "DFH_MANAGED_BY": "foo",
-            "DFH_ENV_LABEL": "bar",
-            "DFH_LOGLEVEL": "error",
-            "DFH_HOST": "1.2.3.4",
-            "DFH_PORT": "1234",
-        }
-        with mock.patch.dict("os.environ", values=new_env, clear=True):
+            # Minimum required environment variables.
+            # NOTE: it is valid to not specify a Kubeconfig file, most notably when
+            # running inside a Pod.
+            new_env = {
+                "DFH_MANAGED_BY": "foo",
+                "DFH_ENV_LABEL": "bar",
+            }
+            with mock.patch.dict("os.environ", values=new_env, clear=True):
+                cfg, err = dfh.api.compile_server_config()
+                assert not err
+                assert cfg == dfh.api.ServerConfig(
+                    kubeconfig=Path(""),
+                    kubecontext="",
+                    managed_by="foo",
+                    env_label="bar",
+                    host="0.0.0.0",
+                    port=5001,
+                    loglevel="info",
+                    httpclient=ac,
+                )
+
+            # Explicit values for everything.
+            new_env = {
+                "KUBECONFIG": "/tmp/kind-kubeconf.yaml",
+                "KUBECONTEXT": "kind-kind",
+                "DFH_MANAGED_BY": "foo",
+                "DFH_ENV_LABEL": "bar",
+                "DFH_LOGLEVEL": "error",
+                "DFH_HOST": "1.2.3.4",
+                "DFH_PORT": "1234",
+            }
+            with mock.patch.dict("os.environ", values=new_env, clear=True):
+                cfg, err = dfh.api.compile_server_config()
+                assert not err
+                assert cfg == dfh.api.ServerConfig(
+                    kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
+                    kubecontext="kind-kind",
+                    managed_by="foo",
+                    env_label="bar",
+                    host="1.2.3.4",
+                    port=1234,
+                    loglevel="error",
+                    httpclient=ac,
+                )
+
+            # Must have correctly received the values from the `.env` file.
             cfg, err = dfh.api.compile_server_config()
             assert not err
             assert cfg == dfh.api.ServerConfig(
                 kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
                 kubecontext="kind-kind",
-                managed_by="foo",
-                env_label="bar",
-                host="1.2.3.4",
-                port=1234,
-                loglevel="error",
+                managed_by="dfh",
+                env_label="env",
+                host="0.0.0.0",
+                port=5001,
+                loglevel="info",
+                httpclient=ac,
             )
-
-        # Must have correctly received the values from the `.env` file.
-        cfg, err = dfh.api.compile_server_config()
-        assert not err
-        assert cfg == dfh.api.ServerConfig(
-            kubeconfig=Path("/tmp/kind-kubeconf.yaml"),
-            kubecontext="kind-kind",
-            managed_by="dfh",
-            env_label="env",
-            host="0.0.0.0",
-            port=5001,
-            loglevel="info",
-        )
 
     def test_compile_server_config_err(self):
         # Invalid because DFH_MANAGED_BY and DFH_ENV_LABEL are both mandatory.
