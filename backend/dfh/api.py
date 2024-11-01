@@ -28,7 +28,8 @@ logit = logging.getLogger("app")
 
 
 def isLocalDev() -> bool:
-    return os.environ.get("LOCAL_DEV", "") != ""
+    get = os.environ.get
+    return bool(get("PYTEST_VERSION") or get("LOCAL_DEV"))
 
 
 # ----------------------------------------------------------------------
@@ -153,16 +154,17 @@ def make_app() -> ASGIApp:
         dependencies=[Depends(auth.is_authenticated)],
     )
 
-    # Basic routes *must* come last because one of them will server the
-    # frontend on all routes that have not been defined yet.
+    # Basic routes *must* come last because one of them will serve the
+    # frontend on all hitherto undefined routes.
     app.include_router(basic.router, prefix="", tags=["Basic"])
 
     # Install the exception handlers.
     app.add_exception_handler(RequestValidationError, handler=validation_error_handler)  # type: ignore
 
     # Include helper endpoints if we are running tests only.
-    # NOTE: these routes *must* never be included in any deployed version.
-    if os.environ.get("PYTEST_VERSION") is not None:  # codecov-skip
+    # NOTE: these routes *must not* be included in any deployed version. The
+    # Dockerfile contains an additional safeguard.
+    if isLocalDev():  # codecov-skip
         import dfh.routers.testing as testing
 
         app.include_router(testing.router, tags=["Testing"])

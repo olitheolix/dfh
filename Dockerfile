@@ -19,8 +19,9 @@ RUN pip install pipenv
 COPY backend/Pipfile backend/Pipfile.lock .
 RUN pipenv install --system
 
-# Copy everything else.
+# Copy everything except the test endpoints.
 COPY backend .
+RUN rm dfh/routers/testing.py
 
 # Copy the frontend assets.
 COPY --from=builder /src/dist static/

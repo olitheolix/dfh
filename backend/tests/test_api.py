@@ -9,6 +9,24 @@ import dfh.api
 import dfh.k8s
 
 
+class TestBasic:
+    def test_islocaldev(self):
+        with mock.patch.dict("os.environ", values={}, clear=True):
+            assert not dfh.api.isLocalDev()
+
+        new_env = {"PYTEST_VERSION": "1", "LOCAL_DEV": "1"}
+        with mock.patch.dict("os.environ", values=new_env, clear=True):
+            assert dfh.api.isLocalDev()
+
+        new_env = {"PYTEST_VERSION": "1"}
+        with mock.patch.dict("os.environ", values=new_env, clear=True):
+            assert dfh.api.isLocalDev()
+
+        new_env = {"LOCAL_DEV": "1"}
+        with mock.patch.dict("os.environ", values=new_env, clear=True):
+            assert dfh.api.isLocalDev()
+
+
 class TestConfiguration:
     def test_compile_server_config_ok(self, tmp_path: Path):
         gsecrets = tmp_path / "google-client-secrets.json"
