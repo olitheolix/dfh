@@ -109,6 +109,14 @@ class TestModels:
             },
         )
 
+    def test_uamuser_valid(self):
+        """Verify various obvious and not so obvious email addresses."""
+        valid_emails = ["foo@bar.com", "miles.o'brien@bar.com"]
+
+        # Create a valid user.
+        for email in valid_emails:
+            UAMUser(email=email, name="name", lanid="lanid", slack="slack")
+
     def test_uamuser_invalid(self):
         """Must reject invalid values in UAMUser."""
         # Create a valid user.

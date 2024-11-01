@@ -441,7 +441,7 @@ class GoogleToken(BaseModel):
 
 
 class UAMUser(BaseModel):
-    email: str = Field(pattern=r"^[a-z0-9_.+-]+@[a-z0-9-]+\.[a-zA-Z0-9-.]+$")  # uid
+    email: str = Field(pattern=r"^[a-z]+['a-z0-9_.+-]*@[a-z0-9-]+\.[a-z0-9-.]+$")  # uid
     name: str
     lanid: str
     slack: str
