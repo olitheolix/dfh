@@ -30,6 +30,7 @@ respx = "*"
 types-pyyaml = "*"
 sh = "*"
 freezegun = "*"
+click = "*"
 
 [requires]
 python_version = "3.12"
