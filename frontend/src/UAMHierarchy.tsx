@@ -34,7 +34,9 @@ const DataGridUserColumns = [
     { field: "name", headerName: "Name", width: 200 },
     { field: "slack", headerName: "Slack", width: 100 },
     { field: "lanid", headerName: "LanID", width: 100 },
-    { field: "email", headerName: "Email", flex: 1 },
+    { field: "email", headerName: "Email", width: 200 },
+    { field: "role", headerName: "Role", width: 100 },
+    { field: "manager", headerName: "Manager", flex: 1 },
 ];
 
 /**

@@ -24,6 +24,8 @@ def make_user(
     name: str = "",
     lanid: str = "",
     slack: str = "",
+    role: str = "",
+    manager: str = "",
 ) -> UAMUser:
     tmp_email = faker.unique.first_name().lower() + "@foo.com"
     return UAMUser(
@@ -31,4 +33,6 @@ def make_user(
         name=name if name else faker.unique.first_name(),
         lanid=lanid if lanid else faker.unique.first_name(),
         slack=slack if slack else faker.unique.first_name(),
+        role=role if role else faker.unique.first_name(),
+        manager=manager if manager else faker.unique.first_name(),
     )
