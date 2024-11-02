@@ -4,16 +4,11 @@ import logging
 from typing import Annotated
 
 import google.oauth2.credentials
-import googleapiclient.discovery
-import httplib2
 import itsdangerous
 import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
-from googleapiclient.errors import HttpError
 
-import dfh.api
-import dfh.watch
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
 
 from .shared import get_config
@@ -52,26 +47,6 @@ def is_authenticated(request: Request) -> str:
     raise HTTPException(status_code=403, detail="not logged in")
 
 
-def fetch_user_email(credentials: google.oauth2.credentials.Credentials) -> str:
-    """Return the Google email associated with the `credentials`."""
-    disable_ssl_validation = dfh.api.isLocalDev()
-    htbuild = httplib2.Http(disable_ssl_certificate_validation=disable_ssl_validation)
-    client = googleapiclient.discovery.google_auth_httplib2.AuthorizedHttp(
-        credentials, http=htbuild
-    )
-
-    try:
-        user_info_service = googleapiclient.discovery.build("oauth2", "v2", http=client)
-        user_info = user_info_service.userinfo().get().execute()
-        return user_info["email"]
-    except HttpError as e:
-        logit.error(
-            "unable to fetch user email from Google",
-            {"code": e.status_code, "reason": e.reason, "detail": e.error_details},
-        )
-        return ""
-
-
 @router.post("/validate-google-bearer-token")
 async def google_auth_bearer(
     data: GoogleToken,
@@ -89,40 +64,6 @@ async def google_auth_bearer(
     email = resp.json()["email"]
     request.session["email"] = email
     response.set_cookie(key="email", value=email)
-
-
-@router.get("/revoke")
-async def revoke(cfg: Annotated[ServerConfig, Depends(get_config)], request: Request):
-    """Revoke the Google token and clear the session data.
-
-    NOTE: This code is verbatim from
-    https://developers.google.com/identity/protocols/oauth2/web-server#example
-    with trivial changes to adapt it from Flask to FastAPI.
-
-    """
-    if "credentials" not in request.session:
-        return HTMLResponse(
-            'You need to <a href="/demo/api/auth/google-login">authorize</a> before '
-            + "testing the code to revoke credentials."
-        )
-
-    # Revoke the Google credentials.
-    credentials = google.oauth2.credentials.Credentials(
-        **request.session["credentials"]
-    )
-    resp = await cfg.httpclient.post(
-        "https://oauth2.googleapis.com/revoke",
-        params={"token": credentials.token},
-        headers={"content-type": "application/x-www-form-urlencoded"},
-    )
-
-    # Revoke the user session.
-    request.session.pop("credentials", None)
-
-    if resp.status_code == 200:
-        return "Credentials successfully revoked."
-    else:
-        return "Could not revoke credentials."
 
 
 @router.get("/clear-session")
