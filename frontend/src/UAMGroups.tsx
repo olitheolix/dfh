@@ -230,7 +230,7 @@ export default function UAMGroups() {
             // ----------------------------------------------------------------------
             // Set the users of the selected group based on the new content in the left grid.
             // ----------------------------------------------------------------------
-            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.id}/users`, {
+            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
                 body: JSON.stringify(leftUserRows.map((user) => user.email)),
             });
             if (ret.err) {
@@ -275,7 +275,7 @@ export default function UAMGroups() {
     const handleGroupRowClick: GridEventListener<"rowClick"> = async (params) => {
         setSelectedGroup(params.row);
 
-        const ret = await httpGet(`/demo/api/uam/v1/groups/${params.id}/users`);
+        const ret = await httpGet(`/demo/api/uam/v1/groups/${params.row.name}/users`);
         if (ret.err) {
             errCtx.showError(ret.err);
             return;
