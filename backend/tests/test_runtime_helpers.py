@@ -66,7 +66,6 @@ async def deploy_test_app(client: TestClient):
     name, env = "app", "stg"
 
     async with create_temporary_k8s_namespace(client) as namespace:
-
         app_info = AppInfo(
             metadata=AppMetadata(name=name, env=env, namespace=namespace),
             primary=AppPrimary(
