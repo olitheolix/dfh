@@ -1,5 +1,7 @@
-from fastapi import Request
 from typing import cast
+
+from fastapi import Request
+
 from dfh.models import ServerConfig
 
 
