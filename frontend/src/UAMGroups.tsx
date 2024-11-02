@@ -30,7 +30,10 @@ import Title from "./Title";
 import EditIcon from "@mui/icons-material/Edit";
 import { httpGet, httpPost, httpPut, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
 
-const DataGridGroupColumns = [{ field: "name", headerName: "Name", flex: 1 }];
+const DataGridGroupColumns = [
+    { field: "name", headerName: "Name", flex: 1 },
+    { field: "owner", headerName: "Owner", flex: 1 },
+];
 const DataGridUserColumns = [
     { field: "name", headerName: "Name", width: 150 },
     { field: "lanid", headerName: "LanID", width: 100 },
