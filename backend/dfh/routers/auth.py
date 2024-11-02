@@ -14,8 +14,9 @@ from googleapiclient.errors import HttpError
 
 import dfh.api
 import dfh.watch
+from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
+
 from .shared import get_config
-from dfh.models import GoogleToken, UserMe, UserToken, ServerConfig
 
 # Request a token to query the user's email.
 SCOPES = [

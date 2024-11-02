@@ -1,5 +1,3 @@
-import os
-import httpx
 import asyncio
 import logging
 import os
@@ -7,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Tuple
 
+import httpx
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError

@@ -1,5 +1,5 @@
-from unittest import mock
 from typing import List
+from unittest import mock
 
 import pytest
 from fastapi.testclient import TestClient
