@@ -10,6 +10,7 @@ import dfh.routers.uam as uam
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
 from .test_helpers import create_authenticated_client
+from .test_helpers import make_user
 
 
 @pytest.fixture
@@ -23,14 +24,18 @@ def get_groups(client: TestClient) -> List[UAMGroup]:
     """Return the parsed groups from the /groups endpoint."""
     resp = client.get("/groups")
     assert resp.status_code == 200
-    return [UAMGroup.model_validate(_) for _ in resp.json()]
+    out = [UAMGroup.model_validate(_) for _ in resp.json()]
+    out.sort(key=lambda _: _.name)
+    return out
 
 
 def get_users(client: TestClient) -> List[UAMUser]:
     """Return the parsed groups from the /groups endpoint."""
     resp = client.get("/users")
     assert resp.status_code == 200
-    return [UAMUser.model_validate(_) for _ in resp.json()]
+    out = [UAMUser.model_validate(_) for _ in resp.json()]
+    out.sort(key=lambda _: _.name)
+    return out
 
 
 def add_users_to_group(
@@ -86,15 +91,8 @@ class TestUserAccessManagement:
         # Sanity check: DB is empty.
         assert len(get_users(client)) == 0
 
-        demo_users = [
-            UAMUser(
-                email=f"foo{i}@bar.com",
-                name=f"name{i}",
-                lanid=f"lanid{i}",
-                slack=f"slack{i}",
-            )
-            for i in range(3)
-        ]
+        demo_users = [make_user() for _ in range(3)]
+        demo_users.sort(key=lambda _: _.name)
 
         # Users must not yet exist.
         for user in demo_users:
@@ -114,15 +112,7 @@ class TestUserAccessManagement:
             assert UAMUser.model_validate(resp.json()) == user
 
     def test_add_duplicate_users(self, client: TestClient):
-        demo_users = [
-            UAMUser(
-                email=f"foo{i}@bar.com",
-                name=f"name{i}",
-                lanid=f"lanid{i}",
-                slack=f"slack{i}",
-            )
-            for i in range(3)
-        ]
+        demo_users = sorted([make_user() for _ in range(3)], key=lambda _: _.name)
 
         # Add all users and verify.
         for user in demo_users:
@@ -189,15 +179,7 @@ class TestUserAccessManagement:
 
     def test_group_members(self, client: TestClient):
         group = UAMGroup(name="foo", owner="foo@bar.com", provider="gcp")
-        demo_users = [
-            UAMUser(
-                email=f"foo{i}@bar.com",
-                name=f"name{i}",
-                lanid=f"lanid{i}",
-                slack=f"slack{i}",
-            )
-            for i in range(3)
-        ]
+        demo_users = [make_user() for _ in range(3)]
 
         # Must be unable to fetch group or add users to it.
         assert client.get("/groups/foo").status_code == 404
@@ -328,7 +310,7 @@ class TestUserAccessManagement:
 
     def test_put_groups_ok(self, client: TestClient):
         group = UAMGroup(name="foo", owner="foo@blah.com", provider="gcp")
-        user = UAMUser(email="foo@bar.com", name="name", lanid="lanid", slack="slack")
+        user = make_user()
 
         # Create a group and user.
         assert client.post("/groups", json=group.model_dump()).status_code == 201
@@ -383,15 +365,7 @@ class TestUserAccessManagement:
             UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
             UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
         ]
-        demo_users = [
-            UAMUser(
-                email=f"foo{i}@bar.com",
-                name=f"name{i}",
-                lanid=f"lanid{i}",
-                slack=f"slack{i}",
-            )
-            for i in range(4)
-        ]
+        demo_users = sorted([make_user() for _ in range(4)], key=lambda _: _.name)
 
         # Must reject to create children for non-existing groups.
         foochild = UAMChild(child="foo").model_dump()
@@ -501,10 +475,7 @@ class TestUserAccessManagement:
             UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
             UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
         ]
-        users = [
-            UAMUser(email="foo@blah.com", name="n1", lanid=f"l1", slack=f"s1"),
-            UAMUser(email="bar@blah.com", name="n2", lanid=f"l2", slack=f"s2"),
-        ]
+        users = [make_user() for _ in range(2)]
 
         # Create the groups and users.
         for user in users:
@@ -591,9 +562,9 @@ class TestUserAccessManagement:
             UAMGroup(name="abc", owner="abc@blah.com", provider="gcp"),
         ]
         demo_users = [
-            UAMUser(email="foo@blah.com", name="n1", lanid=f"l1", slack=f"s1"),
-            UAMUser(email="bar@blah.com", name="n2", lanid=f"l2", slack=f"s2"),
-            UAMUser(email="abc@blah.com", name="n3", lanid=f"l3", slack=f"s3"),
+            make_user(email="foo@blah.com"),
+            make_user(email="bar@blah.com"),
+            make_user(email="abc@blah.com"),
         ]
 
         # Create groups and users.

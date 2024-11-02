@@ -41,6 +41,8 @@ def create_fake_uam_dataset():
             lanid=lanids[idx],
             slack=slack[idx],
             email=all_emails[idx],
+            role="Engineer",
+            manager=random.choice(all_emails),
         )
         del idx
 
