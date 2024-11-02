@@ -6,7 +6,6 @@ from typing import Annotated
 import google.oauth2.credentials
 import googleapiclient.discovery
 import httplib2
-import httpx
 import itsdangerous
 import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -15,7 +14,8 @@ from googleapiclient.errors import HttpError
 
 import dfh.api
 import dfh.watch
-from dfh.models import GoogleToken, UserMe, UserToken
+from .shared import get_config
+from dfh.models import GoogleToken, UserMe, UserToken, ServerConfig
 
 # Request a token to query the user's email.
 SCOPES = [
@@ -29,6 +29,7 @@ logit = logging.getLogger("app")
 
 
 def is_authenticated(request: Request) -> str:
+    """FastAPI dependency: return authenticated user or throw error."""
     # If the (transparently decrypted) session contains an email the user is authenticated.
     email = request.session.get("email", "")
     if email != "":
@@ -71,11 +72,16 @@ def fetch_user_email(credentials: google.oauth2.credentials.Credentials) -> str:
 
 
 @router.post("/validate-google-bearer-token")
-async def google_auth_bearer(data: GoogleToken, request: Request, response: Response):
+async def google_auth_bearer(
+    data: GoogleToken,
+    cfg: Annotated[ServerConfig, Depends(get_config)],
+    request: Request,
+    response: Response,
+):
     """Query user info from Google and mark the user as logged in."""
     # Official Google endpoint to query user information.
     url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={data.token}"
-    resp = await httpx.AsyncClient().get(url)
+    resp = await cfg.httpclient.get(url)
     if resp.status_code != 200:
         raise HTTPException(status_code=403, detail="Invalid ID token")
 
@@ -85,7 +91,7 @@ async def google_auth_bearer(data: GoogleToken, request: Request, response: Resp
 
 
 @router.get("/revoke")
-async def revoke(request: Request):
+async def revoke(cfg: Annotated[ServerConfig, Depends(get_config)], request: Request):
     """Revoke the Google token and clear the session data.
 
     NOTE: This code is verbatim from
@@ -103,7 +109,7 @@ async def revoke(request: Request):
     credentials = google.oauth2.credentials.Credentials(
         **request.session["credentials"]
     )
-    resp = await httpx.AsyncClient().post(
+    resp = await cfg.httpclient.post(
         "https://oauth2.googleapis.com/revoke",
         params={"token": credentials.token},
         headers={"content-type": "application/x-www-form-urlencoded"},

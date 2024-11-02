@@ -4,6 +4,7 @@ from typing import Dict, List, Set
 import faker
 from fastapi import APIRouter, HTTPException, status
 
+import dfh.api
 from dfh.models import UAMChild, UAMDatabase, UAMGroup, UAMUser
 
 RESPONSE_404 = {"description": "not found", "model": UAMChild}
@@ -15,6 +16,10 @@ UAM_DB: UAMDatabase = UAMDatabase(users={}, groups={})
 
 
 def create_fake_uam_dataset():
+    # Do nothing unless we are running in local developer mode.
+    if not dfh.api.isLocalDev():
+        return
+
     num_users, num_groups = 1000, 100
     fake = faker.Faker()
     first = [fake.first_name() for _ in range(num_users)]

@@ -1,3 +1,4 @@
+import httpx
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -219,7 +220,7 @@ class K8sDeployment(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     kubeconfig: Path
     kubecontext: str
@@ -233,6 +234,9 @@ class ServerConfig(BaseModel):
     loglevel: str
     host: str
     port: int
+
+    # A single reusable HTTP client for the entire app.
+    httpclient: httpx.AsyncClient
 
 
 class DeploymentInfo(BaseModel):
@@ -441,7 +445,7 @@ class GoogleToken(BaseModel):
 
 
 class UAMUser(BaseModel):
-    email: str = Field(pattern=r"^[a-z0-9_.+-]+@[a-z0-9-]+\.[a-zA-Z0-9-.]+$")  # uid
+    email: str = Field(pattern=r"^[a-z]+['a-z0-9_.+-]*@[a-z0-9-]+\.[a-z0-9-.]+$")  # uid
     name: str
     lanid: str
     slack: str

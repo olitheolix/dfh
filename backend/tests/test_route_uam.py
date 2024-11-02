@@ -1,9 +1,11 @@
+from unittest import mock
 from typing import List
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
+import dfh.api
 import dfh.routers.uam as uam
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
@@ -53,6 +55,13 @@ class TestFakeData:
         assert len(get_users(client)) == 0
         root = get_tree(client)
         assert len(root.children) == len(root.users) == 0
+
+        # Must not create dummy users and groups buy default.
+        with mock.patch.object(dfh.api, "isLocalDev") as m_islocal:
+            m_islocal.return_value = False
+            uam.create_fake_uam_dataset()
+            assert len(get_groups(client)) == 0
+            assert len(get_users(client)) == 0
 
         # Create dummy users and groups.
         uam.create_fake_uam_dataset()

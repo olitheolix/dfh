@@ -1,3 +1,5 @@
+import os
+import httpx
 import asyncio
 import logging
 import os
@@ -28,23 +30,14 @@ logit = logging.getLogger("app")
 
 
 def isLocalDev() -> bool:
-    return os.environ.get("LOCAL_DEV", "") != ""
+    get = os.environ.get
+    return bool(get("PYTEST_VERSION") or get("LOCAL_DEV"))
 
 
 # ----------------------------------------------------------------------
 # Setup Server.
 # ----------------------------------------------------------------------
 def compile_server_config():
-    default = ServerConfig(
-        kubeconfig=Path(""),
-        kubecontext="",
-        managed_by="",
-        env_label="",
-        host="",
-        port=-1,
-        loglevel="",
-    )
-
     try:
         cfg = ServerConfig(
             kubeconfig=Path(os.getenv("KUBECONFIG", "")),
@@ -54,12 +47,25 @@ def compile_server_config():
             loglevel=os.getenv("DFH_LOGLEVEL", "info"),
             host=os.getenv("DFH_HOST", "0.0.0.0"),
             port=int(os.getenv("DFH_PORT", "5001")),
+            httpclient=httpx.AsyncClient(),
         )
 
         return cfg, False
     except (KeyError, ValueError) as e:
         logit.error("missing environment variables", {"names": tuple(e.args)})
-        return default, True
+        return (
+            ServerConfig(
+                kubeconfig=Path(""),
+                kubecontext="",
+                managed_by="",
+                env_label="",
+                host="",
+                port=-1,
+                loglevel="",
+                httpclient=httpx.AsyncClient(),
+            ),
+            True,
+        )
 
 
 @asynccontextmanager
@@ -67,23 +73,30 @@ async def lifespan(app: FastAPI):
     uam.create_fake_uam_dataset()
 
     db = app.extra["db"]
-    cfg = app.extra["config"]
+    cfg: ServerConfig = app.extra["config"]
 
-    # Create Database entry for Namespaces and a watcher.
-    tasks = []
-    for res in db.resources.values():
-        k8scfg, err = dfh.watch.create_cluster_config(cfg.kubeconfig, cfg.kubecontext)
-        assert not err
-        tasks.append(
-            asyncio.create_task(dfh.watch.setup_k8s_watch(cfg, k8scfg, db, res))
-        )
+    # Provide a single AsyncClient instance to the entire app. This will ensure
+    # efficient reuse of sessions, certificates and other common configuration options.
+    async with httpx.AsyncClient(verify=os.environ.get("CA_FILE", "")) as client:
+        cfg.httpclient = client
 
-    logit.info("server startup complete")
-    yield
+        # Create Database entry for Namespaces and a watcher.
+        tasks = []
+        for res in db.resources.values():
+            k8scfg, err = dfh.watch.create_cluster_config(
+                cfg.kubeconfig, cfg.kubecontext
+            )
+            assert not err
+            tasks.append(
+                asyncio.create_task(dfh.watch.setup_k8s_watch(cfg, k8scfg, db, res))
+            )
 
-    for task in tasks:
-        task.cancel()
-        await task
+        logit.info("server startup complete")
+        yield
+
+        for task in tasks:
+            task.cancel()
+            await task
     logit.info("server shutdown complete")
 
 
@@ -104,6 +117,7 @@ def fetch_secrets() -> Tuple[str, str, bool]:
 
 def make_app() -> ASGIApp:
     """Return a fully configured FastAPI instance."""
+    print("make_app")
     cfg, err1 = compile_server_config()
     session_key, token_key, err2 = fetch_secrets()
     if err1 or err2:
@@ -153,16 +167,17 @@ def make_app() -> ASGIApp:
         dependencies=[Depends(auth.is_authenticated)],
     )
 
-    # Basic routes *must* come last because one of them will server the
-    # frontend on all routes that have not been defined yet.
+    # Basic routes *must* come last because one of them will serve the
+    # frontend on all hitherto undefined routes.
     app.include_router(basic.router, prefix="", tags=["Basic"])
 
     # Install the exception handlers.
     app.add_exception_handler(RequestValidationError, handler=validation_error_handler)  # type: ignore
 
     # Include helper endpoints if we are running tests only.
-    # NOTE: these routes *must* never be included in any deployed version.
-    if os.environ.get("PYTEST_VERSION") is not None:  # codecov-skip
+    # NOTE: these routes *must not* be included in any deployed version. The
+    # Dockerfile contains an additional safeguard.
+    if isLocalDev():  # codecov-skip
         import dfh.routers.testing as testing
 
         app.include_router(testing.router, tags=["Testing"])

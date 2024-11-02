@@ -1,4 +1,4 @@
-import os
+import httpx
 from pathlib import Path
 
 import pytest
@@ -27,6 +27,7 @@ def get_server_config():
         host="0.0.0.0",
         port=5001,
         loglevel="info",
+        httpclient=httpx.AsyncClient(),
     )
 
 

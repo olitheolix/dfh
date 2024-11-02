@@ -187,6 +187,9 @@ class TestAPIAuthentication:
 
     def test_users_me(self, client: TestClient):
         """GET /users/me is a simple way to ensure authentication works."""
+        # Must reject request without bearer token.
+        assert client.get("/users/me").status_code == 403
+
         # Fake an authentic browser session to get an API token.
         cookies: dict = {"email": "authenticated@user.com"}
         resp = client.get("/users/token", cookies=create_session_cookie(cookies))
@@ -195,7 +198,10 @@ class TestAPIAuthentication:
         headers = {"Authorization": f"Bearer {data.token}"}
 
         # Must reject request without bearer token.
-        assert client.get("/users/me").status_code == 403
+        # NOTE: it is imperative to clear the session or otherwise we will
+        # still be considered authenticated by the server since the TestClient
+        # reuses existing sessions.
+        assert client.get("/users/me", cookies={"session": ""}).status_code == 403
 
         # Must accept request with bearer token.
         resp = client.get("/users/me", headers=headers)
