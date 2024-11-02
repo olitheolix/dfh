@@ -26,6 +26,43 @@ class TestBasic:
         with mock.patch.dict("os.environ", values=new_env, clear=True):
             assert dfh.api.isLocalDev()
 
+    @mock.patch.object(dfh.api.httpx, "AsyncClient")
+    def test_make_httpclient_mock(self, m_client, tmp_path: Path):
+        env_vars = {"CA_FILE": "~/.foo"}
+
+        with mock.patch.dict("os.environ", values={}, clear=True):
+            dfh.api.make_httpclient()
+            m_client.assert_called_once_with(verify="")
+
+        env_vars = {"CA_FILE": ""}
+        m_client.reset_mock()
+        with mock.patch.dict("os.environ", values=env_vars, clear=True):
+            dfh.api.make_httpclient()
+            m_client.assert_called_once_with(verify="")
+
+        ca = tmp_path / "foo.txt"
+        env_vars = {"CA_FILE": str(ca)}
+        m_client.reset_mock()
+        with mock.patch.dict("os.environ", values=env_vars, clear=True):
+            dfh.api.make_httpclient()
+            m_client.assert_called_once_with(verify=str(ca))
+
+    def test_make_httpclient(self, tmp_path: Path):
+        # Must pass and use default CAs.
+        with mock.patch.dict("os.environ", values={}, clear=True):
+            assert dfh.api.make_httpclient()[1] is False
+
+        # Must return an error because CA file does not exist.
+        ca = tmp_path / "ca.txt"
+        env_vars = {"CA_FILE": str(ca)}
+        with mock.patch.dict("os.environ", values=env_vars, clear=True):
+            assert dfh.api.make_httpclient()[1] is True
+
+        ca.write_text("not a pem")
+        env_vars = {"CA_FILE": str(ca)}
+        with mock.patch.dict("os.environ", values=env_vars, clear=True):
+            assert dfh.api.make_httpclient()[1] is True
+
 
 class TestConfiguration:
     def test_compile_server_config_ok(self, tmp_path: Path):

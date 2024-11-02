@@ -33,11 +33,25 @@ def isLocalDev() -> bool:
     return bool(get("PYTEST_VERSION") or get("LOCAL_DEV"))
 
 
+def make_httpclient() -> Tuple[httpx.AsyncClient, bool]:
+    ca_path = os.environ.get("CA_FILE", None)
+    verify = str(Path(ca_path).expanduser()) if ca_path else ""
+    try:
+        client = httpx.AsyncClient(verify=verify)
+    except OSError as err:
+        logit.error("cannot create http client", {"reason": tuple(err.args)})
+        return httpx.AsyncClient(), True
+    return client, False
+
+
 # ----------------------------------------------------------------------
 # Setup Server.
 # ----------------------------------------------------------------------
-def compile_server_config():
+def compile_server_config() -> Tuple[ServerConfig, bool]:
     try:
+        client, err = make_httpclient()
+        assert not err
+
         cfg = ServerConfig(
             kubeconfig=Path(os.getenv("KUBECONFIG", "")),
             kubecontext=os.getenv("KUBECONTEXT", ""),
@@ -46,11 +60,11 @@ def compile_server_config():
             loglevel=os.getenv("DFH_LOGLEVEL", "info"),
             host=os.getenv("DFH_HOST", "0.0.0.0"),
             port=int(os.getenv("DFH_PORT", "5001")),
-            httpclient=httpx.AsyncClient(),
+            httpclient=client,
         )
 
         return cfg, False
-    except (KeyError, ValueError) as e:
+    except (AssertionError, KeyError, ValueError) as e:
         logit.error("missing environment variables", {"names": tuple(e.args)})
         return (
             ServerConfig(
@@ -76,9 +90,7 @@ async def lifespan(app: FastAPI):
 
     # Provide a single AsyncClient instance to the entire app. This will ensure
     # efficient reuse of sessions, certificates and other common configuration options.
-    async with httpx.AsyncClient(verify=os.environ.get("CA_FILE", "")) as client:
-        cfg.httpclient = client
-
+    async with cfg.httpclient:
         # Create Database entry for Namespaces and a watcher.
         tasks = []
         for res in db.resources.values():
@@ -116,7 +128,6 @@ def fetch_secrets() -> Tuple[str, str, bool]:
 
 def make_app() -> ASGIApp:
     """Return a fully configured FastAPI instance."""
-    print("make_app")
     cfg, err1 = compile_server_config()
     session_key, token_key, err2 = fetch_secrets()
     if err1 or err2:
