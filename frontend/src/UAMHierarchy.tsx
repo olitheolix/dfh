@@ -19,7 +19,7 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { UAMUser, UAMGroup, DGUserRow, UAMChild } from "./UAMInterfaces";
+import { UAMUser, UAMGroup, DGUserRow, DGGroupRow, UAMChild } from "./UAMInterfaces";
 import { GroupInfo } from "./UAMGroups";
 import {
     httpGet,
@@ -241,13 +241,16 @@ export default function UAMHierarchy() {
         name: "n/a",
         owner: "n/a",
         provider: "",
+        description: "",
         users: {},
         children: {},
     });
-    const [selectedGroup, setSelectedGroup] = useState<UAMGroup>({
+    const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
+        id: "",
         name: "",
         owner: "",
         provider: "",
+        description: "",
         children: {},
         users: {},
     });
@@ -288,7 +291,7 @@ export default function UAMHierarchy() {
             return { id: user.email, ...user } as DGUserRow;
         });
         setUserGridRows(users);
-        setSelectedGroup(group);
+        setSelectedGroup({ id: "", ...group });
     };
 
     // Render the group hierarchy into a TreeView. The backend API has a
@@ -335,7 +338,12 @@ export default function UAMHierarchy() {
     return (
         <Grid container spacing={2}>
             <Grid size={4} alignItems="left">
-                <GroupInfo selectedGroup={selectedGroup} />
+                <GroupInfo
+                    selectedGroup={selectedGroup}
+                    setSelectedGroup={setSelectedGroup}
+                    setReloadGroups={setReloadGroups}
+                    errCtx={errCtx}
+                />
 
                 {/* Group Hierarchy */}
                 {loading ? (

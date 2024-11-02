@@ -465,6 +465,7 @@ class UAMGroup(BaseModel):
     name: str  # uid
     owner: str
     provider: str
+    description: str = ""
     users: Dict[str, UAMUser] = Field(default_factory=dict)
     children: Dict[str, "UAMGroup"] = Field(default_factory=dict)
 
