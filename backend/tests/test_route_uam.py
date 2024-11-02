@@ -9,8 +9,7 @@ import dfh.api
 import dfh.routers.uam as uam
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
-from .test_helpers import create_authenticated_client
-from .test_helpers import make_user
+from .test_helpers import create_authenticated_client, make_group, make_user
 
 
 @pytest.fixture
@@ -129,8 +128,8 @@ class TestUserAccessManagement:
 
     def test_create_delete_groups(self, client: TestClient):
         groups = [
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
+            make_group(name="bar"),
+            make_group(name="foo"),
         ]
 
         # Add all groups and verify.
@@ -149,7 +148,7 @@ class TestUserAccessManagement:
     def test_groups_root(self, client: TestClient):
         """Must not allow to create or delete the root group."""
         root_name = uam.UAM_DB.root.name
-        group = UAMGroup(name=root_name, owner="bar@blah.com", provider="gcp")
+        group = make_group(name=root_name)
 
         # Must not allow to create a group with the name as the root group.
         assert client.post("/groups", json=group.model_dump()).status_code == 422
@@ -158,27 +157,20 @@ class TestUserAccessManagement:
         assert client.delete(f"/groups/{root_name}").status_code == 422
 
     def test_groups_duplicate(self, client: TestClient):
-        demo_groups = [
-            UAMGroup(
-                name=f"name{i}",
-                owner=f"foo{i}@bar.com",
-                provider="gcp",
-            )
-            for i in range(3)
-        ]
+        groups = sorted([make_group() for _ in range(3)], key=lambda _: _.name)
 
         # Create demo groups.
-        for group in demo_groups:
+        for group in groups:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
-        assert get_groups(client) == demo_groups
+        assert get_groups(client) == groups
 
         # Attempt to upload an existing group.
-        resp = client.post("/groups", json=demo_groups[0].model_dump())
+        resp = client.post("/groups", json=groups[0].model_dump())
         assert resp.status_code == 409
-        assert get_groups(client) == demo_groups
+        assert get_groups(client) == groups
 
     def test_group_members(self, client: TestClient):
-        group = UAMGroup(name="foo", owner="foo@bar.com", provider="gcp")
+        group = make_group(name="foo")
         demo_users = [make_user() for _ in range(3)]
 
         # Must be unable to fetch group or add users to it.
@@ -220,8 +212,8 @@ class TestUserAccessManagement:
     def test_add_remove_children_basic(self, client: TestClient):
         """Add and remove child groups."""
         groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
         ]
 
         # Create the groups.
@@ -269,8 +261,8 @@ class TestUserAccessManagement:
     def test_add_remove_children(self, client: TestClient):
         """Add and remove child groups."""
         groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
         ]
 
         # Create the groups.
@@ -299,7 +291,7 @@ class TestUserAccessManagement:
                 assert len(group.children) == 0
 
     def test_put_groups_err(self, client: TestClient):
-        group = UAMGroup(name="foo", owner="foo@blah.com", provider="gcp")
+        group = make_group(name="foo")
 
         # Must refuse to update a non-existing group.
         assert client.put("/groups", json=group.model_dump()).status_code == 404
@@ -309,7 +301,7 @@ class TestUserAccessManagement:
         assert client.put("/groups", json=root.model_dump()).status_code == 422
 
     def test_put_groups_ok(self, client: TestClient):
-        group = UAMGroup(name="foo", owner="foo@blah.com", provider="gcp")
+        group = make_group(name="foo")
         user = make_user()
 
         # Create a group and user.
@@ -331,7 +323,7 @@ class TestUserAccessManagement:
         # Must ignore changes to the `children` field.
         group.owner += "bar"
         group.description += "bar"
-        group.children["blah"] = UAMGroup(name="blah", owner="x@y.com", provider="gcp")
+        group.children["blah"] = make_group(name="blah")
         assert client.put("/groups", json=group.model_dump()).status_code == 204
         ret = get_groups(client)
         assert len(ret) == 1
@@ -362,8 +354,8 @@ class TestUserAccessManagement:
 
         """
         groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
         ]
         demo_users = sorted([make_user() for _ in range(4)], key=lambda _: _.name)
 
@@ -429,10 +421,10 @@ class TestUserAccessManagement:
 
     def test_reparents_cycles(self, client: TestClient):
         groups = [
-            UAMGroup(name="g1", owner="g1@blah.com", provider="gcp"),
-            UAMGroup(name="g2", owner="g2@blah.com", provider="gcp"),
-            UAMGroup(name="g3", owner="g3@blah.com", provider="gcp"),
-            UAMGroup(name="g4", owner="g4@blah.com", provider="gcp"),
+            make_group(name="g1"),
+            make_group(name="g2"),
+            make_group(name="g3"),
+            make_group(name="g4"),
         ]
 
         # Create the groups
@@ -472,8 +464,8 @@ class TestUserAccessManagement:
         assert len(root.children) == 0
 
         groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
         ]
         users = [make_user() for _ in range(2)]
 
@@ -511,9 +503,9 @@ class TestUserAccessManagement:
 
     def test_reparent_multiple_times(self, client: TestClient):
         demo_groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
-            UAMGroup(name="abc", owner="abc@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
+            make_group(name="abc"),
         ]
 
         # Create the groups.
@@ -557,9 +549,9 @@ class TestUserAccessManagement:
 
     def test_remove_groups_and_users(self, client: TestClient):
         demo_groups = [
-            UAMGroup(name="foo", owner="foo@blah.com", provider="gcp"),
-            UAMGroup(name="bar", owner="bar@blah.com", provider="gcp"),
-            UAMGroup(name="abc", owner="abc@blah.com", provider="gcp"),
+            make_group(name="foo"),
+            make_group(name="bar"),
+            make_group(name="abc"),
         ]
         demo_users = [
             make_user(email="foo@blah.com"),

@@ -1,10 +1,12 @@
+import random
+
+from faker import Faker
 from fastapi.testclient import TestClient
 
 import dfh.api
+from dfh.models import UAMGroup, UAMUser
 
 from .test_route_auth import create_session_cookie
-from dfh.models import UAMUser
-from faker import Faker
 
 faker = Faker()
 
@@ -35,4 +37,16 @@ def make_user(
         slack=slack if slack else faker.unique.first_name(),
         role=role if role else faker.unique.first_name(),
         manager=manager if manager else faker.unique.first_name(),
+    )
+
+
+def make_group(
+    name: str = "",
+    owner: str = "",
+    provider: str = "",
+) -> UAMGroup:
+    return UAMGroup(
+        name=name if name else faker.unique.first_name(),
+        owner=owner if owner else faker.unique.first_name(),
+        provider=provider if provider else random.choice(["google", "github"]),
     )
