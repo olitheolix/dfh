@@ -5,7 +5,7 @@ from typing import Annotated
 
 import itsdangerous
 import pydantic
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
 
@@ -42,7 +42,9 @@ def is_authenticated(request: Request) -> str:
         except (itsdangerous.BadTimeSignature, pydantic.ValidationError):
             logit.warning("invalid or expired token")
 
-    raise HTTPException(status_code=403, detail="not logged in")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="not logged in"
+    )
 
 
 @router.post("/validate-google-bearer-token")
@@ -57,7 +59,9 @@ async def google_auth_bearer(
     url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={data.token}"
     resp = await cfg.httpclient.get(url)
     if resp.status_code != 200:
-        raise HTTPException(status_code=403, detail="Invalid ID token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token"
+        )
 
     email = resp.json()["email"]
     request.session["email"] = email

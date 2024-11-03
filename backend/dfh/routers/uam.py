@@ -200,12 +200,12 @@ def delete_group(user: d_user, name: str):
         group.children.pop(name, None)
 
 
-@router.post(
+@router.put(
     "/v1/groups/{name}/users",
     status_code=status.HTTP_201_CREATED,
     responses={404: RESPONSE_404},
 )
-def post_group_members(user: d_user, name: str, emails: List[str]):
+def put_group_members(user: d_user, name: str, emails: List[str]):
     """Set the users of the group.
 
     The supplied email list is canonical and will replace the existing users of
@@ -227,12 +227,12 @@ def post_group_members(user: d_user, name: str, emails: List[str]):
     UAM_DB.groups[name].users = users
 
 
-@router.post(
+@router.put(
     "/v1/groups/{name}/children",
     status_code=status.HTTP_201_CREATED,
     responses={404: RESPONSE_404, 409: RESPONSE_409},
 )
-def post_add_child_group(user: d_user, name: str, new: UAMChild):
+def put_add_child_group(user: d_user, name: str, new: UAMChild):
     """Nest an existing group inside another group.
 
     Returns 409 if the new group would create a cycle.

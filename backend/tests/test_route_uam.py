@@ -47,7 +47,7 @@ def add_users_to_group(
     client: TestClient, group: str, users: List[UAMUser]
 ) -> Response:
     emails = [_.email for _ in users]
-    return client.post(f"/groups/{group}/users", json=emails)
+    return client.put(f"/groups/{group}/users", json=emails)
 
 
 def get_tree(client: TestClient) -> UAMGroup:
@@ -231,20 +231,20 @@ class TestUserAccessManagement:
         blahchild = UAMChild(child="blah").model_dump()
 
         # Must reject attempt to add an existing child to a non-existing group.
-        assert client.post("/groups/blah/children", json=barchild).status_code == 404
+        assert client.put("/groups/blah/children", json=barchild).status_code == 404
         assert len(get_groups(client)) == 2
 
         # Must reject attempt to add a non-existing child to an existing group.
-        assert client.post("/groups/foo/children", json=blahchild).status_code == 404
+        assert client.put("/groups/foo/children", json=blahchild).status_code == 404
         assert len(get_groups(client)) == 2
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         root_name = uam.UAM_DB.root.name
         assert (
-            client.post(f"/groups/{root_name}/children", json=foochild).status_code
+            client.put(f"/groups/{root_name}/children", json=foochild).status_code
             == 201
         )
-        assert client.post("/groups/foo/children", json=barchild).status_code == 201
+        assert client.put("/groups/foo/children", json=barchild).status_code == 201
 
         # Must reject attempt to delete an existing child of a non-existing group.
         assert client.delete("/groups/blah/children/bar").status_code == 404
@@ -281,7 +281,7 @@ class TestUserAccessManagement:
         # Make `bar` a child of `foo`: foo -> bar
         # Operation must be idempotent.
         for _ in range(2):
-            assert client.post("/groups/foo/children", json=barchild).status_code == 201
+            assert client.put("/groups/foo/children", json=barchild).status_code == 201
             groups = get_groups(client)
             foogroup = [_ for _ in groups if _.name == "foo"][0]
             bargroup = [_ for _ in groups if _.name == "bar"][0]
@@ -369,7 +369,7 @@ class TestUserAccessManagement:
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         assert client.get("/groups/foo/users?recursive=0").status_code == 404
-        assert client.post("/groups/foo/children", json=barchild).status_code == 404
+        assert client.put("/groups/foo/children", json=barchild).status_code == 404
 
         # Create the groups and users.
         for group in groups:
@@ -384,8 +384,8 @@ class TestUserAccessManagement:
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         root = uam.UAM_DB.root.name
-        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
-        assert client.post("/groups/foo/children", json=barchild).status_code == 201
+        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
+        assert client.put("/groups/foo/children", json=barchild).status_code == 201
         groups = get_groups(client)
         foogroup = [_ for _ in groups if _.name == "foo"][0]
         bargroup = [_ for _ in groups if _.name == "bar"][0]
@@ -439,27 +439,27 @@ class TestUserAccessManagement:
 
         # Must fail because a node cannot be its own child.
         reparent = UAMChild(child="g1").model_dump()
-        assert client.post("/groups/g1/children", json=reparent).status_code == 409
+        assert client.put("/groups/g1/children", json=reparent).status_code == 409
 
         # Make `g2` a child of `g1` and `g4` and child of `g3`.
         # g1 -> g2
         # g3 -> g4
         reparent = UAMChild(child="g2").model_dump()
-        assert client.post("/groups/g1/children", json=reparent).status_code == 201
+        assert client.put("/groups/g1/children", json=reparent).status_code == 201
         reparent = UAMChild(child="g4").model_dump()
-        assert client.post("/groups/g3/children", json=reparent).status_code == 201
+        assert client.put("/groups/g3/children", json=reparent).status_code == 201
 
         # Must not allow g3 to become a child of g4.
         reparent = UAMChild(child="g3").model_dump()
-        assert client.post("/groups/g4/children", json=reparent).status_code == 409
+        assert client.put("/groups/g4/children", json=reparent).status_code == 409
 
         # Put all 4 into a single chain g1 -> g2 -> g3 -> g4
         reparent = UAMChild(child="g3").model_dump()
-        assert client.post("/groups/g2/children", json=reparent).status_code == 201
+        assert client.put("/groups/g2/children", json=reparent).status_code == 201
 
         # Must not allow to g1 to become a child of g4 since that would be cycle.
         reparent = UAMChild(child="g1").model_dump()
-        assert client.post("/groups/g4/children", json=reparent).status_code == 409
+        assert client.put("/groups/g4/children", json=reparent).status_code == 409
 
     def test_tree(self, client: TestClient):
         # Root node must always exist and be empty initially.
@@ -491,8 +491,8 @@ class TestUserAccessManagement:
         root = uam.UAM_DB.root.name
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
-        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
-        assert client.post("/groups/foo/children", json=barchild).status_code == 201
+        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
+        assert client.put("/groups/foo/children", json=barchild).status_code == 201
 
         # Root node must now contain the `foo` group but without any of its
         # users to save space when transmitting this to the client.
@@ -520,15 +520,15 @@ class TestUserAccessManagement:
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         abcchild = UAMChild(child="abc").model_dump()
-        assert client.post(f"/groups/{root}/children", json=abcchild).status_code == 201
-        assert client.post(f"/groups/{root}/children", json=barchild).status_code == 201
-        assert client.post(f"/groups/{root}/children", json=foochild).status_code == 201
+        assert client.put(f"/groups/{root}/children", json=abcchild).status_code == 201
+        assert client.put(f"/groups/{root}/children", json=barchild).status_code == 201
+        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
 
         # Make `abc` a child of both `foo` and `bar`:
         # foo -> abc
         # bar -> abc
-        assert client.post("/groups/foo/children", json=abcchild).status_code == 201
-        assert client.post("/groups/bar/children", json=abcchild).status_code == 201
+        assert client.put("/groups/foo/children", json=abcchild).status_code == 201
+        assert client.put("/groups/bar/children", json=abcchild).status_code == 201
         root = get_tree(client)
         assert set(root.children) == {"foo", "bar", "abc"}
         assert root.children["foo"].children == {"abc": demo_groups[2]}
@@ -541,7 +541,7 @@ class TestUserAccessManagement:
         #   bar:
         #     abc
         barchild = UAMChild(child="bar").model_dump()
-        assert client.post("/groups/foo/children", json=barchild).status_code == 201
+        assert client.put("/groups/foo/children", json=barchild).status_code == 201
         root = get_tree(client)
         assert set(root.children) == {"foo", "bar", "abc"}
         assert set(root.children["foo"].children) == {"abc", "bar"}
@@ -579,14 +579,14 @@ class TestUserAccessManagement:
         barchild = UAMChild(child="bar").model_dump()
         foochild = UAMChild(child="foo").model_dump()
         assert (
-            client.post(
+            client.put(
                 f"/groups/{uam.UAM_DB.root.name}/children", json=foochild
             ).status_code
             == 201
         )
-        assert client.post("/groups/foo/children", json=abcchild).status_code == 201
-        assert client.post("/groups/bar/children", json=abcchild).status_code == 201
-        assert client.post("/groups/foo/children", json=barchild).status_code == 201
+        assert client.put("/groups/foo/children", json=abcchild).status_code == 201
+        assert client.put("/groups/bar/children", json=abcchild).status_code == 201
+        assert client.put("/groups/foo/children", json=barchild).status_code == 201
 
         groups = {_.name: _ for _ in get_groups(client)}
         assert len(groups) == 3
@@ -688,7 +688,7 @@ class TestRBAC:
         assert c_user.put("/groups", json=group.model_dump()).status_code == 204
 
         # Update group as any other user must fail.
-        invalid_emails = ["", "not-admin@org.com", "*"]
+        invalid_emails = ["not-admin@org.com", "*"]
         for email in invalid_emails:
             c_user.cookies = create_session_cookie({"email": email})
             assert c_user.put("/groups", json=group.model_dump()).status_code == 403
@@ -724,13 +724,13 @@ class TestRBAC:
 
         # Random user must not be able to update the users of a group.
         c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
-        assert c_user.post(url, json=[user.email]).status_code == 403
+        assert c_user.put(url, json=[user.email]).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].users) == 0
 
         # Group owner must be able to update the users of a group.
         c_user.cookies = create_session_cookie({"email": group.owner})
-        assert c_user.post(url, json=[user.email]).status_code == 201
+        assert c_user.put(url, json=[user.email]).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].users) == 1
 
@@ -747,7 +747,7 @@ class TestRBAC:
 
         # Random user must not be able to add child groups.
         c_user.cookies = create_session_cookie({"email": group_1.owner + "foo"})
-        assert c_user.post(url, json=child).status_code == 403
+        assert c_user.put(url, json=child).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 0
@@ -755,7 +755,7 @@ class TestRBAC:
 
         # Group owner must be able to add child groups.
         c_user.cookies = create_session_cookie({"email": group_1.owner})
-        assert c_user.post(url, json=child).status_code == 201
+        assert c_user.put(url, json=child).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 1

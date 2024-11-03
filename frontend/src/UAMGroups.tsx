@@ -350,7 +350,7 @@ export function ModifyUsersDialog({
 
     const onApply = async () => {
         if (showConfirmation) {
-            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
+            let ret = await httpPut(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
                 body: JSON.stringify(leftUserRows.map((user) => user.email)),
             });
             setShowConfirmation(false);
