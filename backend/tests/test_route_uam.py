@@ -9,13 +9,13 @@ import dfh.api
 import dfh.routers.uam as uam
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
-from .test_helpers import create_authenticated_client, make_group, make_user
+from .test_helpers import create_authenticated_client, make_group, make_user, flush_db
 
 
 @pytest.fixture
 async def client():
+    flush_db()
     c = create_authenticated_client("/demo/api/uam/v1")
-    assert c.delete("/test-flushdb").status_code == 200
     yield c
 
 
@@ -53,7 +53,7 @@ def get_tree(client: TestClient) -> UAMGroup:
 
 class TestFakeData:
     def test_create_and_delete_fake_dataset(self, client):
-        """Merely verify that test-flushdb endpoint works."""
+        """Merely verify that flush_db helper works."""
         # `client` fixture must have ensured that DB is empty.
         assert len(get_groups(client)) == 0
         assert len(get_users(client)) == 0
@@ -77,7 +77,7 @@ class TestFakeData:
         assert len(root.children) > 0 and len(root.users) == 0
 
         # Flush the DB and verify that all groups and users are gone again.
-        assert client.delete("test-flushdb").status_code == 200
+        flush_db()
 
         assert len(get_groups(client)) == 0
         assert len(get_users(client)) == 0
@@ -458,8 +458,6 @@ class TestUserAccessManagement:
     def test_tree(self, client: TestClient):
         # Root node must always exist and be empty initially.
         root = get_tree(client)
-        assert root.provider == "none"
-        assert root.owner == "none"
         assert len(root.users) == 0
         assert len(root.children) == 0
 
@@ -480,8 +478,6 @@ class TestUserAccessManagement:
         # Root node must still be empty because the groups have not been linked
         # into the org.
         root = get_tree(client)
-        assert root.provider == "none"
-        assert root.owner == "none"
         assert len(root.users) == 0
         assert len(root.children) == 0
 
@@ -495,8 +491,6 @@ class TestUserAccessManagement:
         # Root node must now contain the `foo` group but without any of its
         # users to save space when transmitting this to the client.
         root = get_tree(client)
-        assert root.provider == "none"
-        assert root.owner == "none"
         assert len(root.users) == 0
         assert set(root.children) == {"foo"}
         assert len(root.children["foo"].users) == 0

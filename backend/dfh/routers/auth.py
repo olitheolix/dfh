@@ -3,11 +3,9 @@ import json
 import logging
 from typing import Annotated
 
-import google.oauth2.credentials
 import itsdangerous
 import pydantic
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
 
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
 

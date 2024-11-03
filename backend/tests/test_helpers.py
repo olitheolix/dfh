@@ -4,11 +4,18 @@ from faker import Faker
 from fastapi.testclient import TestClient
 
 import dfh.api
+import dfh.routers.uam as uam
 from dfh.models import UAMGroup, UAMUser
 
 from .test_route_auth import create_session_cookie
 
 faker = Faker()
+
+
+def flush_db():
+    uam.UAM_DB.users.clear()
+    uam.UAM_DB.groups.clear()
+    uam.UAM_DB.root = UAMGroup(name="Org", owner="none", provider="none")
 
 
 def create_authenticated_client(prefix: str) -> TestClient:
