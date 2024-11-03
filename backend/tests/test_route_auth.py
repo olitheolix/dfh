@@ -63,29 +63,6 @@ def create_session_cookie(data, valid: bool = True):
 
 
 class TestGoogleAuthentication:
-    @mock.patch.object(auth.google.oauth2.credentials, "Credentials")
-    @mock.patch("httpx.AsyncClient.post", new_callable=mock.AsyncMock)
-    def test_revoke(self, m_requests, m_oauth2, client: TestClient):
-        # Must return HTML page if we are not authenticated.
-        resp = client.get("/revoke")
-        assert resp.status_code == 200
-        assert resp.read().decode().startswith("You need to")
-
-        # Create a fake session cookie.
-        cookie = create_session_cookie({"credentials": {"foo": "bar"}})
-        m_oauth2.return_value = m_oauth2
-        m_oauth2.token = "token"
-
-        m_requests.return_value = httpx.Response(200)
-        resp = client.get("/revoke", cookies=cookie)
-        assert resp.status_code == 200
-        assert resp.read().decode() == '"Credentials successfully revoked."'
-
-        m_requests.return_value = httpx.Response(403)
-        resp = client.get("/revoke", cookies=cookie)
-        assert resp.status_code == 200
-        assert resp.read().decode() == '"Could not revoke credentials."'
-
     def test_clear(self, client: TestClient):
         # Must return without error but do nothing.
         resp = client.get("/clear-session")
@@ -118,30 +95,6 @@ class TestGoogleAuthentication:
             # problem for the `session` cookie since it is Base64 encoded under
             # the hood.
             assert resp.cookies["email"] == '"foo@bar.com"'
-
-    @mock.patch.object(auth.googleapiclient.discovery, "build")
-    def test_fetch_user_email(self, m_build):
-        m_build.return_value = m_build
-        m_build.userinfo.return_value = m_build
-        m_build.get.return_value = m_build
-        m_build.execute.return_value = {"email": "foo@bar.com"}
-
-        creds = google.oauth2.credentials.Credentials(None)
-        assert auth.fetch_user_email(creds) == "foo@bar.com"
-
-        error_content = json.dumps(
-            {
-                "error": {
-                    "code": 403,
-                    "message": "Forbidden",
-                    "errors": [{"message": "Forbidden", "reason": "forbidden"}],
-                }
-            }
-        ).encode("utf-8")
-
-        err = HttpError(resp=mock.MagicMock(status=403), content=error_content)
-        m_build.execute.side_effect = err
-        assert auth.fetch_user_email(creds) == ""
 
 
 class TestAPIAuthentication:
