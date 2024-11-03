@@ -6,7 +6,6 @@ import {
     GridRowSelectionModel,
     GridSortModel,
     GridToolbar,
-    useGridApiRef,
 } from "@mui/x-data-grid";
 import {
     Autocomplete,
@@ -18,10 +17,12 @@ import {
     DialogContent,
     DialogTitle,
     IconButton,
+    List,
     Paper,
     TextField,
     Typography,
 } from "@mui/material";
+import { green, red } from "@mui/material/colors";
 import { UAMUser, UAMGroup, DGUserRow, DGGroupRow } from "./UAMInterfaces";
 import Grid from "@mui/material/Grid2";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -39,6 +40,9 @@ const DataGridUserColumns = [
     { field: "lanid", headerName: "LanID", width: 100 },
     { field: "email", headerName: "Email", flex: 1 },
 ];
+
+// Default sort model of the data grids.
+const sortModel = [{ field: "name", sort: "asc" }] as GridSortModel;
 
 // Show a paper with Group information.
 export function GroupInfo({
@@ -240,30 +244,333 @@ export function AddOrModifyGroupDialog({
     );
 }
 
-function removeDuplicateIds(data: any[]) {
-    let seen: Set<string> = new Set();
-    let out: any[] = [];
+export function ModifyUsersDialog({
+    isOpen,
+    setIsOpen,
+    selectedGroup,
+    leftUserRows,
+    setLeftUserRows,
+    errCtx,
+}: {
+    isOpen: boolean;
+    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    selectedGroup: DGGroupRow;
+    leftUserRows: DGUserRow[];
+    setLeftUserRows: React.Dispatch<React.SetStateAction<DGUserRow[]>>;
+    errCtx: HTTPErrorContextType;
+}) {
+    const [addedRows, setAddedRows] = useState<DGUserRow[]>([]);
+    const [allUsers, setAllUsers] = useState<DGUserRow[]>([]);
+    const [initialRows, setInitialRows] = useState<DGUserRow[]>([]);
+    const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [removedRows, setRemovedRows] = useState<DGUserRow[]>([]);
+    const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
+    const [rightUserRows, setRightUserRows] = useState<DGUserRow[]>([]);
+    const [rowsDict, setRowsDict] = useState<RowsDict>({});
+    const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
 
-    for (const item of data) {
-        if (seen.has(item.id)) continue;
-        seen.add(item.id);
-        out.push(item);
-    }
-    return out;
+    type DictValue = {
+        isLeft: boolean;
+        row: DGUserRow;
+    };
+    type RowsDict = {
+        [key: string]: DictValue; // Key is a string and value is of type DictValue
+    };
+
+    useEffect(() => {
+        // Backup the initial state so that we can compute a diff.
+        setInitialRows(leftUserRows);
+
+        // Load all users and compile them into a dict.
+        loadAllUsers();
+        const db: RowsDict = {};
+        for (const user of allUsers) {
+            db[user.email] = { isLeft: false, row: user };
+            db[user.email].row.id = user.email;
+        }
+
+        // Iterate over all the users in the original group and change their
+        // `isLeft` flag to true. We will use this flag to nominate the
+        // left/right DataGrid.
+        for (const row of leftUserRows) {
+            db[row.id] = { isLeft: true, row };
+        }
+
+        setRowsDict(db);
+    }, [isOpen]);
+
+    useEffect(() => {
+        // Iterate over our mini DB and compile the list of rows that go into
+        // the left/right DataGrid.
+        const right = Object.values(rowsDict)
+            .filter((item) => !item.isLeft)
+            .map((item) => item.row);
+        const left = Object.values(rowsDict)
+            .filter((item) => item.isLeft)
+            .map((item) => item.row);
+
+        setLeftUserRows(left);
+        setRightUserRows(right);
+    }, [rowsDict]);
+
+    const loadAllUsers = async () => {
+        setLoading(true);
+        const ret = await httpGet("/demo/api/uam/v1/users");
+        setLoading(false);
+
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+
+        setAllUsers(ret.data as DGUserRow[]);
+    };
+
+    // Determine the set of users that have been added or removed since mounting
+    // the component.
+    const computeDiff = () => {
+        const old = new Set(initialRows.map((user) => user.id));
+        const now = new Set(leftUserRows.map((user) => user.id));
+
+        const added = leftUserRows.filter((user) => !old.has(user.id));
+        const removed = initialRows.filter((user) => !now.has(user.id));
+
+        setAddedRows(added);
+        setRemovedRows(removed);
+    };
+
+    const closeDialog = () => {
+        if (showConfirmation) {
+            setShowConfirmation(false);
+        } else {
+            setIsOpen(false);
+        }
+    };
+
+    const onApply = async () => {
+        if (showConfirmation) {
+            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
+                body: JSON.stringify(leftUserRows.map((user) => user.email)),
+            });
+            setShowConfirmation(false);
+            setIsOpen(false);
+            if (ret.err) {
+                errCtx.showError(ret.err);
+                return;
+            }
+        } else {
+            computeDiff();
+            setShowConfirmation(true);
+        }
+    };
+
+    const onMoveRightToLeft = () => {
+        const updatedRowsDict = { ...rowsDict };
+        for (const sel of rightSelected as string[]) {
+            updatedRowsDict[sel] = { ...updatedRowsDict[sel], isLeft: true };
+        }
+        setRightSelected([]);
+        setRowsDict(updatedRowsDict);
+    };
+
+    const onMoveLeftToRight = () => {
+        const updatedRowsDict = { ...rowsDict };
+        for (const sel of leftSelected as string[]) {
+            updatedRowsDict[sel] = { ...updatedRowsDict[sel], isLeft: false };
+        }
+        setLeftSelected([]);
+        setRowsDict(updatedRowsDict);
+    };
+
+    const onSelectLeft = (selection: GridRowSelectionModel) => {
+        setLeftSelected(selection);
+    };
+    const onSelectRight = (selection: GridRowSelectionModel) => {
+        setRightSelected(selection);
+    };
+
+    const renderSpinner = () => {
+        return (
+            <Grid container justifyContent="center" alignItems="center">
+                <Grid>
+                    <CircularProgress />
+                </Grid>
+            </Grid>
+        );
+    };
+
+    const renderDiff = () => (
+        <List>
+            {addedRows.map((row) => (
+                <Typography
+                    key={row.id}
+                    sx={{
+                        color: green[500],
+                        whiteSpace: "pre-wrap",
+                        fontFamily: "monospace",
+                    }}
+                >
+                    {`+ ${row.email}`}
+                </Typography>
+            ))}
+            {removedRows.map((row) => (
+                <Typography
+                    key={row.id}
+                    sx={{
+                        color: red[500],
+                        whiteSpace: "pre-wrap",
+                        fontFamily: "monospace",
+                    }}
+                >
+                    {`- ${row.email}`}
+                </Typography>
+            ))}
+        </List>
+    );
+
+    const renderMainDialog = () => {
+        return (
+            <>
+                <DialogTitle>Manager Users</DialogTitle>
+                <DialogContent sx={{ height: "80vh", display: "flex", flexDirection: "column" }}>
+                    <Box display="flex" gap={2} sx={{ width: "100%", height: "100%" }}>
+                        <Box flexGrow={1} sx={{ height: "100%" }}>
+                            {/* Show users assigned to selected group. */}
+                            <Paper
+                                sx={{
+                                    height: "100%",
+                                    p: 2,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                }}
+                            >
+                                <Title>Users in {selectedGroup.name}</Title>
+                                <DataGrid
+                                    checkboxSelection
+                                    disableColumnSelector
+                                    rows={leftUserRows}
+                                    columns={DataGridUserColumns}
+                                    rowSelectionModel={leftSelected}
+                                    onRowSelectionModelChange={onSelectLeft}
+                                    keepNonExistentRowsSelected={false}
+                                    sortModel={sortModel}
+                                    slots={{ toolbar: GridToolbar }}
+                                    slotProps={{
+                                        toolbar: {
+                                            showQuickFilter: true,
+                                        },
+                                    }}
+                                />
+                            </Paper>
+                        </Box>
+
+                        <Box
+                            display="flex"
+                            flexDirection="column"
+                            alignItems="center"
+                            justifyContent="center"
+                        >
+                            {/* Show left/right buttons to transfer users. */}
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={onMoveLeftToRight}
+                                sx={{ mb: 2 }}
+                            >
+                                <ArrowForwardIcon />
+                            </Button>
+                            <Button variant="contained" color="primary" onClick={onMoveRightToLeft}>
+                                <ArrowBackIcon />
+                            </Button>
+                        </Box>
+                        <Box flexGrow={1}>
+                            {/* Show available users. */}
+                            <Paper
+                                sx={{
+                                    height: "100%",
+                                    p: 2,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                }}
+                            >
+                                <Title>Unassigned Users</Title>
+                                <DataGrid
+                                    checkboxSelection
+                                    disableColumnSelector
+                                    rows={rightUserRows}
+                                    columns={DataGridUserColumns}
+                                    keepNonExistentRowsSelected={false}
+                                    rowSelectionModel={rightSelected}
+                                    onRowSelectionModelChange={onSelectRight}
+                                    sortModel={sortModel}
+                                    slots={{ toolbar: GridToolbar }}
+                                    slotProps={{
+                                        toolbar: {
+                                            showQuickFilter: true,
+                                        },
+                                    }}
+                                />
+                            </Paper>
+                        </Box>
+                    </Box>
+                </DialogContent>
+            </>
+        );
+    };
+
+    const renderConfirmationDialog = () => {
+        return (
+            <>
+                <DialogTitle>Current Changeset</DialogTitle>
+                <DialogContent sx={{ height: "80vh", display: "flex", flexDirection: "column" }}>
+                    <Box
+                        display="flex"
+                        gap={2} // Space between the two DataGrids
+                        sx={{ width: "100%", height: "100%" }} // Customize height as needed
+                    >
+                        <Box flexGrow={1} sx={{ height: "100%" }}>
+                            {/* Show users assigned to selected group. */}
+                            <Paper
+                                sx={{
+                                    height: "100%",
+                                    p: 2,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                }}
+                            >
+                                {renderDiff()}
+                            </Paper>
+                        </Box>
+                    </Box>
+                </DialogContent>
+            </>
+        );
+    };
+
+    return (
+        <Dialog open={isOpen} onClose={closeDialog} fullWidth={true} maxWidth="xl">
+            {showConfirmation ? renderConfirmationDialog() : renderMainDialog()}
+            {loading ? renderSpinner() : null}
+            <DialogActions>
+                <Button onClick={closeDialog} color="primary">
+                    Cancel
+                </Button>
+                <Button onClick={onApply} color="primary" variant="contained">
+                    Apply
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
 }
 
 export default function UAMGroups() {
-    const apiRefLeft = useGridApiRef();
-    const apiRefRight = useGridApiRef();
-
     const [loading, setLoading] = useState<boolean>(true);
     const [reloadGroups, setReloadGroups] = useState<boolean>(true);
     const [groupRows, setGroupRows] = useState<DGGroupRow[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<DGUserRow[]>([]);
-    const [rightUserRows, setRightUserRows] = useState<DGUserRow[]>([]);
-    const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
-    const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
     const [_showAddGroup, setShowAddGroup] = useState<boolean>(false);
+    const [showModifyUsers, setShowModifyUsers] = useState<boolean>(false);
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
         name: "",
@@ -277,15 +584,17 @@ export default function UAMGroups() {
 
     const loadGroups = async () => {
         const ret = await httpGet("/demo/api/uam/v1/groups");
+        setLoading(false);
+
         if (ret.err) {
             errCtx.showError(ret.err);
             return;
         }
+
         const data = ret.data.map((group: UAMGroup) => {
             return { id: group.name, ...group } as DGGroupRow;
         });
         setGroupRows(data);
-        setLoading(false);
     };
 
     // Populate the groups upon mounting the component.
@@ -294,57 +603,6 @@ export default function UAMGroups() {
         setReloadGroups(false);
         loadGroups();
     }, [reloadGroups]);
-
-    // Notify the API whenever the content of the left changes, ie whenever
-    // users were added/removed from the selected group.
-    useEffect(() => {
-        // Do nothing unless a group was selected. This special case occurs when
-        // the component mounts and has no record selected yet.
-        if (selectedGroup.id == "") return;
-
-        const loadGroups = async () => {
-            // ----------------------------------------------------------------------
-            // Set the users of the selected group based on the new content in the left grid.
-            // ----------------------------------------------------------------------
-            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
-                body: JSON.stringify(leftUserRows.map((user) => user.email)),
-            });
-            if (ret.err) {
-                errCtx.showError(ret.err);
-                return;
-            }
-
-            // ----------------------------------------------------------------------
-            // Load all users in the system and remove those already displayed in
-            // the left grid.
-            // ----------------------------------------------------------------------
-            ret = await httpGet("/demo/api/uam/v1/users");
-            if (ret.err) {
-                errCtx.showError(ret.err);
-                return;
-            }
-            // Compile set of IDs in left grid.
-            const seen: Set<string> = new Set(leftUserRows.map((user) => user.email));
-
-            // Compute all users not in the left grid.
-            let users: DGUserRow[] = [];
-            for (const user of ret.data) {
-                if (!seen.has(user.email)) {
-                    const newRow: DGUserRow = {
-                        id: user.email,
-                        ...user,
-                    };
-                    users = [...users, newRow];
-                }
-            }
-
-            // Update the right grid.
-            setRightUserRows(users);
-            setLoading(false);
-        };
-
-        loadGroups();
-    }, [leftUserRows]);
 
     // When user clicks on a group we load all the users of that group into
     // the left list.
@@ -363,39 +621,13 @@ export default function UAMGroups() {
         setLoading(false);
     };
 
-    const onMoveRightToLeft = () => {
-        const itemsToMove = rightUserRows.filter((item) => rightSelected.includes(item.id));
-        setRightSelected([]);
-        setLeftUserRows(removeDuplicateIds([...leftUserRows, ...itemsToMove]));
-
-        // Ensure that all items on the right are now deselected. This works
-        // around the problem where removed rows remain selected which creates
-        // an odd UX when moving users back and forth.
-        apiRefRight.current?.setRowSelectionModel([]);
-    };
-
-    const onMoveLeftToRight = () => {
-        setLeftSelected([]);
-        setLeftUserRows(leftUserRows.filter((item) => !leftSelected.includes(item.id)));
-
-        // Ensure that all items on the left are now deselected. This works
-        // around the problem where removed rows remain selected which creates
-        // an odd UX when moving users back and forth.
-        apiRefLeft.current?.setRowSelectionModel([]);
-    };
-
-    const onSelectLeft = (selection: GridRowSelectionModel) => {
-        setLeftSelected(selection);
-    };
-    const onSelectRight = (selection: GridRowSelectionModel) => {
-        setRightSelected(selection);
-    };
     const onOpenCreateGroupDialog = async () => {
         setShowAddGroup(true);
     };
 
-    // Default sort model of the data grids.
-    const sortModel = [{ field: "name", sort: "asc" }] as GridSortModel;
+    const onOpenModifyUsersDialog = async () => {
+        setShowModifyUsers(true);
+    };
 
     // Either show the spinner or the page content.
     if (loading) {
@@ -410,6 +642,15 @@ export default function UAMGroups() {
     } else {
         return (
             <Grid container spacing={2}>
+                <ModifyUsersDialog
+                    isOpen={showModifyUsers}
+                    setIsOpen={setShowModifyUsers}
+                    selectedGroup={selectedGroup}
+                    leftUserRows={leftUserRows}
+                    setLeftUserRows={setLeftUserRows}
+                    errCtx={errCtx}
+                />
+
                 <Grid size={3.5} alignItems="left">
                     {/* Show Groups Info box */}
                     <GroupInfo
@@ -454,9 +695,8 @@ export default function UAMGroups() {
                         </Button>
                     </Paper>
                 </Grid>
-
                 {/* Show users assigned to selected group. */}
-                <Grid size={4} justifyContent="center" alignItems="center">
+                <Grid size={8} justifyContent="center" alignItems="center">
                     <Paper
                         style={{
                             padding: "20px",
@@ -467,12 +707,10 @@ export default function UAMGroups() {
                         <Title>Users in {selectedGroup.name}</Title>
                         <Box height="70vh">
                             <DataGrid
-                                apiRef={apiRefLeft}
                                 checkboxSelection
                                 disableColumnSelector
                                 rows={leftUserRows}
                                 columns={DataGridUserColumns}
-                                onRowSelectionModelChange={onSelectLeft}
                                 keepNonExistentRowsSelected={false}
                                 sortModel={sortModel}
                                 slots={{ toolbar: GridToolbar }}
@@ -483,47 +721,14 @@ export default function UAMGroups() {
                                 }}
                             />
                         </Box>
-                    </Paper>
-                </Grid>
-
-                {/* Show left/right buttons to transfer users. */}
-                <Grid container size={0.5} justifyContent="center" direction="column">
-                    <Button variant="contained" color="primary" onClick={onMoveLeftToRight}>
-                        <ArrowForwardIcon />
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={onMoveRightToLeft}>
-                        <ArrowBackIcon />
-                    </Button>
-                </Grid>
-
-                {/* Show available users. */}
-                <Grid size={4} justifyContent="center" alignItems="center">
-                    <Paper
-                        style={{
-                            padding: "20px",
-                            display: "flex",
-                            flexDirection: "column",
-                        }}
-                    >
-                        <Title>Unassigned Users</Title>
-                        <Box height="70vh">
-                            <DataGrid
-                                apiRef={apiRefRight}
-                                checkboxSelection
-                                disableColumnSelector
-                                rows={rightUserRows}
-                                columns={DataGridUserColumns}
-                                keepNonExistentRowsSelected={false}
-                                onRowSelectionModelChange={onSelectRight}
-                                sortModel={sortModel}
-                                slots={{ toolbar: GridToolbar }}
-                                slotProps={{
-                                    toolbar: {
-                                        showQuickFilter: true,
-                                    },
-                                }}
-                            />
-                        </Box>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={onOpenModifyUsersDialog}
+                            disabled={selectedGroup.name == "" ? true : false}
+                        >
+                            Modify Members
+                        </Button>
                     </Paper>
                 </Grid>
             </Grid>
