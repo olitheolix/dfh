@@ -449,6 +449,8 @@ class UAMUser(BaseModel):
     name: str
     lanid: str
     slack: str
+    role: str
+    manager: str
 
     @field_validator("name", "lanid", "slack")
     @classmethod

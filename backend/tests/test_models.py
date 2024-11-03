@@ -17,6 +17,7 @@ from dfh.models import (
 
 # Convenience: we can re-use it in all tests.
 from .conftest import get_server_config
+from .test_helpers import make_user
 
 cfg = get_server_config()
 
@@ -115,12 +116,19 @@ class TestModels:
 
         # Create a valid user.
         for email in valid_emails:
-            UAMUser(email=email, name="name", lanid="lanid", slack="slack")
+            UAMUser(
+                email=email,
+                name="name",
+                lanid="lanid",
+                slack="slack",
+                manager="manager",
+                role="role",
+            )
 
     def test_uamuser_invalid(self):
         """Must reject invalid values in UAMUser."""
         # Create a valid user.
-        user = UAMUser(email="foo@bar.com", name="name", lanid="lanid", slack="slack")
+        user = make_user(email="foo@bar.com")
 
         # Must reject malformed email addresses.
         invalid_emails = ["", "foo", "foo@", "@bar.com", "@", " foo@bar.com"]

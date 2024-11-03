@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------
 # Build React Frontend
 # ----------------------------------------------------------------------
-FROM node:latest as builder
+FROM node:latest AS builder
 
 WORKDIR /src
 COPY frontend .
@@ -19,9 +19,8 @@ RUN pip install pipenv
 COPY backend/Pipfile backend/Pipfile.lock .
 RUN pipenv install --system
 
-# Copy everything except the test endpoints.
+# Copy the app.
 COPY backend .
-RUN rm dfh/routers/testing.py
 
 # Copy the frontend assets.
 COPY --from=builder /src/dist static/

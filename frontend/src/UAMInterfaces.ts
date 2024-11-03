@@ -3,6 +3,8 @@ export interface UAMUser {
     name: string;
     lanid: string;
     slack: string;
+    role: string;
+    manager: string;
 }
 
 export interface UAMGroup {

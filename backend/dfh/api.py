@@ -184,12 +184,4 @@ def make_app() -> ASGIApp:
     # Install the exception handlers.
     app.add_exception_handler(RequestValidationError, handler=validation_error_handler)  # type: ignore
 
-    # Include helper endpoints if we are running tests only.
-    # NOTE: these routes *must not* be included in any deployed version. The
-    # Dockerfile contains an additional safeguard.
-    if isLocalDev():  # codecov-skip
-        import dfh.routers.testing as testing
-
-        app.include_router(testing.router, tags=["Testing"])
-
     return app
