@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Tuple
 from unittest import mock
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from httpx import Response
 
@@ -9,14 +10,19 @@ import dfh.api
 import dfh.routers.uam as uam
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
-from .test_helpers import create_authenticated_client, make_group, make_user, flush_db
+from .test_helpers import (
+    create_authenticated_client,
+    flush_db,
+    make_group,
+    make_user,
+)
+from .test_route_auth import create_session_cookie
 
 
 @pytest.fixture
 async def client():
     flush_db()
-    c = create_authenticated_client("/demo/api/uam/v1")
-    yield c
+    yield create_authenticated_client("/demo/api/uam/v1")
 
 
 def get_groups(client: TestClient) -> List[UAMGroup]:
@@ -633,3 +639,145 @@ class TestUserAccessManagement:
         assert client.delete("/groups/foo").status_code == 204
         assert len(get_groups(client)) == 0
         assert len(get_users(client)) == 2
+
+
+class TestRBAC:
+    def make_clients(self) -> Tuple[TestClient, TestClient]:
+        flush_db()
+        c_user = create_authenticated_client("/demo/api/uam/v1")
+        c_root = create_authenticated_client("/demo/api/uam/v1")
+        return c_root, c_user
+
+    def test_can_edit_group(self):
+        group = make_group()
+
+        # Must not throw and error if we do not pass a group.
+        uam.can_edit_group(group.owner, None)
+
+        # Root user and group owners must have access and thus not raise an exception.
+        uam.can_edit_group(uam.UAM_DB.root.owner, group)
+        uam.can_edit_group(group.owner, group)
+
+        # Must reject all other users with 403.
+        with pytest.raises(HTTPException) as err:
+            uam.can_edit_group(group.owner + "invalid", group)
+        assert err.value.status_code == 403
+
+        # If the root user is empty then no backdoor exists.
+        uam.UAM_DB.root.owner = ""
+        with pytest.raises(HTTPException) as err:
+            uam.can_edit_group("", group)
+
+        # If the root user is "*" then everyone can edit.
+        uam.UAM_DB.root.owner = "*"
+        uam.can_edit_group("", group)
+
+    def test_put_group(self):
+        c_root, c_user = self.make_clients()
+
+        # Create a group and user.
+        group, user = make_group(name="foo"), make_user()
+        assert c_root.post("/groups", json=group.model_dump()).status_code == 201
+        assert c_root.post("/users", json=user.model_dump()).status_code == 201
+
+        # Update the group as root user must succeed.
+        assert c_root.put("/groups", json=group.model_dump()).status_code == 204
+
+        # Update the group as owner must succeed.
+        c_user.cookies = create_session_cookie({"email": group.owner})
+        assert c_user.put("/groups", json=group.model_dump()).status_code == 204
+
+        # Update group as any other user must fail.
+        invalid_emails = ["", "not-admin@org.com", "*"]
+        for email in invalid_emails:
+            c_user.cookies = create_session_cookie({"email": email})
+            assert c_user.put("/groups", json=group.model_dump()).status_code == 403
+
+    def test_delete_group(self):
+        c_root, c_user = self.make_clients()
+
+        # Create a group.
+        group = make_group()
+        assert c_root.post("/groups", json=group.model_dump()).status_code == 201
+
+        assert len(get_groups(c_root)) == 1
+
+        # Must not process request from random user.
+        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
+        assert c_user.delete(f"/groups/{group.name}").status_code == 403
+        assert len(get_groups(c_root)) == 1
+
+        # Must allow the group owner to delete the group.
+        c_user.cookies = create_session_cookie({"email": group.owner})
+        assert c_user.delete(f"/groups/{group.name}").status_code == 204
+        assert len(get_groups(c_root)) == 0
+
+    def test_update_group_users(self):
+        c_root, c_user = self.make_clients()
+
+        # Create a group and a user.
+        group, user = make_group(), make_user()
+        assert c_root.post("/groups", json=group.model_dump()).status_code == 201
+        assert c_root.post("/users", json=user.model_dump()).status_code == 201
+
+        url = f"/groups/{group.name}/users"
+
+        # Random user must not be able to update the users of a group.
+        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
+        assert c_user.post(url, json=[user.email]).status_code == 403
+        groups = get_groups(c_root)
+        assert len(groups) == 1 and len(groups[0].users) == 0
+
+        # Group owner must be able to update the users of a group.
+        c_user.cookies = create_session_cookie({"email": group.owner})
+        assert c_user.post(url, json=[user.email]).status_code == 201
+        groups = get_groups(c_root)
+        assert len(groups) == 1 and len(groups[0].users) == 1
+
+    def test_update_group_children(self):
+        c_root, c_user = self.make_clients()
+
+        # Create a group and a user.
+        group_1, group_2 = sorted([make_group(), make_group()], key=lambda _: _.name)
+        assert c_root.post("/groups", json=group_1.model_dump()).status_code == 201
+        assert c_root.post("/groups", json=group_2.model_dump()).status_code == 201
+        child = UAMChild(child=group_2.name).model_dump()
+
+        url = f"/groups/{group_1.name}/children"
+
+        # Random user must not be able to add child groups.
+        c_user.cookies = create_session_cookie({"email": group_1.owner + "foo"})
+        assert c_user.post(url, json=child).status_code == 403
+        groups = get_groups(c_root)
+        assert len(groups) == 2
+        assert len(groups[0].children) == 0
+        assert len(groups[1].children) == 0
+
+        # Group owner must be able to add child groups.
+        c_user.cookies = create_session_cookie({"email": group_1.owner})
+        assert c_user.post(url, json=child).status_code == 201
+        groups = get_groups(c_root)
+        assert len(groups) == 2
+        assert len(groups[0].children) == 1
+        assert len(groups[1].children) == 0
+
+        # ----------------------------------------------------------------------
+        # Unlink Children.
+        # ----------------------------------------------------------------------
+        url = f"/groups/{group_1.name}/children/{group_2.name}"
+
+        # Random user must be unable to unlink a child.
+        c_user.cookies = create_session_cookie({"email": group_1.owner + "foo"})
+        assert c_user.delete(url).status_code == 403
+        groups = get_groups(c_root)
+        assert len(groups) == 2
+        assert len(groups[0].children) == 1
+        assert len(groups[1].children) == 0
+
+        # Group owner user must able to unlink a child.
+        c_user.cookies = create_session_cookie({"email": group_1.owner})
+        assert c_user.delete(url).status_code == 204
+        groups = get_groups(c_root)
+        assert len(groups) == 2
+        assert len(groups[0].children) == 0
+        assert len(groups[1].children) == 0

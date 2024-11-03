@@ -19,9 +19,12 @@ def flush_db():
 
 
 def create_authenticated_client(prefix: str) -> TestClient:
-    # Create valid session cookies to pass authentication.
-    cookies: dict = {"email": "authenticated@user.com"}
-    cookies["email"] = "authenticated@user.com"
+    # Create a random root user.
+    name, org = faker.unique.first_name(), faker.unique.first_name()
+    uam.UAM_DB.root.owner = f"{name}@{org}.com"
+
+    # Create valid session cookies to indicate we are the root user.
+    cookies: dict = {"email": uam.UAM_DB.root.owner}
 
     client = TestClient(dfh.api.make_app(), cookies=create_session_cookie(cookies))
     client.base_url = client.base_url.join(prefix)

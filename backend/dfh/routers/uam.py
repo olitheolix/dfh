@@ -1,11 +1,13 @@
 import random
-from typing import Dict, List, Set
+from typing import Annotated, Dict, List, Set
 
 import faker
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 import dfh.api
 from dfh.models import UAMChild, UAMDatabase, UAMGroup, UAMUser
+
+from .auth import is_authenticated
 
 RESPONSE_404 = {"description": "not found", "model": UAMChild}
 RESPONSE_409 = {"description": "already exists", "model": UAMChild}
@@ -13,6 +15,33 @@ RESPONSE_409 = {"description": "already exists", "model": UAMChild}
 router = APIRouter()
 
 UAM_DB: UAMDatabase = UAMDatabase(users={}, groups={})
+
+
+d_user = Annotated[str, Depends(is_authenticated)]
+
+
+def can_edit_group(user: str, group: UAMGroup | None):
+    """FastAPI to fixture to determine if a user has edit rights on the group.
+
+    Only the group owners and root will pass the test.
+
+    """
+    # Request handler needs to decide what do here.
+    if not group:
+        return
+
+    # Special case: everybody is root.
+    if UAM_DB.root.owner == "*":
+        return
+
+    # Root user always has EDIT permissions.
+    if UAM_DB.root.owner and user == UAM_DB.root.owner:
+        return
+
+    # Group owner has EDIT permissions.
+    if user == group.owner:
+        return
+    raise HTTPException(status.HTTP_403_FORBIDDEN, detail="insufficient permissions")
 
 
 def create_fake_uam_dataset():
@@ -113,7 +142,7 @@ def post_group(group: UAMGroup):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={404: RESPONSE_404},
 )
-def put_group(group: UAMGroup):
+def put_group(user: d_user, group: UAMGroup):
     """Update an existing group. Returns 404 if the group does not exist.
 
     NOTE: this will only allow to change the owner and description. All other
@@ -129,6 +158,9 @@ def put_group(group: UAMGroup):
         raise HTTPException(
             status_code=404, detail=f"group <{group.name}> does not exist"
         )
+
+    # Authorisation check.
+    can_edit_group(user, group)
 
     # Update the group in our DB.
     UAM_DB.groups[group.name].owner = group.owner
@@ -149,7 +181,7 @@ def get_group(name: str) -> UAMGroup:
 
 
 @router.delete("/v1/groups/{name}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_group(name: str):
+def delete_group(user: d_user, name: str):
     """Remove the group from the database.
 
     NOTE: This will not remove any users from the database.
@@ -158,6 +190,8 @@ def delete_group(name: str):
     # Special case: abort immediately if the group name matches the root group name.
     if name == UAM_DB.root.name:
         raise HTTPException(status_code=422, detail="cannot delete root group")
+
+    can_edit_group(user, UAM_DB.groups.get(name, None))
 
     UAM_DB.groups.pop(name, None)
     UAM_DB.root.children.pop(name, None)
@@ -171,7 +205,7 @@ def delete_group(name: str):
     status_code=status.HTTP_201_CREATED,
     responses={404: RESPONSE_404},
 )
-def post_group_members(name: str, emails: List[str]):
+def post_group_members(user: d_user, name: str, emails: List[str]):
     """Set the users of the group.
 
     The supplied email list is canonical and will replace the existing users of
@@ -182,6 +216,8 @@ def post_group_members(name: str, emails: List[str]):
     """
     if name not in UAM_DB.groups:
         raise HTTPException(status_code=404, detail="group not found")
+
+    can_edit_group(user, UAM_DB.groups[name])
 
     try:
         users = {email: UAM_DB.users[email] for email in emails}
@@ -196,7 +232,7 @@ def post_group_members(name: str, emails: List[str]):
     status_code=status.HTTP_201_CREATED,
     responses={404: RESPONSE_404, 409: RESPONSE_409},
 )
-def post_add_child_group(name: str, new: UAMChild):
+def post_add_child_group(user: d_user, name: str, new: UAMChild):
     """Nest an existing group inside another group.
 
     Returns 409 if the new group would create a cycle.
@@ -207,6 +243,8 @@ def post_add_child_group(name: str, new: UAMChild):
         child = UAM_DB.groups[new.child]
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
+
+    can_edit_group(user, parent)
 
     def is_descendant(pname: str, node: UAMGroup) -> bool:
         if node.name == pname:
@@ -228,7 +266,7 @@ def post_add_child_group(name: str, new: UAMChild):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={404: RESPONSE_404},
 )
-def unlink_child_from_group(parent: str, child: str):
+def unlink_child_from_group(user: d_user, parent: str, child: str):
     """Unlink the specified child group from its parent.
 
     This does *not* delete the group, only remove it as a child of the parent group.
@@ -239,6 +277,7 @@ def unlink_child_from_group(parent: str, child: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
 
+    can_edit_group(user, group)
     group.children.pop(child, None)
 
 
