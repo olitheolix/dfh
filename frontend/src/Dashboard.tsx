@@ -26,6 +26,7 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 
 import { DFHToken } from "./UAMInterfaces";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -310,7 +311,10 @@ function ShowAPITokenDialog({
 
     useEffect(() => {
         setCurlExample(
-            `curl ${window.location.origin}/demo/api/auth/users/me -H "Authorization: Bearer ${tokenValue}"`,
+            `export DFHTOKEN=${tokenValue}` +
+                "\n" +
+                `curl ${window.location.origin}` +
+                '/demo/api/auth/users/me -H "Authorization: Bearer ${DFHTOKEN}"',
         );
     }, [tokenValue]);
 
@@ -321,49 +325,62 @@ function ShowAPITokenDialog({
                 <Typography variant="body1" gutterBottom>
                     Bearer Token:
                 </Typography>
-                <Box
-                    sx={{
-                        maxWidth: "100%", // Ensures it fits within the dialog width
-                        overflowX: "auto", // Enables horizontal scroll
-                        backgroundColor: "#f5f5f5",
-                        padding: 1,
-                        borderRadius: 1,
-                    }}
-                >
-                    <Typography component="pre" variant="body2">
+                <Grid container spacing={2} alignItems="left">
+                    <Grid size={0.3}>
                         <Tooltip title="Copy to Clipboard" arrow>
                             <IconButton onClick={handleCopyToken} size="small">
                                 <ContentCopyIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        {tokenValue}
-                    </Typography>
-                </Box>
-                <Typography variant="body1" gutterBottom>
+                    </Grid>
+                    <Grid>
+                        <Box
+                            sx={{
+                                maxWidth: "100%", // Ensures it fits within the dialog width
+                                overflowX: "auto", // Enables horizontal scroll
+                                backgroundColor: "#f5f5f5",
+                                padding: 1,
+                                borderRadius: 1,
+                            }}
+                        >
+                            <Typography component="pre" variant="body2">
+                                {tokenValue}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                </Grid>
+
+                <Typography variant="body1" gutterBottom sx={{ mt: 5 }}>
                     Example usage:
                 </Typography>
-                <Box
-                    sx={{
-                        maxWidth: "100%", // Ensures it fits within the dialog width
-                        overflowX: "auto", // Enables horizontal scroll
-                        backgroundColor: "#f5f5f5",
-                        padding: 1,
-                        borderRadius: 1,
-                    }}
-                >
-                    <Typography
-                        component="pre"
-                        variant="body2"
-                        style={{ margin: 0, fontFamily: "monospace" }}
-                    >
+                <Grid container spacing={2} alignItems="left">
+                    <Grid size={0.3}>
                         <Tooltip title="Copy to Clipboard" arrow>
                             <IconButton onClick={handleCopyCurlExample} size="small">
                                 <ContentCopyIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        {curlExample}
-                    </Typography>
-                </Box>
+                    </Grid>
+                    <Grid>
+                        <Box
+                            sx={{
+                                maxWidth: "100%", // Ensures it fits within the dialog width
+                                overflowX: "auto", // Enables horizontal scroll
+                                backgroundColor: "#f5f5f5",
+                                padding: 1,
+                                borderRadius: 1,
+                            }}
+                        >
+                            <Typography
+                                component="pre"
+                                variant="body2"
+                                style={{ margin: 0, fontFamily: "monospace" }}
+                            >
+                                {curlExample}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                </Grid>
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose} color="primary" variant="contained">
