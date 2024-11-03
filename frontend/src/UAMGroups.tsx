@@ -28,9 +28,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Title from "./Title";
 import EditIcon from "@mui/icons-material/Edit";
-import { httpGet, httpPost, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
+import { httpGet, httpPost, httpPut, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
 
-const DataGridGroupColumns = [{ field: "name", headerName: "Name", flex: 1 }];
+const DataGridGroupColumns = [
+    { field: "name", headerName: "Name", flex: 1 },
+    { field: "owner", headerName: "Owner", flex: 1 },
+];
 const DataGridUserColumns = [
     { field: "name", headerName: "Name", width: 150 },
     { field: "lanid", headerName: "LanID", width: 100 },
@@ -38,7 +41,23 @@ const DataGridUserColumns = [
 ];
 
 // Show a paper with Group information.
-export function GroupInfo({ selectedGroup }: { selectedGroup: UAMGroup }) {
+export function GroupInfo({
+    selectedGroup,
+    setSelectedGroup,
+    setReloadGroups,
+    errCtx,
+}: {
+    selectedGroup: DGGroupRow;
+    setSelectedGroup: React.Dispatch<React.SetStateAction<DGGroupRow>>;
+    setReloadGroups: React.Dispatch<React.SetStateAction<boolean>>;
+    errCtx: HTTPErrorContextType;
+}) {
+    const [showAddGroup, setShowAddGroup] = useState<boolean>(false);
+
+    const openEditDialog = () => {
+        setShowAddGroup(true);
+    };
+
     return (
         <Paper
             style={{
@@ -48,11 +67,27 @@ export function GroupInfo({ selectedGroup }: { selectedGroup: UAMGroup }) {
             }}
             sx={{ mt: 0, mb: 6 }}
         >
+            <AddOrModifyGroupDialog
+                isOpen={showAddGroup}
+                setIsOpen={setShowAddGroup}
+                setReloadGroups={setReloadGroups}
+                selectedGroup={selectedGroup}
+                setSelectedGroup={setSelectedGroup}
+                errCtx={errCtx}
+            />
+
             <Title>
-                Group {selectedGroup.name}
-                <IconButton size="small" aria-label="edit">
-                    <EditIcon fontSize="small" />
-                </IconButton>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    Group {selectedGroup.name}
+                    <IconButton
+                        size="small"
+                        aria-label="edit"
+                        onClick={openEditDialog}
+                        disabled={selectedGroup.name == ""}
+                    >
+                        <EditIcon fontSize="small" />
+                    </IconButton>
+                </Box>
             </Title>
 
             <Typography variant="subtitle1" gutterBottom>
@@ -61,26 +96,37 @@ export function GroupInfo({ selectedGroup }: { selectedGroup: UAMGroup }) {
             <Typography variant="subtitle1" gutterBottom>
                 Provider: {selectedGroup.provider}
             </Typography>
+            <Typography variant="subtitle1" gutterBottom>
+                Description: {selectedGroup.description}
+            </Typography>
         </Paper>
     );
 }
 
-function ShowAddGroup({
+export function AddOrModifyGroupDialog({
     isOpen,
     setIsOpen,
     setReloadGroups,
+    selectedGroup,
+    setSelectedGroup,
     errCtx,
 }: {
     isOpen: boolean;
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setReloadGroups: React.Dispatch<React.SetStateAction<boolean>>;
+    selectedGroup: DGGroupRow;
+    setSelectedGroup: React.Dispatch<React.SetStateAction<DGGroupRow>>;
     errCtx: HTTPErrorContextType;
 }) {
     const [options, setOptions] = useState<string[]>([]);
-    const [groupOwner, setGroupOwner] = useState<string>("");
-    const [groupName, setGroupName] = useState<string>("");
+    const [groupOwner, setGroupOwner] = useState<string>(selectedGroup.owner);
+    const [groupName, setGroupName] = useState<string>(selectedGroup.name);
+    const [groupDescription, setGroupDescription] = useState<string>(selectedGroup.description);
 
     useEffect(() => {
+        setGroupOwner(selectedGroup.owner);
+        setGroupName(selectedGroup.name);
+
         const fetchData = async () => {
             // Fetch the list of all users when the dialog opens.
             if (isOpen) {
@@ -103,39 +149,63 @@ function ShowAddGroup({
         setIsOpen(false);
     };
 
-    const handleOk = async () => {
-        if (groupOwner) {
-            const payload: UAMGroup = {
-                owner: groupOwner,
-                name: groupName,
-                provider: "",
-                users: {},
-                children: {},
-            };
+    const onCreateGroup = async () => {
+        const payload: UAMGroup = {
+            owner: groupOwner,
+            name: groupName,
+            description: groupDescription,
+            provider: "",
+            users: {},
+            children: {},
+        };
 
-            const ret = await httpPost("/demo/api/uam/v1/groups", {
-                body: JSON.stringify(payload),
-            });
-            if (ret.err) {
-                errCtx.showError(ret.err);
-                return;
-            }
-            setReloadGroups(true);
-        } else {
-            console.warn("No user selected");
+        const method = isCreate() ? httpPost : httpPut;
+        const ret = await method("/demo/api/uam/v1/groups", {
+            body: JSON.stringify(payload),
+        });
+
+        // Update the selectedGroup prop to ensure the GroupInfo panel re-renders itself.
+        if (!isCreate()) {
+            setSelectedGroup({ id: payload.name, ...payload });
         }
+        setReloadGroups(true);
         handleClose();
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+    };
+
+    // Return `true` if this dialog was opened to create a group and `false` if it
+    // was opened to modify an existing group.
+    const isCreate = () => {
+        return selectedGroup.name == "";
+    };
+
+    const getTitle = () => {
+        return isCreate() ? "Create Group" : "Modify Group";
     };
 
     return (
         <Dialog open={isOpen} onClose={handleClose} fullWidth={true}>
-            <DialogTitle>Group Owner</DialogTitle>
+            <DialogTitle>{getTitle()}</DialogTitle>
             <DialogContent>
                 <Grid container spacing={2} alignItems="center">
                     <Grid size={10}>
+                        <TextField
+                            label="name"
+                            type="string"
+                            variant="standard"
+                            {...(isCreate()
+                                ? { defaultValue: selectedGroup.name }
+                                : { value: selectedGroup.name })}
+                            onChange={(e) => setGroupName(e.target.value)}
+                        />
+                    </Grid>
+                    <Grid size={10}>
                         <Autocomplete
                             options={options}
-                            value={groupOwner}
+                            defaultValue={selectedGroup.owner}
                             onChange={(_, newValue) => {
                                 setGroupOwner(newValue || "");
                             }}
@@ -144,22 +214,26 @@ function ShowAddGroup({
                             )}
                         />
                     </Grid>
-                    <Grid size={10}>
-                        <TextField
-                            label="group name"
-                            type="string"
-                            variant="standard"
-                            onChange={(e) => setGroupName(e.target.value)}
-                        />
-                    </Grid>
+                    <TextField
+                        label="description"
+                        type="string"
+                        variant="standard"
+                        defaultValue={selectedGroup.description}
+                        onChange={(e) => setGroupDescription(e.target.value)}
+                    />
                 </Grid>
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose} color="primary">
                     Cancel
                 </Button>
-                <Button onClick={handleOk} color="primary" variant="contained">
-                    OK
+                <Button
+                    onClick={onCreateGroup}
+                    color="primary"
+                    variant="contained"
+                    disabled={groupOwner === "" || groupName === ""}
+                >
+                    {isCreate() ? "Create" : "Update"}
                 </Button>
             </DialogActions>
         </Dialog>
@@ -183,18 +257,19 @@ export default function UAMGroups() {
     const apiRefRight = useGridApiRef();
 
     const [loading, setLoading] = useState<boolean>(true);
-    const [reloadGroups, setReloadGroups] = useState<boolean>(false);
+    const [reloadGroups, setReloadGroups] = useState<boolean>(true);
     const [groupRows, setGroupRows] = useState<DGGroupRow[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<DGUserRow[]>([]);
     const [rightUserRows, setRightUserRows] = useState<DGUserRow[]>([]);
     const [leftSelected, setLeftSelected] = useState<GridRowSelectionModel>([]);
     const [rightSelected, setRightSelected] = useState<GridRowSelectionModel>([]);
-    const [showAddGroup, setShowAddGroup] = useState<boolean>(false);
+    const [_showAddGroup, setShowAddGroup] = useState<boolean>(false);
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
         name: "",
         owner: "",
         provider: "",
+        description: "",
         users: {},
         children: {},
     });
@@ -211,11 +286,12 @@ export default function UAMGroups() {
         });
         setGroupRows(data);
         setLoading(false);
-        setReloadGroups(false);
     };
 
     // Populate the groups upon mounting the component.
     useEffect(() => {
+        if (!reloadGroups) return;
+        setReloadGroups(false);
         loadGroups();
     }, [reloadGroups]);
 
@@ -230,7 +306,7 @@ export default function UAMGroups() {
             // ----------------------------------------------------------------------
             // Set the users of the selected group based on the new content in the left grid.
             // ----------------------------------------------------------------------
-            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.id}/users`, {
+            let ret = await httpPost(`/demo/api/uam/v1/groups/${selectedGroup.name}/users`, {
                 body: JSON.stringify(leftUserRows.map((user) => user.email)),
             });
             if (ret.err) {
@@ -275,7 +351,7 @@ export default function UAMGroups() {
     const handleGroupRowClick: GridEventListener<"rowClick"> = async (params) => {
         setSelectedGroup(params.row);
 
-        const ret = await httpGet(`/demo/api/uam/v1/groups/${params.id}/users`);
+        const ret = await httpGet(`/demo/api/uam/v1/groups/${params.row.name}/users`);
         if (ret.err) {
             errCtx.showError(ret.err);
             return;
@@ -335,9 +411,15 @@ export default function UAMGroups() {
         return (
             <Grid container spacing={2}>
                 <Grid size={3.5} alignItems="left">
-                    <GroupInfo selectedGroup={selectedGroup as UAMGroup} />
+                    {/* Show Groups Info box */}
+                    <GroupInfo
+                        selectedGroup={selectedGroup}
+                        setSelectedGroup={setSelectedGroup}
+                        setReloadGroups={setReloadGroups}
+                        errCtx={errCtx}
+                    />
 
-                    {/* Show list of groups in the system */}
+                    {/* Show list of groups in the system with a button to create new ones at the bottom.*/}
                     <Paper
                         style={{
                             padding: "20px",
@@ -346,7 +428,7 @@ export default function UAMGroups() {
                         }}
                     >
                         <Title>Groups</Title>
-                        <Box height="49.4vh">
+                        <Box height="46.5vh">
                             <DataGrid
                                 disableColumnSelector
                                 rows={groupRows}
@@ -355,6 +437,7 @@ export default function UAMGroups() {
                                 onRowClick={handleGroupRowClick}
                                 keepNonExistentRowsSelected={false}
                                 sortModel={sortModel}
+                                rowSelectionModel={selectedGroup ? [selectedGroup.id] : []}
                                 slotProps={{
                                     toolbar: {
                                         showQuickFilter: true,
@@ -369,12 +452,6 @@ export default function UAMGroups() {
                         >
                             Create Group
                         </Button>
-                        <ShowAddGroup
-                            isOpen={showAddGroup}
-                            setIsOpen={setShowAddGroup}
-                            setReloadGroups={setReloadGroups}
-                            errCtx={errCtx}
-                        />
                     </Paper>
                 </Grid>
 

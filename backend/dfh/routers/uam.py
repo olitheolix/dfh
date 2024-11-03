@@ -92,7 +92,9 @@ def post_group(group: UAMGroup):
 
     # Return an error if a group with that name already exists.
     if group.name in UAM_DB.groups:
-        raise HTTPException(status_code=409, detail="group already exists")
+        raise HTTPException(
+            status_code=409, detail=f"group <{group.name}> already exists"
+        )
 
     # Clear users and children.
     # fixme: allow to specify members and children but need sanity checks that
@@ -102,6 +104,33 @@ def post_group(group: UAMGroup):
 
     # Add the group to our DB.
     UAM_DB.groups[group.name] = group
+
+
+@router.put(
+    "/v1/groups",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: RESPONSE_404},
+)
+def put_group(group: UAMGroup):
+    """Update an existing group. Returns 404 if the group does not exist.
+
+    NOTE: this will only allow to change the owner and description. All other
+    fields will be ignored.
+
+    """
+    # Special case: abort immediately if the group name matches the root group name.
+    if group.name == UAM_DB.root.name:
+        raise HTTPException(status_code=422, detail="cannot update root group")
+
+    # Return an error if a group with that name already exists.
+    if group.name not in UAM_DB.groups:
+        raise HTTPException(
+            status_code=404, detail=f"group <{group.name}> does not exist"
+        )
+
+    # Update the group in our DB.
+    UAM_DB.groups[group.name].owner = group.owner
+    UAM_DB.groups[group.name].description = group.description
 
 
 @router.get(

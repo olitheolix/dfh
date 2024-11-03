@@ -316,6 +316,61 @@ class TestUserAccessManagement:
             for group in groups:
                 assert len(group.children) == 0
 
+    def test_put_groups_err(self, client: TestClient):
+        group = UAMGroup(name="foo", owner="foo@blah.com", provider="gcp")
+
+        # Must refuse to update a non-existing group.
+        assert client.put("/groups", json=group.model_dump()).status_code == 404
+
+        # Must refuse to update the root group.
+        root = uam.UAM_DB.root
+        assert client.put("/groups", json=root.model_dump()).status_code == 422
+
+    def test_put_groups_ok(self, client: TestClient):
+        group = UAMGroup(name="foo", owner="foo@blah.com", provider="gcp")
+        user = UAMUser(email="foo@bar.com", name="name", lanid="lanid", slack="slack")
+
+        # Create a group and user.
+        assert client.post("/groups", json=group.model_dump()).status_code == 201
+        assert client.post("/users", json=user.model_dump()).status_code == 201
+
+        # Update the group without any changes.
+        assert client.put("/groups", json=group.model_dump()).status_code == 204
+        ret = get_groups(client)
+        assert len(ret) == 1 and ret[0] == group
+
+        # Change group attributes and update the record.
+        group.owner += "foo"
+        group.description += "foo"
+        assert client.put("/groups", json=group.model_dump()).status_code == 204
+        ret = get_groups(client)
+        assert len(ret) == 1 and ret[0] == group
+
+        # Must ignore changes to the `children` field.
+        group.owner += "bar"
+        group.description += "bar"
+        group.children["blah"] = UAMGroup(name="blah", owner="x@y.com", provider="gcp")
+        assert client.put("/groups", json=group.model_dump()).status_code == 204
+        ret = get_groups(client)
+        assert len(ret) == 1
+        assert ret[0].owner == group.owner
+        assert ret[0].description == group.description
+        assert ret[0].children == {}
+        assert ret[0].users == {}
+
+        # Must ignore changes to the `users` field.
+        group.owner += "foobar"
+        group.description += "foobar"
+        group.children.clear()
+        group.users[user.email] = user
+        assert client.put("/groups", json=group.model_dump()).status_code == 204
+        ret = get_groups(client)
+        assert len(ret) == 1
+        assert ret[0].owner == group.owner
+        assert ret[0].description == group.description
+        assert ret[0].children == {}
+        assert ret[0].users == {}
+
     def test_recursive_user_query(self, client: TestClient):
         """Create basic parent/child relationships *once*.
 

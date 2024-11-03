@@ -89,6 +89,9 @@ export const fetchApi = async <T = any,>(
         if (options.method == "DELETE") {
             return { data: null, err: null };
         }
+        if (response.status == 204) {
+            return { data: null, err: null };
+        }
         const data = await response.json(); // Parse and return JSON payload
         return { data, err: null }; // Return data with no error
     } catch (error) {
@@ -115,6 +118,26 @@ export const httpPost = async (url: string, options: any = {}) => {
         headers: { "Content-Type": "application/json", ...options.headers },
         ...options,
         method: "POST",
+    };
+    return await fetchApi(url, options);
+};
+
+export const httpPatch = async (url: string, options: any = {}) => {
+    // Method is *always* PATCH whereas the user is free override the content type.
+    options = {
+        headers: { "Content-Type": "application/json", ...options.headers },
+        ...options,
+        method: "PATCH",
+    };
+    return await fetchApi(url, options);
+};
+
+export const httpPut = async (url: string, options: any = {}) => {
+    // Method is *always* PUT whereas the user is free override the content type.
+    options = {
+        headers: { "Content-Type": "application/json", ...options.headers },
+        ...options,
+        method: "PUT",
     };
     return await fetchApi(url, options);
 };

@@ -9,9 +9,19 @@ export interface UAMGroup {
     name: string; // uid
     owner: string;
     provider: string;
+    description: string;
     users: { [key: string]: UAMUser };
     children: { [key: string]: UAMGroup };
 }
+
+export const UAMGroupDefault: UAMGroup = {
+    owner: "",
+    name: "",
+    description: "",
+    provider: "",
+    users: {},
+    children: {},
+};
 
 // Each row in the group data grid is just a group with a unique ID.
 export interface DGGroupRow extends UAMGroup {
