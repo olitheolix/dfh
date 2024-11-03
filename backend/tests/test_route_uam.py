@@ -15,8 +15,8 @@ from .test_helpers import (
     flush_db,
     make_group,
     make_user,
+    create_session_cookie,
 )
-from .test_route_auth import create_session_cookie
 
 
 @pytest.fixture

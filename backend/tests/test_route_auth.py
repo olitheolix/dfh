@@ -3,13 +3,11 @@ import json
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
-import google.oauth2.credentials
 import httpx
 import itsdangerous
 import pytest
 from fastapi.testclient import TestClient
 from freezegun import freeze_time
-from googleapiclient.errors import HttpError
 
 import dfh
 import dfh.api
@@ -19,6 +17,10 @@ import dfh.k8s
 import dfh.routers.auth as auth
 import dfh.watch
 from dfh.models import GoogleToken, UserMe, UserToken
+from .test_helpers import (
+    get_session_cookie,
+    create_session_cookie,
+)
 
 
 @pytest.fixture
@@ -26,40 +28,6 @@ async def client():
     c = TestClient(dfh.api.make_app())
     c.base_url = c.base_url.join("/demo/api/auth")
     yield c
-
-
-def get_session_cookie(response: httpx.Response) -> dict | None:
-    """Return the decoded session cookie or `None` if it does not exist."""
-    # Check that a session cookie is set in the response
-    if "session" not in response.cookies:
-        return None
-    cookie = response.cookies["session"]
-
-    session_key, _, err = dfh.api.fetch_secrets()
-    assert not err
-
-    # Use `itsdangerous` to decode the signed session cookie
-    serializer = itsdangerous.TimestampSigner(session_key)
-    unsigned_data = serializer.unsign(cookie)
-
-    # Verify that the session data contains the expected value
-    return json.loads(base64.b64decode(unsigned_data.decode("utf8")))
-
-
-def create_session_cookie(data, valid: bool = True):
-    """Return the signed session `data`.
-
-    Use `valid=False` to deliberately use a mismatched secret. The server must
-    detect the forgery and reject the request.
-
-    """
-    session_key, _, err = dfh.api.fetch_secrets()
-    assert not err
-
-    secret = session_key if valid else "some-invalid-secret"
-    serializer = itsdangerous.TimestampSigner(secret)
-    sess = serializer.sign(base64.b64encode(json.dumps(data).encode())).decode()
-    return {"session": sess}
 
 
 class TestGoogleAuthentication:
