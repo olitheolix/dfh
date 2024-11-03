@@ -20,7 +20,7 @@ import dfh.k8s
 import dfh.routers.auth as auth
 import dfh.routers.basic as basic
 import dfh.routers.runtimes as runtimes
-import dfh.routers.uam as uam
+import dfh.routers.uam as deps
 import dfh.watch
 from dfh.models import Database, ServerConfig
 
@@ -83,7 +83,7 @@ def compile_server_config() -> Tuple[ServerConfig, bool]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    uam.create_fake_uam_dataset()
+    deps.create_fake_uam_dataset()
 
     db = app.extra["db"]
     cfg: ServerConfig = app.extra["config"]
@@ -171,7 +171,7 @@ def make_app() -> ASGIApp:
         dependencies=[Depends(auth.is_authenticated)],
     )
     app.include_router(
-        uam.router,
+        deps.router,
         prefix="/demo/api/uam",
         tags=["User Access Management"],
         dependencies=[Depends(auth.is_authenticated)],

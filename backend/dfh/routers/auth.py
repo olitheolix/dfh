@@ -1,13 +1,19 @@
 import base64
-import json
 import logging
 from typing import Annotated
 
 import itsdangerous
-import pydantic
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
+from dfh.routers.dependencies import can_login, is_authenticated
 
 from .shared import get_config
 
@@ -20,31 +26,6 @@ SCOPES = [
 
 router = APIRouter()
 logit = logging.getLogger("app")
-
-
-def is_authenticated(request: Request) -> str:
-    """FastAPI dependency: return authenticated user or throw error."""
-    # If the (transparently decrypted) session contains an email the user is authenticated.
-    email = request.session.get("email", "")
-    if email != "":
-        return email
-
-    # Decrypt the bearer token header and see if it contains valid information.
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer"):
-        token = auth_header.partition("Bearer ")[2]
-        serializer = itsdangerous.TimestampSigner(request.app.extra["api-token-key"])
-
-        try:
-            unsigned = base64.b64decode(serializer.unsign(token, max_age=3600))
-            user = UserToken.model_validate(json.loads(unsigned.decode()))
-            return user.email
-        except (itsdangerous.BadTimeSignature, pydantic.ValidationError):
-            logit.warning("invalid or expired token")
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="not logged in"
-    )
 
 
 @router.post("/validate-google-bearer-token")
@@ -62,8 +43,11 @@ async def google_auth_bearer(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token"
         )
-
     email = resp.json()["email"]
+
+    # Verify the user is allowed to login.
+    can_login(email)
+
     request.session["email"] = email
     response.set_cookie(key="email", value=email)
 

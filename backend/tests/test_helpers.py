@@ -1,33 +1,32 @@
+import base64
+import json
+import random
+
 import httpx
 import itsdangerous
-import base64
-import random
-import json
-
 from faker import Faker
 from fastapi.testclient import TestClient
 
 import dfh.api
-import dfh.routers.uam as uam
+import dfh.routers.dependencies as dep
 from dfh.models import UAMGroup, UAMUser
-
 
 faker = Faker()
 
 
 def flush_db():
-    uam.UAM_DB.users.clear()
-    uam.UAM_DB.groups.clear()
-    uam.UAM_DB.root = UAMGroup(name="Org", owner="none", provider="none")
+    dep.UAM_DB.users.clear()
+    dep.UAM_DB.groups.clear()
+    dep.UAM_DB.root = UAMGroup(name="Org", owner="none", provider="none")
 
 
 def create_authenticated_client(prefix: str) -> TestClient:
     # Create a random root user.
     name, org = faker.unique.first_name(), faker.unique.first_name()
-    uam.UAM_DB.root.owner = f"{name}@{org}.com"
+    dep.UAM_DB.root.owner = f"{name}@{org}.com"
 
     # Create valid session cookies to indicate we are the root user.
-    cookies: dict = {"email": uam.UAM_DB.root.owner}
+    cookies: dict = {"email": dep.UAM_DB.root.owner}
 
     client = TestClient(dfh.api.make_app(), cookies=create_session_cookie(cookies))
     client.base_url = client.base_url.join(prefix)
