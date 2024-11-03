@@ -8,13 +8,13 @@ from hypercorn.config import Config
 
 import dfh.api
 import dfh.logstreams
+import dfh.routers.uam
 
 if __name__ == "__main__":  # codecov-skip
     square.square.setup_logging(2)
     cfg, err = dfh.api.compile_server_config()
     assert not err
-    if dfh.api.isLocalDev():
-        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+    dfh.routers.uam.UAM_DB.root.owner = os.environ.get("DFH_ROOT", "")
 
     try:
         dfh.logstreams.setup(cfg.loglevel)
