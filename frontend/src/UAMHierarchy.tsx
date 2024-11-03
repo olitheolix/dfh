@@ -23,7 +23,7 @@ import { UAMUser, UAMGroup, DGUserRow, DGGroupRow, UAMChild } from "./UAMInterfa
 import { GroupInfo } from "./UAMGroups";
 import {
     httpGet,
-    httpPost,
+    httpPut,
     httpDelete,
     HTTPErrorContext,
     HTTPErrorContextType,
@@ -103,7 +103,7 @@ function LinkGroupDialog({
                 child: groupName,
             };
 
-            const ret = await httpPost(`/demo/api/uam/v1/groups/${info.child}/children`, {
+            const ret = await httpPut(`/demo/api/uam/v1/groups/${info.child}/children`, {
                 body: JSON.stringify(payload),
             });
             if (ret.err) {
