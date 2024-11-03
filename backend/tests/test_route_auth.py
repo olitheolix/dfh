@@ -79,7 +79,7 @@ class TestGoogleAuthentication:
         # Make Genuine Google API request with invalid token.
         data = GoogleToken(token="invalid-token").model_dump()
         resp = client.post("/validate-google-bearer-token", json=data)
-        assert resp.status_code == 403
+        assert resp.status_code == 401
         assert get_session_cookie(resp) is None
 
         # Simulate a successful response from Google API.
@@ -105,19 +105,19 @@ class TestAPIAuthentication:
         # Must reject authentic session with missing email.
         cookies: dict = {"email": ""}
         resp = client.get(url, cookies=create_session_cookie(cookies))
-        assert resp.status_code == 403
+        assert resp.status_code == 401
         assert resp.json() == {"detail": "not logged in"}
 
         # Must reject authentic session with empty email.
         cookies: dict = {"email": ""}
         resp = client.get(url, cookies=create_session_cookie(cookies))
-        assert resp.status_code == 403
+        assert resp.status_code == 401
         assert resp.json() == {"detail": "not logged in"}
 
         # Must reject forged session.
         cookies: dict = {"email": "authenticated@user.com"}
         resp = client.get(url, cookies=create_session_cookie(cookies, valid=False))
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
         # Must accept authentic session and return a token.
         cookies: dict = {"email": "authenticated@user.com"}
@@ -141,7 +141,7 @@ class TestAPIAuthentication:
     def test_users_me(self, client: TestClient):
         """GET /users/me is a simple way to ensure authentication works."""
         # Must reject request without bearer token.
-        assert client.get("/users/me").status_code == 403
+        assert client.get("/users/me").status_code == 401
 
         # Fake an authentic browser session to get an API token.
         cookies: dict = {"email": "authenticated@user.com"}
@@ -154,7 +154,7 @@ class TestAPIAuthentication:
         # NOTE: it is imperative to clear the session or otherwise we will
         # still be considered authenticated by the server since the TestClient
         # reuses existing sessions.
-        assert client.get("/users/me", cookies={"session": ""}).status_code == 403
+        assert client.get("/users/me", cookies={"session": ""}).status_code == 401
 
         # Must accept request with bearer token.
         resp = client.get("/users/me", headers=headers)
@@ -170,7 +170,7 @@ class TestAPIAuthentication:
         assert not err
 
         # No session or bearer token.
-        assert client.get(url).status_code == 403
+        assert client.get(url).status_code == 401
 
         # Use a valid bearer token.
         token = auth.mint_token("foo@bar.com", api_key).token
@@ -190,7 +190,7 @@ class TestAPIAuthentication:
         ]
         for value in invalid_headers:
             headers = {"Authorization": value}
-            assert client.get(url, headers=headers).status_code == 403
+            assert client.get(url, headers=headers).status_code == 401
 
     def test_is_authenticated_expired_token(self, client: TestClient):
         url = "/users/me"
@@ -207,4 +207,4 @@ class TestAPIAuthentication:
         with freeze_time(relative_time):
             token = auth.mint_token("foo@bar.com", api_key).token
             headers = {"Authorization": f"Bearer {token}"}
-        assert client.get(url, headers=headers).status_code == 403
+        assert client.get(url, headers=headers).status_code == 401

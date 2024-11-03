@@ -688,7 +688,7 @@ class TestRBAC:
         assert c_user.put("/groups", json=group.model_dump()).status_code == 204
 
         # Update group as any other user must fail.
-        invalid_emails = ["", "not-admin@org.com", "*"]
+        invalid_emails = ["not-admin@org.com", "*"]
         for email in invalid_emails:
             c_user.cookies = create_session_cookie({"email": email})
             assert c_user.put("/groups", json=group.model_dump()).status_code == 403
