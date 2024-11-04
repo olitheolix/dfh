@@ -451,49 +451,72 @@ export function ModifyUsersDialog({
         </List>
     );
 
+    const DataGridUserColumns = [
+        { field: "name", headerName: "Name", width: 150 },
+        { field: "lanid", headerName: "LanID", width: 75 },
+        { field: "email", headerName: "Email", width: 150 },
+        { field: "manager", headerName: "Manager", flex: 1 },
+    ];
+
     const renderMainDialog = () => {
         return (
             <>
-                <DialogTitle>Manager Users</DialogTitle>
-                <DialogContent sx={{ height: "80vh", display: "flex", flexDirection: "column" }}>
-                    <Box display="flex" gap={2} sx={{ width: "100%", height: "100%" }}>
-                        <Box flexGrow={1} sx={{ height: "100%" }}>
-                            {/* Show users assigned to selected group. */}
-                            <Paper
-                                sx={{
-                                    height: "100%",
-                                    p: 2,
-                                    display: "flex",
-                                    flexDirection: "column",
+                <DialogTitle>Transfer Users</DialogTitle>
+                <Grid
+                    container
+                    spacing={2}
+                    padding={5}
+                    style={{ height: "100%" }}
+                    justifyContent="space-between"
+                    // display="flex"
+                >
+                    {/* Left column with DataGrid */}
+                    <Grid
+                        size={5.5}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexDirection: "column",
+                        }}
+                    >
+                        <Box style={{ height: "100%", width: "100%" }}>
+                            <Title>Members of {selectedGroup.name}</Title>
+                            <DataGrid
+                                checkboxSelection
+                                disableColumnSelector
+                                rows={leftUserRows}
+                                columns={DataGridUserColumns}
+                                rowSelectionModel={leftSelected}
+                                onRowSelectionModelChange={onSelectLeft}
+                                keepNonExistentRowsSelected={false}
+                                sortModel={sortModel}
+                                slots={{ toolbar: GridToolbar }}
+                                slotProps={{
+                                    toolbar: {
+                                        showQuickFilter: true,
+                                    },
                                 }}
-                            >
-                                <Title>Members of {selectedGroup.name}</Title>
-                                <DataGrid
-                                    checkboxSelection
-                                    disableColumnSelector
-                                    rows={leftUserRows}
-                                    columns={DataGridUserColumns}
-                                    rowSelectionModel={leftSelected}
-                                    onRowSelectionModelChange={onSelectLeft}
-                                    keepNonExistentRowsSelected={false}
-                                    sortModel={sortModel}
-                                    slots={{ toolbar: GridToolbar }}
-                                    slotProps={{
-                                        toolbar: {
-                                            showQuickFilter: true,
-                                        },
-                                    }}
-                                />
-                            </Paper>
+                                style={{ height: "72vh" }}
+                            />
                         </Box>
+                    </Grid>
 
+                    {/* Middle column with Button */}
+                    <Grid
+                        style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                        }}
+                    >
+                        {/* Show left/right buttons to transfer users. */}
                         <Box
                             display="flex"
                             flexDirection="column"
                             alignItems="center"
                             justifyContent="center"
                         >
-                            {/* Show left/right buttons to transfer users. */}
                             <Button
                                 variant="contained"
                                 color="primary"
@@ -506,37 +529,32 @@ export function ModifyUsersDialog({
                                 <ArrowBackIcon />
                             </Button>
                         </Box>
-                        <Box flexGrow={1}>
-                            {/* Show available users. */}
-                            <Paper
-                                sx={{
-                                    height: "100%",
-                                    p: 2,
-                                    display: "flex",
-                                    flexDirection: "column",
+                    </Grid>
+
+                    {/* Right column with DataGrid */}
+                    <Grid size={5.5} style={{ display: "flex", flexDirection: "column" }}>
+                        <Box style={{ height: "100%", width: "100%" }}>
+                            <Title>Unassigne Users</Title>
+                            <DataGrid
+                                checkboxSelection
+                                disableColumnSelector
+                                rows={rightUserRows}
+                                columns={DataGridUserColumns}
+                                keepNonExistentRowsSelected={false}
+                                rowSelectionModel={rightSelected}
+                                onRowSelectionModelChange={onSelectRight}
+                                sortModel={sortModel}
+                                slots={{ toolbar: GridToolbar }}
+                                slotProps={{
+                                    toolbar: {
+                                        showQuickFilter: true,
+                                    },
                                 }}
-                            >
-                                <Title>Non-Members</Title>
-                                <DataGrid
-                                    checkboxSelection
-                                    disableColumnSelector
-                                    rows={rightUserRows}
-                                    columns={DataGridUserColumns}
-                                    keepNonExistentRowsSelected={false}
-                                    rowSelectionModel={rightSelected}
-                                    onRowSelectionModelChange={onSelectRight}
-                                    sortModel={sortModel}
-                                    slots={{ toolbar: GridToolbar }}
-                                    slotProps={{
-                                        toolbar: {
-                                            showQuickFilter: true,
-                                        },
-                                    }}
-                                />
-                            </Paper>
+                                style={{ height: "72vh" }}
+                            />
                         </Box>
-                    </Box>
-                </DialogContent>
+                    </Grid>
+                </Grid>
             </>
         );
     };
