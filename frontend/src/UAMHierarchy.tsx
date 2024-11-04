@@ -351,9 +351,11 @@ export default function UAMHierarchy() {
                 {loading ? (
                     <p>Loading...</p>
                 ) : (
-                    <SimpleTreeView defaultSelectedItems={groupHierarchy.name}>
-                        {renderTree(groupHierarchy, "", groupHierarchy.name)}
-                    </SimpleTreeView>
+                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                        <SimpleTreeView defaultSelectedItems={groupHierarchy.name}>
+                            {renderTree(groupHierarchy, "", groupHierarchy.name)}
+                        </SimpleTreeView>
+                    </Box>
                 )}
             </Grid>
 
