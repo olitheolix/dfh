@@ -400,7 +400,7 @@ export default function UAMHierarchy() {
             />
 
             {/* Users in Selected Group */}
-            <Grid size={7} justifyContent="center" alignItems="center">
+            <Grid size={8} justifyContent="center" alignItems="center">
                 <Paper
                     style={{
                         padding: "20px",

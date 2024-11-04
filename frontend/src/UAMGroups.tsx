@@ -534,7 +534,7 @@ export function ModifyUsersDialog({
                     {/* Right column with DataGrid */}
                     <Grid size={5.5} style={{ display: "flex", flexDirection: "column" }}>
                         <Box style={{ height: "100%", width: "100%" }}>
-                            <Title>Unassigne Users</Title>
+                            <Title>Unassigned Users</Title>
                             <DataGrid
                                 checkboxSelection
                                 disableColumnSelector
@@ -746,7 +746,7 @@ export default function UAMGroups() {
                     </Paper>
                 </Grid>
                 {/* Show users assigned to selected group. */}
-                <Grid size={8} justifyContent="center" alignItems="center">
+                <Grid size={8.5} justifyContent="center" alignItems="center">
                     <Paper
                         style={{
                             padding: "20px",
