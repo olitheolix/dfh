@@ -232,8 +232,7 @@ export function AddOrModifyGroupDialog({
                                 setGroupOwner(newValue || "");
                             }}
                             inputValue={groupOwner}
-                            onInputChange={(event, newInputValue) => {
-                                console.log("new input: ", newInputValue);
+                            onInputChange={(_event, newInputValue) => {
                                 setGroupOwner(newInputValue);
                             }}
                             renderInput={(params) => (
