@@ -1,4 +1,5 @@
 import React from "react";
+import Cookies from "js-cookie";
 import { useState, useEffect, useContext } from "react";
 import {
     DataGrid,
@@ -74,6 +75,7 @@ export function GroupInfo({
             <AddOrModifyGroupDialog
                 isOpen={showAddGroup}
                 setIsOpen={setShowAddGroup}
+                isGroupCreate={false}
                 setReloadGroups={setReloadGroups}
                 selectedGroup={selectedGroup}
                 setSelectedGroup={setSelectedGroup}
@@ -110,6 +112,7 @@ export function GroupInfo({
 export function AddOrModifyGroupDialog({
     isOpen,
     setIsOpen,
+    isGroupCreate,
     setReloadGroups,
     selectedGroup,
     setSelectedGroup,
@@ -117,6 +120,7 @@ export function AddOrModifyGroupDialog({
 }: {
     isOpen: boolean;
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    isGroupCreate: boolean;
     setReloadGroups: React.Dispatch<React.SetStateAction<boolean>>;
     selectedGroup: DGGroupRow;
     setSelectedGroup: React.Dispatch<React.SetStateAction<DGGroupRow>>;
@@ -131,8 +135,7 @@ export function AddOrModifyGroupDialog({
         setGroupOwner(selectedGroup.owner);
         setGroupName(selectedGroup.name);
 
-        const fetchData = async () => {
-            // Fetch the list of all users when the dialog opens.
+        const loadAllUsers = async () => {
             if (isOpen) {
                 const ret = await httpGet("/demo/api/uam/v1/users");
                 if (ret.err) {
@@ -140,13 +143,16 @@ export function AddOrModifyGroupDialog({
                     return;
                 }
                 const userList = ret.data.map((user: UAMUser) => {
-                    return user.name;
+                    return user.email;
                 });
                 setOptions(userList);
+
+                // Pre-select the current user in the AutoComplete component.
+                setGroupOwner(currentOwner(userList));
             }
         };
 
-        fetchData();
+        loadAllUsers();
     }, [isOpen]);
 
     const handleClose = () => {
@@ -183,11 +189,19 @@ export function AddOrModifyGroupDialog({
     // Return `true` if this dialog was opened to create a group and `false` if it
     // was opened to modify an existing group.
     const isCreate = () => {
-        return selectedGroup.name == "";
+        return isGroupCreate == true;
     };
 
     const getTitle = () => {
         return isCreate() ? "Create Group" : "Modify Group";
+    };
+
+    // Return the owner of the selected group (modify mode) or the currently
+    // logged in user if it exists in the system.
+    const currentOwner = (users: string[]): string => {
+        if (!isCreate()) return selectedGroup.owner;
+        const email = Cookies.get("email") || "";
+        return users.includes(email) ? email : "";
     };
 
     return (
@@ -201,17 +215,22 @@ export function AddOrModifyGroupDialog({
                             type="string"
                             variant="standard"
                             {...(isCreate()
-                                ? { defaultValue: selectedGroup.name }
-                                : { value: selectedGroup.name })}
+                                ? { defaultValue: "" }
+                                : { value: selectedGroup.name, disabled: true })}
                             onChange={(e) => setGroupName(e.target.value)}
                         />
                     </Grid>
                     <Grid size={10}>
                         <Autocomplete
                             options={options}
-                            defaultValue={selectedGroup.owner}
+                            value={groupOwner}
                             onChange={(_, newValue) => {
                                 setGroupOwner(newValue || "");
+                            }}
+                            inputValue={groupOwner}
+                            onInputChange={(event, newInputValue) => {
+                                console.log("new input: ", newInputValue);
+                                setGroupOwner(newInputValue);
                             }}
                             renderInput={(params) => (
                                 <TextField {...params} label="owner" variant="standard" fullWidth />
@@ -445,7 +464,7 @@ export function ModifyUsersDialog({
                                     flexDirection: "column",
                                 }}
                             >
-                                <Title>Users in {selectedGroup.name}</Title>
+                                <Title>Members of {selectedGroup.name}</Title>
                                 <DataGrid
                                     checkboxSelection
                                     disableColumnSelector
@@ -494,7 +513,7 @@ export function ModifyUsersDialog({
                                     flexDirection: "column",
                                 }}
                             >
-                                <Title>Unassigned Users</Title>
+                                <Title>Non-Members</Title>
                                 <DataGrid
                                     checkboxSelection
                                     disableColumnSelector
@@ -569,7 +588,7 @@ export default function UAMGroups() {
     const [reloadGroups, setReloadGroups] = useState<boolean>(true);
     const [groupRows, setGroupRows] = useState<DGGroupRow[]>([]);
     const [leftUserRows, setLeftUserRows] = useState<DGUserRow[]>([]);
-    const [_showAddGroup, setShowAddGroup] = useState<boolean>(false);
+    const [showAddGroup, setShowAddGroup] = useState<boolean>(false);
     const [showModifyUsers, setShowModifyUsers] = useState<boolean>(false);
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
@@ -642,6 +661,16 @@ export default function UAMGroups() {
     } else {
         return (
             <Grid container spacing={2}>
+                <AddOrModifyGroupDialog
+                    isOpen={showAddGroup}
+                    setIsOpen={setShowAddGroup}
+                    isGroupCreate={true}
+                    setReloadGroups={setReloadGroups}
+                    selectedGroup={selectedGroup}
+                    setSelectedGroup={setSelectedGroup}
+                    errCtx={errCtx}
+                />
+
                 <ModifyUsersDialog
                     isOpen={showModifyUsers}
                     setIsOpen={setShowModifyUsers}

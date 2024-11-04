@@ -330,7 +330,7 @@ def get_user() -> List[UAMUser]:
 def post_user(user: UAMUser):
     """Create new user."""
     if user.email in UAM_DB.users:
-        raise HTTPException(status_code=409, detail="group already exists")
+        raise HTTPException(status_code=409, detail="user already exists")
     UAM_DB.users[user.email] = user
 
 
