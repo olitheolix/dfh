@@ -736,7 +736,6 @@ export default function UAMGroups() {
                         <Title>Users in {selectedGroup.name}</Title>
                         <Box height="70vh">
                             <DataGrid
-                                checkboxSelection
                                 disableColumnSelector
                                 rows={leftUserRows}
                                 columns={DataGridUserColumns}
