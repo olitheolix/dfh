@@ -31,6 +31,7 @@ types-pyyaml = "*"
 sh = "*"
 freezegun = "*"
 click = "*"
+tqdm = "*"
 
 [requires]
 python_version = "3.12"
