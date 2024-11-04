@@ -351,9 +351,11 @@ export default function UAMHierarchy() {
                 {loading ? (
                     <p>Loading...</p>
                 ) : (
-                    <SimpleTreeView defaultSelectedItems={groupHierarchy.name}>
-                        {renderTree(groupHierarchy, "", groupHierarchy.name)}
-                    </SimpleTreeView>
+                    <Box sx={{ width: "100%", overflowX: "auto" }}>
+                        <SimpleTreeView defaultSelectedItems={groupHierarchy.name}>
+                            {renderTree(groupHierarchy, "", groupHierarchy.name)}
+                        </SimpleTreeView>
+                    </Box>
                 )}
             </Grid>
 
@@ -400,7 +402,7 @@ export default function UAMHierarchy() {
             />
 
             {/* Users in Selected Group */}
-            <Grid size={7} justifyContent="center" alignItems="center">
+            <Grid size={8} justifyContent="center" alignItems="center">
                 <Paper
                     style={{
                         padding: "20px",
