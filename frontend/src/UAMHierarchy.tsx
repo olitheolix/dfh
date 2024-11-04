@@ -380,7 +380,7 @@ export default function UAMHierarchy() {
                         setShowUnlinkGroupDialog(true);
                     }}
                 >
-                    Delete
+                    Unlink
                 </MenuItem>
             </Menu>
 
