@@ -461,14 +461,13 @@ export function ModifyUsersDialog({
     const renderMainDialog = () => {
         return (
             <>
-                <DialogTitle>Transfer Users</DialogTitle>
+                <DialogTitle>Members of {selectedGroup.name}</DialogTitle>
                 <Grid
                     container
                     spacing={2}
                     padding={5}
                     style={{ height: "100%" }}
                     justifyContent="space-between"
-                    // display="flex"
                 >
                     {/* Left column with DataGrid */}
                     <Grid
@@ -481,7 +480,7 @@ export function ModifyUsersDialog({
                         }}
                     >
                         <Box style={{ height: "100%", width: "100%" }}>
-                            <Title>Members of {selectedGroup.name}</Title>
+                            <Title>Members</Title>
                             <DataGrid
                                 checkboxSelection
                                 disableColumnSelector
@@ -562,27 +561,10 @@ export function ModifyUsersDialog({
     const renderConfirmationDialog = () => {
         return (
             <>
-                <DialogTitle>Current Changeset</DialogTitle>
-                <DialogContent sx={{ height: "80vh", display: "flex", flexDirection: "column" }}>
-                    <Box
-                        display="flex"
-                        gap={2} // Space between the two DataGrids
-                        sx={{ width: "100%", height: "100%" }} // Customize height as needed
-                    >
-                        <Box flexGrow={1} sx={{ height: "100%" }}>
-                            {/* Show users assigned to selected group. */}
-                            <Paper
-                                sx={{
-                                    height: "100%",
-                                    p: 2,
-                                    display: "flex",
-                                    flexDirection: "column",
-                                }}
-                            >
-                                {renderDiff()}
-                            </Paper>
-                        </Box>
-                    </Box>
+                <DialogTitle>Proposed Changes to {selectedGroup.name}</DialogTitle>
+                <DialogContent sx={{ display: "flex", flexDirection: "column" }}>
+                    {/* Show users assigned to selected group. */}
+                    {renderDiff()}
                 </DialogContent>
             </>
         );
