@@ -2,8 +2,8 @@ import pytest
 from fastapi import HTTPException
 
 import dfh.routers.dependencies as deps
-from dfh.routers.dependencies import can_login
 from dfh.models import UAMChild
+from dfh.routers.dependencies import can_login
 
 from .test_helpers import (
     create_authenticated_client,

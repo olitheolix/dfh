@@ -14,7 +14,7 @@ import dfh.api
 import dfh.routers.auth as auth
 import dfh.routers.dependencies as deps
 import dfh.watch
-from dfh.models import GoogleToken, UserMe, UserToken, UAMChild
+from dfh.models import GoogleToken, UAMChild, UserMe, UserToken
 
 from .test_helpers import (
     create_authenticated_client,
