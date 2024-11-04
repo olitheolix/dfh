@@ -3,22 +3,27 @@ import json
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
-import google.oauth2.credentials
 import httpx
 import itsdangerous
 import pytest
 from fastapi.testclient import TestClient
 from freezegun import freeze_time
-from googleapiclient.errors import HttpError
 
 import dfh
 import dfh.api
-import dfh.defaults
-import dfh.generate
-import dfh.k8s
 import dfh.routers.auth as auth
+import dfh.routers.dependencies as deps
 import dfh.watch
-from dfh.models import GoogleToken, UserMe, UserToken
+from dfh.models import GoogleToken, UserMe, UserToken, UAMChild
+
+from .test_helpers import (
+    create_authenticated_client,
+    create_session_cookie,
+    flush_db,
+    get_session_cookie,
+    make_group,
+    make_user,
+)
 
 
 @pytest.fixture
@@ -26,40 +31,6 @@ async def client():
     c = TestClient(dfh.api.make_app())
     c.base_url = c.base_url.join("/demo/api/auth")
     yield c
-
-
-def get_session_cookie(response: httpx.Response) -> dict | None:
-    """Return the decoded session cookie or `None` if it does not exist."""
-    # Check that a session cookie is set in the response
-    if "session" not in response.cookies:
-        return None
-    cookie = response.cookies["session"]
-
-    session_key, _, err = dfh.api.fetch_secrets()
-    assert not err
-
-    # Use `itsdangerous` to decode the signed session cookie
-    serializer = itsdangerous.TimestampSigner(session_key)
-    unsigned_data = serializer.unsign(cookie)
-
-    # Verify that the session data contains the expected value
-    return json.loads(base64.b64decode(unsigned_data.decode("utf8")))
-
-
-def create_session_cookie(data, valid: bool = True):
-    """Return the signed session `data`.
-
-    Use `valid=False` to deliberately use a mismatched secret. The server must
-    detect the forgery and reject the request.
-
-    """
-    session_key, _, err = dfh.api.fetch_secrets()
-    assert not err
-
-    secret = session_key if valid else "some-invalid-secret"
-    serializer = itsdangerous.TimestampSigner(secret)
-    sess = serializer.sign(base64.b64encode(json.dumps(data).encode())).decode()
-    return {"session": sess}
 
 
 class TestGoogleAuthentication:
@@ -75,7 +46,12 @@ class TestGoogleAuthentication:
         assert resp.status_code == 200
         assert get_session_cookie(resp) is None
 
-    def test_google_auth_bearer(self, client: TestClient):
+    def test_google_auth_bearer_root(self, client: TestClient):
+        # Pretend to be the root user. We must still pass Google's
+        # authentication but afterwards we are guaranteed allowed to login.
+        email = "root@org.com"
+        deps.UAM_DB.root.owner = email
+
         # Make Genuine Google API request with invalid token.
         data = GoogleToken(token="invalid-token").model_dump()
         resp = client.post("/validate-google-bearer-token", json=data)
@@ -84,17 +60,70 @@ class TestGoogleAuthentication:
 
         # Simulate a successful response from Google API.
         with mock.patch("httpx.AsyncClient.get", new=mock.AsyncMock()) as m_get:
-            m_get.return_value = httpx.Response(200, json={"email": "foo@bar.com"})
+            m_get.return_value = httpx.Response(200, json={"email": email})
             resp = client.post("/validate-google-bearer-token", json=data)
             assert resp.status_code == 200
             sess = get_session_cookie(resp)
-            assert sess is not None and sess["email"] == "foo@bar.com"
+            assert sess is not None and sess["email"] == email
 
             # NOTE: the cookie string is quoted because it contains @.
             # The browser will strip it out automatically. This is not a
             # problem for the `session` cookie since it is Base64 encoded under
             # the hood.
-            assert resp.cookies["email"] == '"foo@bar.com"'
+            assert resp.cookies["email"] == f'"{email}"'
+
+    def test_google_auth_bearer_dfhlogin(self, client: TestClient):
+        email = "foo@bar.com"
+
+        # Make Genuine Google API request with invalid token.
+        data = GoogleToken(token="invalid-token").model_dump()
+
+        def validate(must_pass: bool):
+            # Simulate a successful response from Google API but reject user login
+            # because he is not in the magic `dfhlogin` group.
+            with mock.patch("httpx.AsyncClient.get", new=mock.AsyncMock()) as m_get:
+                m_get.return_value = httpx.Response(200, json={"email": email})
+                resp = client.post("/validate-google-bearer-token", json=data)
+                if must_pass:
+                    assert resp.status_code == 200
+                    sess = get_session_cookie(resp)
+                    assert sess is not None and sess["email"] == email
+
+                    # NOTE: the cookie string is quoted because it contains @.
+                    # The browser will strip it out automatically. This is not a
+                    # problem for the `session` cookie since it is Base64 encoded under
+                    # the hood.
+                    assert resp.cookies["email"] == f'"{email}"'
+                else:
+                    assert resp.status_code == 401
+                    sess = get_session_cookie(resp)
+                    assert sess is None
+
+        validate(must_pass=False)
+
+        # Create the magic `dfhlogin` group and add a user to it. We need to
+        # use a root authenticated client to do that.
+        flush_db()
+        tmp_client = create_authenticated_client("/demo/api/uam/v1")
+
+        # Create the magic `dfhlogin` group and make the user a member.
+        group, user = make_group(name="dfhlogin"), make_user(email=email)
+        assert tmp_client.post("/groups", json=group.model_dump()).status_code == 201
+        assert tmp_client.post("/users", json=user.model_dump()).status_code == 201
+        resp = tmp_client.put(f"/groups/{group.name}/users", json=[user.email])
+        assert resp.status_code == 201
+
+        # Login must still fail because `dfhlogin` is not a direct descendant
+        # of `root`.
+        validate(must_pass=False)
+
+        # Parent `dfhlogin` to `root`.
+        loginchild = UAMChild(child="dfhlogin").model_dump()
+        root_name = deps.UAM_DB.root.name
+        resp = tmp_client.put(f"/groups/{root_name}/children", json=loginchild)
+        assert resp.status_code == 201
+
+        validate(must_pass=True)
 
 
 class TestAPIAuthentication:

@@ -5,18 +5,17 @@ import faker
 from fastapi import APIRouter, Depends, HTTPException, status
 
 import dfh.api
-from dfh.models import UAMChild, UAMDatabase, UAMGroup, UAMUser
+import dfh.routers.dependencies
+from dfh.models import UAMChild, UAMGroup, UAMUser
 
-from .auth import is_authenticated
+from .dependencies import is_authenticated
 
+# Convenience.
+UAM_DB = dfh.routers.dependencies.UAM_DB
 RESPONSE_404 = {"description": "not found", "model": UAMChild}
 RESPONSE_409 = {"description": "already exists", "model": UAMChild}
 
 router = APIRouter()
-
-UAM_DB: UAMDatabase = UAMDatabase(users={}, groups={})
-
-
 d_user = Annotated[str, Depends(is_authenticated)]
 
 

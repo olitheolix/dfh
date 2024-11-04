@@ -7,16 +7,16 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 import dfh.api
-import dfh.routers.uam as uam
+import dfh.routers.uam as deps
 from dfh.models import UAMChild, UAMGroup, UAMUser
 
 from .test_helpers import (
     create_authenticated_client,
+    create_session_cookie,
     flush_db,
     make_group,
     make_user,
 )
-from .test_route_auth import create_session_cookie
 
 
 @pytest.fixture
@@ -69,12 +69,12 @@ class TestFakeData:
         # Must not create dummy users and groups buy default.
         with mock.patch.object(dfh.api, "isLocalDev") as m_islocal:
             m_islocal.return_value = False
-            uam.create_fake_uam_dataset()
+            deps.create_fake_uam_dataset()
             assert len(get_groups(client)) == 0
             assert len(get_users(client)) == 0
 
         # Create dummy users and groups.
-        uam.create_fake_uam_dataset()
+        deps.create_fake_uam_dataset()
 
         # We must now have a non-zero amount of groups (and users).
         assert len(get_groups(client)) > 0
@@ -153,7 +153,7 @@ class TestUserAccessManagement:
 
     def test_groups_root(self, client: TestClient):
         """Must not allow to create or delete the root group."""
-        root_name = uam.UAM_DB.root.name
+        root_name = deps.UAM_DB.root.name
         group = make_group(name=root_name)
 
         # Must not allow to create a group with the name as the root group.
@@ -239,7 +239,7 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root_name = uam.UAM_DB.root.name
+        root_name = deps.UAM_DB.root.name
         assert (
             client.put(f"/groups/{root_name}/children", json=foochild).status_code
             == 201
@@ -260,7 +260,7 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Must permit to remove `foo` from root node.
-        root_name = uam.UAM_DB.root.name
+        root_name = deps.UAM_DB.root.name
         assert client.delete(f"/groups/{root_name}/children/foo").status_code == 204
         assert len(get_groups(client)) == 2
 
@@ -303,7 +303,7 @@ class TestUserAccessManagement:
         assert client.put("/groups", json=group.model_dump()).status_code == 404
 
         # Must refuse to update the root group.
-        root = uam.UAM_DB.root
+        root = deps.UAM_DB.root
         assert client.put("/groups", json=root.model_dump()).status_code == 422
 
     def test_put_groups_ok(self, client: TestClient):
@@ -383,7 +383,7 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "bar", demo_users[1:]).status_code == 201
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = uam.UAM_DB.root.name
+        root = deps.UAM_DB.root.name
         assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
         groups = get_groups(client)
@@ -415,7 +415,7 @@ class TestUserAccessManagement:
         assert len(bar_users) == 3
 
         # Query root node.
-        root_name = uam.UAM_DB.root.name
+        root_name = deps.UAM_DB.root.name
         resp = client.get(f"/groups/{root_name}/users?recursive=0")
         assert resp.status_code == 200
         assert len(resp.json()) == 0
@@ -488,7 +488,7 @@ class TestUserAccessManagement:
         assert len(root.children) == 0
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = uam.UAM_DB.root.name
+        root = deps.UAM_DB.root.name
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
@@ -516,7 +516,7 @@ class TestUserAccessManagement:
         assert len(root.children) == 0
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = uam.UAM_DB.root.name
+        root = deps.UAM_DB.root.name
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         abcchild = UAMChild(child="abc").model_dump()
@@ -580,7 +580,7 @@ class TestUserAccessManagement:
         foochild = UAMChild(child="foo").model_dump()
         assert (
             client.put(
-                f"/groups/{uam.UAM_DB.root.name}/children", json=foochild
+                f"/groups/{deps.UAM_DB.root.name}/children", json=foochild
             ).status_code
             == 201
         )
@@ -652,25 +652,25 @@ class TestRBAC:
         group = make_group()
 
         # Must not throw and error if we do not pass a group.
-        uam.can_edit_group(group.owner, None)
+        deps.can_edit_group(group.owner, None)
 
         # Root user and group owners must have access and thus not raise an exception.
-        uam.can_edit_group(uam.UAM_DB.root.owner, group)
-        uam.can_edit_group(group.owner, group)
+        deps.can_edit_group(deps.UAM_DB.root.owner, group)
+        deps.can_edit_group(group.owner, group)
 
         # Must reject all other users with 403.
         with pytest.raises(HTTPException) as err:
-            uam.can_edit_group(group.owner + "invalid", group)
+            deps.can_edit_group(group.owner + "invalid", group)
         assert err.value.status_code == 403
 
         # If the root user is empty then no backdoor exists.
-        uam.UAM_DB.root.owner = ""
+        deps.UAM_DB.root.owner = ""
         with pytest.raises(HTTPException) as err:
-            uam.can_edit_group("", group)
+            deps.can_edit_group("", group)
 
         # If the root user is "*" then everyone can edit.
-        uam.UAM_DB.root.owner = "*"
-        uam.can_edit_group("", group)
+        deps.UAM_DB.root.owner = "*"
+        deps.can_edit_group("", group)
 
     def test_put_group(self):
         c_root, c_user = self.make_clients()
