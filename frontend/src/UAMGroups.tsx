@@ -208,7 +208,7 @@ export function AddOrModifyGroupDialog({
     };
 
     return (
-        <Dialog open={isOpen} onClose={handleClose} fullWidth={true}>
+        <Dialog open={isOpen} onClose={handleClose} fullWidth={true} disableRestoreFocus>
             <DialogTitle>{getTitle()}</DialogTitle>
             <DialogContent>
                 <Grid container spacing={2} alignItems="center">
@@ -216,7 +216,7 @@ export function AddOrModifyGroupDialog({
                         <TextField
                             label="name"
                             type="string"
-                            inputRef={(input) => input && input.focus()} // auto-focus
+                            autoFocus
                             variant="standard"
                             {...(isCreate()
                                 ? { defaultValue: "" }
