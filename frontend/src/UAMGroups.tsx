@@ -216,6 +216,7 @@ export function AddOrModifyGroupDialog({
                         <TextField
                             label="name"
                             type="string"
+                            inputRef={(input) => input && input.focus()} // auto-focus
                             variant="standard"
                             {...(isCreate()
                                 ? { defaultValue: "" }
