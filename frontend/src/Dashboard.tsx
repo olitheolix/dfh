@@ -413,7 +413,7 @@ export default function Dashboard() {
         navigate("/uamgroups");
     };
     const gotoAPIDocs = () => {
-        window.location.href = "/demo/api/docs";
+        window.location.href = "/demo/api/redoc";
     };
 
     const mainListItems = (
@@ -428,7 +428,7 @@ export default function Dashboard() {
                 <ListItemIcon>
                     <ShoppingCartIcon />
                 </ListItemIcon>
-                <ListItemText primary="Deploy in <60s" />
+                <ListItemText primary="Deploy App in <60s" />
             </ListItemButton>
             <ListItemButton onClick={gotoUserManagement}>
                 <ListItemIcon>
