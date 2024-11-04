@@ -325,62 +325,54 @@ function ShowAPITokenDialog({
                 <Typography variant="body1" gutterBottom>
                     Bearer Token:
                 </Typography>
-                <Grid container spacing={2} alignItems="left">
-                    <Grid size={0.3}>
-                        <Tooltip title="Copy to Clipboard" arrow>
-                            <IconButton onClick={handleCopyToken} size="small">
-                                <ContentCopyIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    </Grid>
-                    <Grid>
-                        <Box
-                            sx={{
-                                maxWidth: "100%", // Ensures it fits within the dialog width
-                                overflowX: "auto", // Enables horizontal scroll
-                                backgroundColor: "#f5f5f5",
-                                padding: 1,
-                                borderRadius: 1,
-                            }}
-                        >
-                            <Typography component="pre" variant="body2">
-                                {tokenValue}
-                            </Typography>
-                        </Box>
-                    </Grid>
-                </Grid>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography
+                        component="pre"
+                        variant="body2"
+                        flexGrow={1}
+                        style={{
+                            margin: 0,
+                            fontFamily: "monospace",
+                            backgroundColor: "#f5f5f5",
+                            padding: 10,
+                        }}
+                    >
+                        {tokenValue}
+                    </Typography>
+                    <Tooltip title="Copy to Clipboard" arrow>
+                        <IconButton onClick={handleCopyToken} size="small" style={{ padding: 10 }}>
+                            <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
 
                 <Typography variant="body1" gutterBottom sx={{ mt: 5 }}>
                     Example usage:
                 </Typography>
-                <Grid container spacing={2} alignItems="left">
-                    <Grid size={0.3}>
-                        <Tooltip title="Copy to Clipboard" arrow>
-                            <IconButton onClick={handleCopyCurlExample} size="small">
-                                <ContentCopyIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    </Grid>
-                    <Grid>
-                        <Box
-                            sx={{
-                                maxWidth: "100%", // Ensures it fits within the dialog width
-                                overflowX: "auto", // Enables horizontal scroll
-                                backgroundColor: "#f5f5f5",
-                                padding: 1,
-                                borderRadius: 1,
-                            }}
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography
+                        component="pre"
+                        variant="body2"
+                        flexGrow={1}
+                        style={{
+                            margin: 0,
+                            fontFamily: "monospace",
+                            backgroundColor: "#f5f5f5",
+                            padding: 10,
+                        }}
+                    >
+                        {curlExample}
+                    </Typography>
+                    <Tooltip title="Copy to Clipboard" arrow>
+                        <IconButton
+                            onClick={handleCopyCurlExample}
+                            size="small"
+                            style={{ padding: 10 }}
                         >
-                            <Typography
-                                component="pre"
-                                variant="body2"
-                                style={{ margin: 0, fontFamily: "monospace" }}
-                            >
-                                {curlExample}
-                            </Typography>
-                        </Box>
-                    </Grid>
-                </Grid>
+                            <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose} color="primary" variant="contained">
