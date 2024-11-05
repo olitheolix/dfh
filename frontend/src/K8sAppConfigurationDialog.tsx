@@ -351,7 +351,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                 <Grid item xs={2}>
                     <Autocomplete
                         freeSolo
-                        options={["v1", "v2"]}
+                        options={["main"]}
                         value={appRes.deployment.name}
                         renderInput={(params) => (
                             <TextField
@@ -368,7 +368,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                 <Grid item xs={4}>
                     <Autocomplete
                         freeSolo
-                        options={["v1", "v2"]}
+                        options={["nginx:1.20", "ubuntu:latest"]}
                         value={appRes.deployment.image}
                         renderInput={(params) => (
                             <TextField
@@ -391,7 +391,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                             <TextField
                                 {...params}
                                 id="command"
-                                label="Command"
+                                label="Optional Command"
                                 variant="standard"
                                 name="command"
                                 onChange={onChange}
@@ -408,7 +408,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                             <TextField
                                 {...params}
                                 id="args"
-                                label="Args"
+                                label="Optional Args"
                                 variant="standard"
                                 name="args"
                                 onChange={onChange}
@@ -954,7 +954,7 @@ const initialAppPrimary: AppPrimary = {
         secrets: [],
         envVars: [],
         image: "",
-        name: "",
+        name: "main",
         command: "",
         args: "",
     },

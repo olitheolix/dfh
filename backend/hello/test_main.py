@@ -16,18 +16,23 @@ class TestHello:
     def test_get_root(self, client):
         response = client.get("/")
         assert response.status_code == 200
-        assert response.json() == {"Hello": "World"}
+        assert response.text == "hello world"
 
     def test_get_healthz(self, client):
         response = client.get("/healthz")
         assert response.status_code == 200
 
-    def test_get_envvar(self, client):
+    @pytest.mark.parametrize("prefix", ["", "/foo", "/foo/bar/blah"])
+    def test_get_envvar(self, prefix, client):
+        # Sanity check: prefixes must not contain a trailing slash or it will
+        # produce invalid paths in our test.
+        assert not prefix.endswith("/")
+
         with mock.patch.dict("os.environ", values={"FOO": "bar"}, clear=True):
-            response = client.get("/envvar/foo")
+            response = client.get(f"{prefix}/envvar/foo")
             assert response.status_code == 200
             assert response.text == "Environment Variable: foo=<undefined>\n"
 
-            response = client.get("/envvar/FOO")
+            response = client.get(f"{prefix}/envvar/FOO")
             assert response.status_code == 200
             assert response.text == "Environment Variable: FOO=bar\n"
