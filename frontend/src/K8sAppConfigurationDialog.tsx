@@ -337,6 +337,18 @@ function PrimaryConfigComponent({
 function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
     const onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
+        console.log(`Update ${name}:${value}`);
+        setAppRes((prevObject: AppPrimary) => {
+            let out: AppPrimary = { ...prevObject };
+
+            // @ts-ignore
+            out.deployment[name] = value;
+            return out;
+        });
+    };
+
+    const onAutocompleteChange = (name: string, value: string) => {
+        console.log(`Update ${name}:${value}`);
         setAppRes((prevObject: AppPrimary) => {
             let out: AppPrimary = { ...prevObject };
 
@@ -355,6 +367,13 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                         freeSolo
                         options={["main"]}
                         value={appRes.deployment.name}
+                        inputValue={appRes.deployment.name}
+                        onChange={(_event, value) => {
+                            onAutocompleteChange("name", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onAutocompleteChange("name", value);
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -362,6 +381,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                                 label="Container Name"
                                 variant="standard"
                                 name="name"
+                                value={appRes.deployment.name}
                                 onChange={onChange}
                             />
                         )}
@@ -372,6 +392,13 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                         freeSolo
                         options={DefaultImages}
                         value={appRes.deployment.image}
+                        inputValue={appRes.deployment.image}
+                        onChange={(_event, value) => {
+                            onAutocompleteChange("image", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onAutocompleteChange("image", value);
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -379,6 +406,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                                 label="Image:Tag"
                                 variant="standard"
                                 name="image"
+                                value={appRes.deployment.image}
                                 onChange={onChange}
                             />
                         )}
@@ -387,8 +415,15 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                 <Grid item xs={2}>
                     <Autocomplete
                         freeSolo
-                        options={["v1", "v2"]}
+                        options={["bash"]}
                         value={appRes.deployment.command}
+                        inputValue={appRes.deployment.command}
+                        onChange={(_event, value) => {
+                            onAutocompleteChange("command", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onAutocompleteChange("command", value);
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -396,6 +431,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                                 label="Optional Command"
                                 variant="standard"
                                 name="command"
+                                value={appRes.deployment.command}
                                 onChange={onChange}
                             />
                         )}
@@ -404,8 +440,15 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                 <Grid item xs={2}>
                     <Autocomplete
                         freeSolo
-                        options={["v1", "v2"]}
+                        options={["-c sleep 100"]}
                         value={appRes.deployment.args}
+                        inputValue={appRes.deployment.args}
+                        onChange={(_event, value) => {
+                            onAutocompleteChange("args", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onAutocompleteChange("args", value);
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -413,6 +456,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                                 label="Optional Args"
                                 variant="standard"
                                 name="args"
+                                value={appRes.deployment.args}
                                 onChange={onChange}
                             />
                         )}
