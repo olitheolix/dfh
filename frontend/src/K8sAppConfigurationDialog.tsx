@@ -47,6 +47,8 @@ interface AppResourcePropIfx {
     setAppRes: React.Dispatch<React.SetStateAction<AppPrimary | AppCanary>>;
 }
 
+const DefaultImages = ["nginx:1.20", "ubuntu:latest"];
+
 // ----------------------------------------------------------------------
 // Components
 // ----------------------------------------------------------------------
@@ -368,7 +370,7 @@ function ContainerImageComponent({ appRes, setAppRes }: AppResourcePropIfx) {
                 <Grid item xs={4}>
                     <Autocomplete
                         freeSolo
-                        options={["nginx:1.20", "ubuntu:latest"]}
+                        options={DefaultImages}
                         value={appRes.deployment.image}
                         renderInput={(params) => (
                             <TextField
