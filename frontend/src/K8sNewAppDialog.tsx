@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, ChangeEvent } from "react";
 import { MenuItem, Select } from "@mui/material";
 import {
+    Autocomplete,
     TextField,
     Grid,
     Button,
@@ -17,6 +18,10 @@ import Title from "./Title";
 import { Paper, Typography } from "@mui/material";
 import { AppPrimary, AppCanary, AppMetadata, AppSpec } from "./BackendInterfaces";
 
+const DefaultProjects = ["Project-1", "Project-2"];
+const DefaultNamespaces = ["default", "kube-system"];
+const DefaultEnvironments = ["dev", "prod"];
+
 function CreateAppComponent({
     meta,
     setMeta,
@@ -24,6 +29,8 @@ function CreateAppComponent({
     meta: AppMetadata;
     setMeta: React.Dispatch<React.SetStateAction<AppMetadata>>;
 }) {
+    const [projectName, setProjectName] = useState<string>("");
+
     const onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target;
         setMeta((prevObject: AppMetadata) => {
@@ -36,50 +43,97 @@ function CreateAppComponent({
         });
     };
 
-    const renderProbeFields = () => {
-        return (
-            <Grid container spacing={2} alignItems="center">
-                {/* Spacer to push text fields to the right */}
-                <Grid item xs={2} />
+    const onEnvOrNsChange = (name: string, value: string) => {
+        setMeta((prevObject: AppMetadata) => {
+            let out = { ...prevObject };
 
+            // @ts-ignore
+            out[name] = value;
+
+            return out;
+        });
+    };
+
+    const renderAppInputs = () => {
+        return (
+            <Grid container spacing={5} alignItems="center">
                 <Grid item xs={2}>
                     <TextField
-                        label="name"
+                        label="app name"
+                        name="name"
                         type="string"
                         variant="standard"
+                        fullWidth
                         // @ts-ignore
                         value={meta.name}
-                        name="name"
                         onChange={onChange}
                     />
                 </Grid>
+                <Grid item xs={10} />
+
                 <Grid item xs={2}>
-                    <TextField
-                        label="namespace"
-                        type="string"
-                        variant="standard"
-                        // @ts-ignore
-                        value={meta.namespace}
-                        name="namespace"
-                        onChange={onChange}
+                    <Autocomplete
+                        options={DefaultProjects}
+                        value={projectName}
+                        inputValue={projectName}
+                        onChange={(_event, value) => {
+                            setProjectName(value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            setProjectName(value as string);
+                        }}
+                        renderInput={(params) => (
+                            <TextField {...params} label="project" variant="standard" fullWidth />
+                        )}
                     />
                 </Grid>
                 <Grid item xs={2}>
-                    <TextField
-                        label="environment"
-                        type="string"
-                        variant="standard"
-                        // @ts-ignore
+                    <Autocomplete
+                        options={DefaultEnvironments}
                         value={meta.env}
-                        name="env"
-                        onChange={onChange}
+                        inputValue={meta.env}
+                        onChange={(_event, value) => {
+                            onEnvOrNsChange("env", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onEnvOrNsChange("env", value);
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="environment"
+                                variant="standard"
+                                fullWidth
+                            />
+                        )}
+                    />
+                </Grid>
+                <Grid item xs={2}>
+                    <Autocomplete
+                        options={DefaultNamespaces}
+                        value={meta.namespace}
+                        inputValue={meta.namespace}
+                        onChange={(_event, value) => {
+                            onEnvOrNsChange("namespace", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onEnvOrNsChange("namespace", value);
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Kubernetes namespace"
+                                variant="standard"
+                                fullWidth
+                            />
+                        )}
                     />
                 </Grid>
             </Grid>
         );
     };
 
-    return <React.Fragment>{renderProbeFields()}</React.Fragment>;
+    return <React.Fragment>{renderAppInputs()}</React.Fragment>;
 }
 
 const initialAppPrimary: AppPrimary = {
@@ -181,24 +235,6 @@ const initialAppCanary: AppCanary = {
     trafficPercent: 0,
 };
 
-const DropdownComponent = () => {
-    const [selectedItem, setSelectedItem] = React.useState("");
-
-    const handleChange = (event: any) => {
-        setSelectedItem(event.target.value);
-    };
-
-    return (
-        <div>
-            <Select value={selectedItem} onChange={handleChange} fullWidth>
-                <MenuItem value={"Backend"}>Backend</MenuItem>
-                <MenuItem value={"Frontend"}>Frontend</MenuItem>
-                <MenuItem value={"Infra"}>Infra</MenuItem>
-            </Select>
-        </div>
-    );
-};
-
 export default function K8sNewAppDialog() {
     const navigate = useNavigate();
 
@@ -255,10 +291,6 @@ export default function K8sNewAppDialog() {
                 <Title>Create New Application</Title>
 
                 <Grid container spacing={2} alignItems="left" justifyContent="left">
-                    <Grid item xs={4}>
-                        <Typography>Project</Typography>
-                        <DropdownComponent />
-                    </Grid>
                     <Grid item xs={12}>
                         <CreateAppComponent meta={meta} setMeta={setMeta} />
                     </Grid>
