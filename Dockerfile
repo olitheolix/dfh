@@ -26,4 +26,3 @@ COPY backend .
 COPY --from=builder /src/dist static/
 
 CMD ["python", "-m", "dfh"]
-
