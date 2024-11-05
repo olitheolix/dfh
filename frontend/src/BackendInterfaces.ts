@@ -28,6 +28,7 @@ export interface K8sRequestLimit {
 export interface K8sProbeHttp {
     path: string;
     port: number;
+    scheme: string;
 }
 
 export interface K8sProbe {

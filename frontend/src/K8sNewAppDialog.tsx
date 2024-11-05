@@ -156,7 +156,7 @@ const initialAppPrimary: AppPrimary = {
         },
         useResources: true,
         readinessProbe: {
-            httpGet: { path: "/ready", port: 8080 },
+            httpGet: { path: "/ready", port: 8080, scheme: "HTTP" },
             initialDelaySeconds: 10,
             periodSeconds: 20,
             timeoutSeconds: 1,
@@ -165,7 +165,7 @@ const initialAppPrimary: AppPrimary = {
         },
         useReadinessProbe: true,
         livenessProbe: {
-            httpGet: { path: "/live", port: 8080 },
+            httpGet: { path: "/live", port: 8080, scheme: "HTTP" },
             initialDelaySeconds: 10,
             periodSeconds: 20,
             timeoutSeconds: 1,
@@ -205,7 +205,7 @@ const initialAppCanary: AppCanary = {
         },
         useResources: true,
         readinessProbe: {
-            httpGet: { path: "/ready", port: 8080 },
+            httpGet: { path: "/ready", port: 8080, scheme: "HTTP" },
             initialDelaySeconds: 10,
             periodSeconds: 20,
             timeoutSeconds: 1,
@@ -214,7 +214,7 @@ const initialAppCanary: AppCanary = {
         },
         useReadinessProbe: true,
         livenessProbe: {
-            httpGet: { path: "/live", port: 8080 },
+            httpGet: { path: "/live", port: 8080, scheme: "HTTP" },
             initialDelaySeconds: 10,
             periodSeconds: 20,
             timeoutSeconds: 1,
