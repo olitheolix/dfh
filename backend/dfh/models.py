@@ -109,6 +109,7 @@ class K8sDestinationRule(BaseModel):
 class K8sProbeHttp(BaseModel):
     path: str = ""
     port: int = 0
+    scheme: str = "HTTP"
 
 
 class K8sProbe(BaseModel):

@@ -21,6 +21,7 @@ import { AppPrimary, AppCanary, AppMetadata, AppSpec } from "./BackendInterfaces
 const DefaultProjects = ["Project-1", "Project-2"];
 const DefaultNamespaces = ["default", "kube-system"];
 const DefaultEnvironments = ["dev", "prod"];
+const DefaultAppNames = ["app-1", "app-2"];
 
 function CreateAppComponent({
     meta,
@@ -58,15 +59,19 @@ function CreateAppComponent({
         return (
             <Grid container spacing={5} alignItems="center">
                 <Grid item xs={2}>
-                    <TextField
-                        label="app name"
-                        name="name"
-                        type="string"
-                        variant="standard"
-                        fullWidth
-                        // @ts-ignore
+                    <Autocomplete
+                        options={DefaultAppNames}
                         value={meta.name}
-                        onChange={onChange}
+                        inputValue={meta.name}
+                        onChange={(_event, value) => {
+                            onEnvOrNsChange("name", value || "");
+                        }}
+                        onInputChange={(_event, value) => {
+                            onEnvOrNsChange("name", value);
+                        }}
+                        renderInput={(params) => (
+                            <TextField {...params} label="name" variant="standard" fullWidth />
+                        )}
                     />
                 </Grid>
                 <Grid item xs={10} />
@@ -176,8 +181,8 @@ const initialAppPrimary: AppPrimary = {
         args: "",
     },
     service: {
-        port: 0,
-        targetPort: 0,
+        port: 8080,
+        targetPort: 8080,
     },
     useService: false,
     hpa: {
@@ -225,8 +230,8 @@ const initialAppCanary: AppCanary = {
         args: "",
     },
     service: {
-        port: 0,
-        targetPort: 0,
+        port: 8080,
+        targetPort: 8080,
     },
     useService: false,
     hpa: {

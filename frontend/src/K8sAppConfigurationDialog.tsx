@@ -1005,8 +1005,8 @@ const initialAppPrimary: AppPrimary = {
         args: "",
     },
     service: {
-        port: 0,
-        targetPort: 0,
+        port: 8080,
+        targetPort: 8080,
     },
     useService: false,
     hpa: {
@@ -1054,8 +1054,8 @@ const initialAppCanary: AppCanary = {
         args: "",
     },
     service: {
-        port: 0,
-        targetPort: 0,
+        port: 8080,
+        targetPort: 8080,
     },
     useService: false,
     hpa: {

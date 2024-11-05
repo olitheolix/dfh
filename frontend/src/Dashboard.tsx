@@ -420,7 +420,7 @@ export default function Dashboard() {
                 <ListItemIcon>
                     <ShoppingCartIcon />
                 </ListItemIcon>
-                <ListItemText primary="Deploy App in <60s" />
+                <ListItemText primary="Deploy App in 60s" />
             </ListItemButton>
             <ListItemButton onClick={gotoUserManagement}>
                 <ListItemIcon>
