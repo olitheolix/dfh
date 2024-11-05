@@ -11,7 +11,7 @@ if __name__ == "__main__":  # codecov-skip
     try:
         dfh.logstreams.setup("info")
         cfg = Config()
-        cfg.bind = ["0.0.0.0:6000"]
+        cfg.bind = ["0.0.0.0:8080"]
         asyncio.run(serve(hello.main.app, cfg))  # type: ignore
     except KeyboardInterrupt:
         print("User abort")
