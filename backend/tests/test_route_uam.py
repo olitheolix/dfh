@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from unittest import mock
 
 import pytest
@@ -8,7 +8,7 @@ from httpx import Response
 
 import dfh.api
 import dfh.routers.uam as deps
-from dfh.models import UAMChild, UAMGroup, UAMUser
+from dfh.models import UAMChild, UAMGroup, UAMUser, UAMRoles, UAMUserRoles
 
 from .test_helpers import (
     create_authenticated_client,
@@ -641,6 +641,176 @@ class TestUserAccessManagement:
         assert len(get_users(client)) == 2
 
 
+class TestUsers:
+    def test_get_put_user_roles_err(self, client: TestClient):
+        # Must return 404 if we try to fetch permissions of an unknown user.
+        resp = client.get("/users/does-not-exist/roles")
+        assert resp.status_code == 404
+
+        # Must return 404 if we try to set permissions of an unknown group.
+        roles: UAMRoles = ["role-1", "role-2"]
+        resp = client.put("/groups/does-not-exist/roles", json=roles)
+        assert resp.status_code == 404
+
+    def test_set_group_roles_basic(self, client: TestClient):
+        # Fixtures.
+        group = make_group(name="foo")
+
+        # Create the group and verify it has no roles by default.
+        assert client.post("/groups", json=group.model_dump()).status_code == 201
+        resp = client.get("/groups/foo")
+        assert resp.status_code == 200
+        assert UAMGroup.model_validate(resp.json()).roles == []
+
+        # Set new roles and verify.
+        roles = ["role-1"]
+        assert client.put("/groups/foo/roles", json=roles).status_code == 201
+        resp = client.get("/groups/foo")
+        assert resp.status_code == 200
+        assert UAMGroup.model_validate(resp.json()).roles == roles
+
+        # Replace the roles with new ones.
+        roles = ["role-2", "role-3"]
+        assert client.put("/groups/foo/roles", json=roles).status_code == 201
+        resp = client.get("/groups/foo")
+        assert resp.status_code == 200
+        assert UAMGroup.model_validate(resp.json()).roles == roles
+
+        # Must remove duplicates.
+        roles = ["role-4", "role-4"]
+        assert client.put("/groups/foo/roles", json=roles).status_code == 201
+        resp = client.get("/groups/foo")
+        assert resp.status_code == 200
+        assert UAMGroup.model_validate(resp.json()).roles == ["role-4"]
+
+    def test_get_user_roles(self, client: TestClient):
+        # Fixtures.
+        groups = [
+            make_group(name="foo"),
+            make_group(name="bar"),
+        ]
+        user = make_user()
+
+        foochild = UAMChild(child="foo").model_dump()
+        barchild = UAMChild(child="bar").model_dump()
+
+        url_0 = f"/groups/{groups[0].name}/roles"
+        url_1 = f"/groups/{groups[1].name}/roles"
+        roles_0 = ["role-1", "role-2"]
+        roles_1 = ["role-1", "role-3"]
+
+        # Create the groups and user.
+        for group in groups:
+            assert client.post("/groups", json=group.model_dump()).status_code == 201
+        assert client.post("/users", json=user.model_dump()).status_code == 201
+
+        def get_perms() -> Dict[str, List[str]]:
+            """Helper function to return the roles of the user."""
+            resp = client.get(f"/users/{user.email}/roles")
+            assert resp.status_code == 200
+            data = UAMUserRoles.model_validate(resp.json())
+            perms = {k: list(sorted(v)) for k, v in data.inherited.items()}
+            return perms
+
+        # User must not have inherited any roles because he is not a member of
+        # any group yet.
+        assert get_perms() == {}
+
+        # Assign group roles and verify the user still has no inherited roles
+        # because he is still not a member of any group.
+        assert client.put(url_0, json=roles_0).status_code == 201
+        assert client.put(url_1, json=roles_1).status_code == 201
+        assert get_perms() == {}
+
+        # Create hierarchy: Org -> foo -> bar
+        # User must still not have any inherited roles because he is still not a
+        # member of any group.
+        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=foochild)
+        assert resp.status_code == 201
+        resp = client.put(f"/groups/{groups[0].name}/children", json=barchild)
+        assert resp.status_code == 201
+        assert get_perms() == {}
+
+        # Make user a member of the bar group and verify that he inherited all
+        # the roles from both groups.
+        assert client.put("/groups/bar/users", json=[user.email]).status_code == 201
+        assert get_perms() == {
+            "role-1": ["bar", "foo"],
+            "role-2": ["foo"],
+            "role-3": ["bar"],
+        }
+
+        # Remove all roles from the `foo` group. Use must now only have
+        # the roles of the `bar` group.
+        assert client.put(url_0, json=[]).status_code == 201
+        assert get_perms() == {"role-1": ["bar"], "role-3": ["bar"]}
+
+        # Remove all roles from the `bar` group and verify that the user
+        # has no inherited roles anymore since none of its parents does.
+        assert client.put(url_1, json=[]).status_code == 201
+        assert get_perms() == {}
+
+        # Add roles to `bar` group and verify the user inherits it.
+        assert client.put(url_0, json=roles_0).status_code == 201
+        assert get_perms() == {"role-1": ["foo"], "role-2": ["foo"]}
+
+    def test_get_user_roles_bug(self, client: TestClient):
+        """Recreate the scenario that surfaced a bug in the tree traversal."""
+        # Fixtures.
+        groups = [
+            make_group(name="foo"),
+            make_group(name="bar"),
+            make_group(name="xyz"),
+        ]
+        user = make_user()
+
+        foochild = UAMChild(child="foo").model_dump()
+        barchild = UAMChild(child="bar").model_dump()
+        xyzchild = UAMChild(child="xyz").model_dump()
+
+        # Create the groups and user.
+        for group in groups:
+            assert client.post("/groups", json=group.model_dump()).status_code == 201
+        assert client.post("/users", json=user.model_dump()).status_code == 201
+
+        def get_perms() -> Dict[str, List[str]]:
+            """Helper function to return the roles of the user."""
+            resp = client.get(f"/users/{user.email}/roles")
+            assert resp.status_code == 200
+            data = UAMUserRoles.model_validate(resp.json())
+            perms = {k: list(sorted(v)) for k, v in data.inherited.items()}
+            return perms
+
+        # User must not have any inherited any roles because he is not a member
+        # of any group yet.
+        assert get_perms() == {}
+
+        # Create hierarchy:
+        # org
+        #   foo
+        #     xyz
+        #   bar
+        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=foochild)
+        assert resp.status_code == 201
+        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=barchild)
+        assert resp.status_code == 201
+        resp = client.put(f"/groups/foo/children", json=xyzchild)
+        assert resp.status_code == 201
+
+        assert get_perms() == {}
+
+        assert client.put(f"/groups/foo/roles", json=["role-foo"]).status_code == 201
+        assert client.put(f"/groups/bar/roles", json=["role-bar"]).status_code == 201
+        assert client.put(f"/groups/xyz/roles", json=["role-xyz"]).status_code == 201
+
+        # Make user a member of the `bar` group. User must now have inherited
+        # the roles of `bar` but nothing else.
+        assert client.put("/groups/bar/users", json=[user.email]).status_code == 201
+        assert get_perms() == {
+            "role-bar": ["bar"],
+        }
+
+
 class TestRBAC:
     def make_clients(self) -> Tuple[TestClient, TestClient]:
         flush_db()
@@ -733,6 +903,28 @@ class TestRBAC:
         assert c_user.put(url, json=[user.email]).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].users) == 1
+
+    def test_update_group_roles(self):
+        c_root, c_user = self.make_clients()
+
+        # Create a group.
+        group = make_group()
+        assert c_root.post("/groups", json=group.model_dump()).status_code == 201
+
+        url = f"/groups/{group.name}/roles"
+        roles: UAMRoles = ["role-1", "role-2"]
+
+        # Random user must not be able to update the roles of a group.
+        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
+        assert c_user.put(url, json=roles).status_code == 403
+        groups = get_groups(c_root)
+        assert len(groups) == 1 and len(groups[0].roles) == 0
+
+        # Group owner must be able to update the roles of a group.
+        c_user.cookies = create_session_cookie({"email": group.owner})
+        assert c_user.put(url, json=roles).status_code == 201
+        groups = get_groups(c_root)
+        assert len(groups) == 1 and len(groups[0].roles) == 2
 
     def test_update_group_children(self):
         c_root, c_user = self.make_clients()

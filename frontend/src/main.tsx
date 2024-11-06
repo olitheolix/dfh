@@ -11,6 +11,7 @@ import K8sAppConfigurationDashboard from "./K8sAppConfigurationDashboard";
 import K8sNewAppDialog from "./K8sNewAppDialog";
 import UAMHierarchy from "./UAMHierarchy";
 import UAMGroups from "./UAMGroups";
+import UAMUsers from "./UAMUsers";
 import { HTTPErrorProvider } from "./WebRequests";
 
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -41,6 +42,10 @@ const router = createBrowserRouter(
                 {
                     path: "uamgroups/",
                     element: <UAMGroups />,
+                },
+                {
+                    path: "uamusers/",
+                    element: <UAMUsers />,
                 },
             ],
         },

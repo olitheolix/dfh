@@ -1,12 +1,13 @@
 import random
-from typing import Annotated, Dict, List, Set
+from typing import Annotated, Dict, List, Set, Tuple
+from collections import defaultdict
 
 import faker
 from fastapi import APIRouter, Depends, HTTPException, status
 
 import dfh.api
 import dfh.routers.dependencies
-from dfh.models import UAMChild, UAMGroup, UAMUser
+from dfh.models import UAMRoles, UAMChild, UAMGroup, UAMUser, UAMRoles, UAMUserRoles
 
 from .dependencies import is_authenticated
 
@@ -74,16 +75,42 @@ def create_fake_uam_dataset():
         )
         del idx
 
+    role_pool = [
+        "roles/bigquery.dataViewer",
+        "roles/bigquery.user",
+        "roles/cloudsql.admin",
+        "roles/compute.networkAdmin",
+        "roles/compute.viewer",
+        "roles/datastore.user",
+        "roles/editor",
+        "roles/iam.roleViewer",
+        "roles/iam.serviceAccountUser",
+        "roles/logging.logWriter",
+        "roles/logging.viewer",
+        "roles/ml.admin",
+        "roles/owner",
+        "roles/pubsub.editor",
+        "roles/pubsub.viewer",
+        "roles/secretmanager.secretAccessor",
+        "roles/spanner.databaseUser",
+        "roles/storage.admin",
+        "roles/storage.objectViewer",
+        "roles/viewer",
+    ]
+
     for group_name in group_names:
         k = random.randint(0, num_users // 2)
         emails = list(set(random.choices(all_emails, k=k)))
         users = {_: UAM_DB.users[_] for _ in emails}
         owner = emails[0] if len(emails) > 0 else all_emails[0]
+
+        roles = random.choices(role_pool, k=random.randint(0, 5))
         UAM_DB.groups[group_name] = UAMGroup(
             name=group_name,
             users=users,
             provider=random.choice(["google", "github"]),
             owner=owner,
+            roles=list(set(roles)),
         )
         del k, emails, users, owner, group_name
     del group_names
@@ -164,6 +191,25 @@ def put_group(user: d_user, group: UAMGroup):
     # Update the group in our DB.
     UAM_DB.groups[group.name].owner = group.owner
     UAM_DB.groups[group.name].description = group.description
+
+
+@router.put(
+    "/v1/groups/{name}/roles",
+    status_code=status.HTTP_201_CREATED,
+    responses={404: RESPONSE_404},
+)
+def set_group_permissions(user: d_user, name: str, roles: UAMRoles):
+    """Sets the permissions of the group. The new permissions are canonical."""
+    try:
+        group = UAM_DB.groups[name]
+    except KeyError:
+        raise HTTPException(status_code=404, detail="group not found")
+
+    # Authorisation check.
+    can_edit_group(user, group)
+
+    # De-duplicate the new roles and assign them to the group.
+    group.roles = list(sorted(set(roles)))
 
 
 @router.get(
@@ -355,6 +401,58 @@ def delete_users(user: str):
     UAM_DB.users.pop(user, None)
     for group in UAM_DB.groups.values():
         group.users.pop(user, None)
+
+
+@router.get(
+    "/v1/users/{username}/roles",
+    status_code=status.HTTP_200_OK,
+    responses={404: RESPONSE_404},
+)
+def get_user_permissions(username: str) -> UAMUserRoles:
+    """Returns all the permissions a user has inherited from its various group memberships."""
+    try:
+        UAM_DB.users[username]
+    except KeyError:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    # ----------------------------------------------------------------------
+    # Traverse the entire tree and track the parent nodes as we do so.
+    # Whenever we find the user in question we add all the parent groups to the
+    # pool. This will leave us with the set of group nodes that have the user
+    # in question as one of their descendants.
+    # ----------------------------------------------------------------------
+    group_pool: Set[str] = set()
+
+    def walk(group: UAMGroup, parents: List[str]):
+        parents.append(group.name)
+        members = {_.email for _ in group.users.values()}
+        if username in members:
+            group_pool.update(parents)
+        for child in group.children.values():
+            walk(child, parents)
+        parents.pop()
+
+    walk(UAM_DB.root, [])
+    del username
+
+    # ----------------------------------------------------------------------
+    # Compile the union of all roles from all groups.
+    # ----------------------------------------------------------------------
+    perms = defaultdict(list)
+
+    for name in group_pool:
+        group = UAM_DB.root if name == UAM_DB.root.name else UAM_DB.groups[name]
+        for role in group.roles:
+            perms[role].append(group.name)
+
+    # ----------------------------------------------------------------------
+    # Sort the role sources alphabetically and return.
+    # ----------------------------------------------------------------------
+    ret = UAMUserRoles(inherited={})
+    for role, sources in perms.items():
+        ret.inherited[role] = list(set(sources))
+
+    return ret
 
 
 @router.get("/v1/tree", status_code=status.HTTP_200_OK)
