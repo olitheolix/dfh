@@ -1,13 +1,7 @@
 import React from "react";
 import Cookies from "js-cookie";
 import { useState, useEffect, useContext } from "react";
-import {
-    DataGrid,
-    GridEventListener,
-    GridRowSelectionModel,
-    GridSortModel,
-    GridToolbar,
-} from "@mui/x-data-grid";
+import { DataGrid, GridEventListener, GridRowSelectionModel, GridToolbar } from "@mui/x-data-grid";
 import {
     Autocomplete,
     Box,
@@ -44,9 +38,6 @@ const DataGridUserColumns = [
     { field: "role", headerName: "Role", width: 100 },
     { field: "manager", headerName: "Manager", flex: 1 },
 ];
-
-// Default sort model of the data grids.
-const sortModel = [{ field: "name", sort: "asc" }] as GridSortModel;
 
 // Show a paper with Group information.
 export function GroupInfo({
@@ -489,8 +480,12 @@ export function ModifyUsersDialog({
                                 rowSelectionModel={leftSelected}
                                 onRowSelectionModelChange={onSelectLeft}
                                 keepNonExistentRowsSelected={false}
-                                sortModel={sortModel}
                                 slots={{ toolbar: GridToolbar }}
+                                initialState={{
+                                    sorting: {
+                                        sortModel: [{ field: "name", sort: "asc" }],
+                                    },
+                                }}
                                 slotProps={{
                                     toolbar: {
                                         showQuickFilter: true,
@@ -542,7 +537,11 @@ export function ModifyUsersDialog({
                                 keepNonExistentRowsSelected={false}
                                 rowSelectionModel={rightSelected}
                                 onRowSelectionModelChange={onSelectRight}
-                                sortModel={sortModel}
+                                initialState={{
+                                    sorting: {
+                                        sortModel: [{ field: "name", sort: "asc" }],
+                                    },
+                                }}
                                 slots={{ toolbar: GridToolbar }}
                                 slotProps={{
                                     toolbar: {
@@ -709,7 +708,11 @@ export default function UAMGroups() {
                                 slots={{ toolbar: GridToolbar }}
                                 onRowClick={handleGroupRowClick}
                                 keepNonExistentRowsSelected={false}
-                                sortModel={sortModel}
+                                initialState={{
+                                    sorting: {
+                                        sortModel: [{ field: "name", sort: "asc" }],
+                                    },
+                                }}
                                 rowSelectionModel={selectedGroup ? [selectedGroup.id] : []}
                                 slotProps={{
                                     toolbar: {
@@ -743,7 +746,11 @@ export default function UAMGroups() {
                                 rows={leftUserRows}
                                 columns={DataGridUserColumns}
                                 keepNonExistentRowsSelected={false}
-                                sortModel={sortModel}
+                                initialState={{
+                                    sorting: {
+                                        sortModel: [{ field: "name", sort: "asc" }],
+                                    },
+                                }}
                                 slots={{ toolbar: GridToolbar }}
                                 slotProps={{
                                     toolbar: {
