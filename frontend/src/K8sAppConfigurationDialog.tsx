@@ -498,6 +498,9 @@ function HealthProbeComponent({
             // @ts-ignore
             out.deployment[probeType].httpGet[name] = value;
 
+            // @ts-ignore
+            out.deployment[probeType].httpGet["scheme"] = "HTTP";
+
             return out;
         });
     };

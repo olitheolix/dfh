@@ -418,6 +418,11 @@ export default function UAMHierarchy() {
                             columns={userGridColumns}
                             slots={{ toolbar: GridToolbar }}
                             slotProps={{ toolbar: { showQuickFilter: true } }}
+                            initialState={{
+                                sorting: {
+                                    sortModel: [{ field: "name", sort: "asc" }],
+                                },
+                            }}
                         />
                     </Box>
                 </Paper>
