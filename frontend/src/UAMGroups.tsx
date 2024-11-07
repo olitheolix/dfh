@@ -161,6 +161,7 @@ export function AddOrModifyGroupDialog({
             provider: "",
             users: {},
             children: {},
+            roles: [],
         };
 
         const method = isCreate() ? httpPost : httpPut;
@@ -600,6 +601,7 @@ export default function UAMGroups() {
         description: "",
         users: {},
         children: {},
+        roles: [],
     });
     const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));
 

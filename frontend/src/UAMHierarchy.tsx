@@ -246,6 +246,7 @@ export default function UAMHierarchy() {
         description: "",
         users: {},
         children: {},
+        roles: [],
     });
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
@@ -255,6 +256,7 @@ export default function UAMHierarchy() {
         description: "",
         children: {},
         users: {},
+        roles: [],
     });
     const [linkInfo, setLinkInfo] = useState<ParentChildInfo>({
         parent: "",

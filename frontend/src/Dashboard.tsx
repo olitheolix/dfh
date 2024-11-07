@@ -26,7 +26,6 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import Grid from "@mui/material/Grid2";
 
 import { DFHToken } from "./UAMInterfaces";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -39,6 +38,7 @@ import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
 import MenuIcon from "@mui/icons-material/Menu";
 import ApiIcon from "@mui/icons-material/Api";
 import Person from "@mui/icons-material/Person";
+import GroupIcon from "@mui/icons-material/Group";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -398,11 +398,14 @@ export default function Dashboard() {
     const gotoK8sOverviewDashboard = () => {
         navigate("/");
     };
-    const gotoUserManagement = () => {
+    const gotoGroupHierarchy = () => {
         navigate("/uam");
     };
     const gotoGroupManagement = () => {
         navigate("/uamgroups");
+    };
+    const gotoUserManagement = () => {
+        navigate("/uamusers");
     };
     const gotoAPIDocs = () => {
         window.location.href = "/demo/api/redoc";
@@ -422,7 +425,7 @@ export default function Dashboard() {
                 </ListItemIcon>
                 <ListItemText primary="Deploy in 60s" />
             </ListItemButton>
-            <ListItemButton onClick={gotoUserManagement}>
+            <ListItemButton onClick={gotoGroupHierarchy}>
                 <ListItemIcon>
                     <AccountTree />
                 </ListItemIcon>
@@ -430,9 +433,15 @@ export default function Dashboard() {
             </ListItemButton>
             <ListItemButton onClick={gotoGroupManagement}>
                 <ListItemIcon>
+                    <GroupIcon />
+                </ListItemIcon>
+                <ListItemText primary="Groups" />
+            </ListItemButton>
+            <ListItemButton onClick={gotoUserManagement}>
+                <ListItemIcon>
                     <Person />
                 </ListItemIcon>
-                <ListItemText primary="Groups & Users" />
+                <ListItemText primary="Users" />
             </ListItemButton>
             <Divider />
             <ListItemButton onClick={gotoAPIDocs}>

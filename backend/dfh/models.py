@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Annotated
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -464,6 +464,9 @@ class UAMUser(BaseModel):
         return v
 
 
+UAMRoles = List[str]
+
+
 class UAMGroup(BaseModel):
     name: str  # uid
     owner: str
@@ -471,6 +474,7 @@ class UAMGroup(BaseModel):
     description: str = ""
     users: Dict[str, UAMUser] = Field(default_factory=dict)
     children: Dict[str, "UAMGroup"] = Field(default_factory=dict)
+    roles: UAMRoles = Field(default_factory=list)
 
     @field_validator("name", "owner")
     @classmethod
@@ -498,3 +502,7 @@ class UAMDatabase(BaseModel):
 
 class UAMChild(BaseModel):
     child: str
+
+
+class UAMUserRoles(BaseModel):
+    inherited: Dict[str, UAMRoles] = Field(default_factory=dict)

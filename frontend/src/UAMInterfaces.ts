@@ -14,6 +14,11 @@ export interface UAMGroup {
     description: string;
     users: { [key: string]: UAMUser };
     children: { [key: string]: UAMGroup };
+    roles: string[];
+}
+
+export interface UAMUserRoles {
+    inherited: { [key: string]: string[] };
 }
 
 export const UAMGroupDefault: UAMGroup = {
@@ -23,6 +28,7 @@ export const UAMGroupDefault: UAMGroup = {
     provider: "",
     users: {},
     children: {},
+    roles: [],
 };
 
 // Each row in the group data grid is just a group with a unique ID.
@@ -33,6 +39,14 @@ export interface DGGroupRow extends UAMGroup {
 // Each row in the user data grid is just a user with a unique ID.
 export interface DGUserRow extends UAMUser {
     id: string;
+}
+
+// Each row in the permission DataGrid denotes a role and a list of sources it
+// was inherited from.
+export interface DGUserRolesRow {
+    id: string;
+    role: string;
+    sources: string[];
 }
 
 export interface DFHToken {
