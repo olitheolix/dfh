@@ -1,3 +1,4 @@
+import random
 import copy
 import time
 from contextlib import asynccontextmanager
@@ -63,7 +64,7 @@ async def deploy_test_app(client: TestClient):
     k8scfg, err = dfh.watch.create_cluster_config(cfg.kubeconfig, cfg.kubecontext)
     assert not err
 
-    name, env = "app", "stg"
+    name, env = f"app-{random.randint(1000, 9999)}", "stg"
 
     async with create_temporary_k8s_namespace(client) as namespace:
         app_info = AppInfo(
