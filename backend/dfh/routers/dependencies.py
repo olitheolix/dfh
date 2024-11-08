@@ -1,17 +1,33 @@
 import base64
 import json
 import logging
+import os
+from functools import wraps
+from typing import Annotated, List, Tuple
 
+import google.cloud.spanner as spanner
 import itsdangerous
 import pydantic
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
+from google.api_core.exceptions import (
+    Aborted,
+    AlreadyExists,
+    DeadlineExceeded,
+    FailedPrecondition,
+    GoogleAPIError,
+    InternalServerError,
+    NotFound,
+    PermissionDenied,
+    ResourceExhausted,
+    ServiceUnavailable,
+)
+from google.cloud.spanner_v1 import Client
+from google.cloud.spanner_v1.database import Database
+from google.cloud.spanner_v1.transaction import Transaction
 
-import dfh.routers.dependencies as dep
-from dfh.models import UAMDatabase, UAMGroup, UserToken
+from dfh.models import UserToken
 
 logit = logging.getLogger("app")
-
-UAM_DB: UAMDatabase = UAMDatabase(users={}, groups={})
 
 
 def is_authenticated(request: Request) -> str:
@@ -39,45 +55,119 @@ def is_authenticated(request: Request) -> str:
     )
 
 
-def can_login(email: str):
+def get_login_groups(db: Database) -> Tuple[str, List[str], bool]:
+    def runme(transaction: Transaction) -> Tuple[str | None, List[str]]:
+        # Retrieve the owner of the root group.
+        rows = transaction.read(
+            table="OrgGroups", columns=["owner"], keyset=spanner.KeySet([["Org"]])
+        )
+        rows = list(rows)
+        root_owner = rows[0][0] if len(rows) == 1 else None
+
+        # Retrieve the members of the `dfhlogin` group.
+        # NOTE: this group may legitimately not exist.
+        rows = transaction.execute_sql(
+            "select user_id from OrgGroupsUsers where group_id=@group",
+            params={"group": "dfhlogin"},
+            param_types={"group": spanner.param_types.STRING},
+        )
+        user_emails = [row[0] for row in rows]
+        return root_owner, user_emails
+
+    root_owner, user_emails = handle_spanner_exceptions(db.run_in_transaction)(runme)
+    if root_owner is None:
+        return "@invalid", [], True
+
+    return root_owner, user_emails, False
+
+
+def can_login(db: Database, email: str):
     # Convenience.
-    db = dep.UAM_DB
-    err = HTTPException(
+    denied = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail=f"invalid user <{email}>"
     )
 
     # Abort if the email is empty.
     if email == "":
-        raise err
+        raise denied
+
+    root_owner, allowed_users, err = get_login_groups(db)
+    if err:
+        raise denied
 
     # Root user can always login.
-    if email == db.root.owner:
+    if email == root_owner or email in allowed_users:
         return
 
     # Special case: disable authorisation.
-    if db.root.owner == "*":
+    if root_owner == "*":
         return
 
-    # `email` must be a member of the magic `dfhlogin` group. Grant access only
-    # if that group exists and the user is a member.
+    raise denied
+
+
+def handle_spanner_exceptions(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except HTTPException as e:
+            # Re-raise all HTTP exceptions since we only want to deal with
+            # Spanner errors and unhandled exceptions here.
+            raise e
+        except (
+            AlreadyExists,
+            NotFound,
+            Aborted,
+            DeadlineExceeded,
+            FailedPrecondition,
+            PermissionDenied,
+            ResourceExhausted,
+            ServiceUnavailable,
+            InternalServerError,
+        ) as e:
+            code = 500 if e.code is None else e.code
+            logit.error(
+                "spanner exception",
+                {"component": "spanner", "code": code, "message": e.message},
+            )
+            raise HTTPException(code, detail=f"spanner: {e.message}")
+        except GoogleAPIError as e:
+            logit.error(
+                "Google API error",
+                {"component": "spanner", "message": str(e)},
+            )
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"spanner: {e}",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="unhandled exception",
+            )
+
+    return wrapper
+
+
+def spanner_db(request: Request) -> Database:
+    db: Database = request.app.extra["spanner"]
+    return db
+
+
+def create_spanner_client() -> Tuple[Client | None, Database | None, str, bool]:
     try:
-        logingroup: UAMGroup = db.root.children["dfhlogin"]
+        db_name = os.environ["DFH_SPANNER_DATABASE"]
+        instance_id = os.environ["DFH_SPANNER_INSTANCE"]
     except KeyError:
-        raise err
+        return None, None, "", True
 
-    def walk(group: UAMGroup) -> bool:
-        """Return `True` if and only if `email` is present in at least one
-        descendant of `group`.
-        """
-        if email in group.users:
-            return True
+    project = os.environ.get("DFH_GCP_PROJECT", None)
+    client = spanner.Client(project=project)
+    instance = client.instance(instance_id)
+    database = instance.database(db_name)
+    return client, database, instance_id, False
 
-        found = False
-        for child in group.children.values():
-            found = found or walk(child)
-        return found
 
-    # Admit login if user is a member of the `dfhlogin` hierarchy.
-    if walk(logingroup):
-        return
-    raise err
+d_user = Annotated[str, Depends(is_authenticated)]
+d_db = Annotated[Database, Depends(spanner_db)]

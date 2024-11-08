@@ -1,5 +1,4 @@
 import asyncio
-import os
 import sys
 
 import square
@@ -14,7 +13,6 @@ if __name__ == "__main__":  # codecov-skip
     square.square.setup_logging(2)
     cfg, err = dfh.api.compile_server_config()
     assert not err
-    dfh.routers.uam.UAM_DB.root.owner = os.environ.get("DFH_ROOT", "")
 
     try:
         dfh.logstreams.setup(cfg.loglevel)

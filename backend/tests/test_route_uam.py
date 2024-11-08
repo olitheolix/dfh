@@ -1,28 +1,36 @@
-from typing import List, Tuple, Dict
-from unittest import mock
+from typing import Dict, List
 
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from google.cloud import spanner
 from httpx import Response
 
-import dfh.api
-import dfh.routers.uam as deps
-from dfh.models import UAMChild, UAMGroup, UAMUser, UAMRoles, UAMUserRoles
+import dfh.routers.dependencies as deps
+import dfh.routers.uam as uam
+from dfh.models import (
+    UAMChild,
+    UAMGroup,
+    UAMRoles,
+    UAMTreeInfo,
+    UAMUser,
+    UAMUserRoles,
+)
 
 from .test_helpers import (
-    create_authenticated_client,
-    create_session_cookie,
+    create_root_client,
     flush_db,
+    get_root_group,
     make_group,
     make_user,
+    set_root_group,
 )
 
 
 @pytest.fixture
 async def client():
     flush_db()
-    yield create_authenticated_client("/demo/api/uam/v1")
+    yield create_root_client("/demo/api/uam/v1")
 
 
 def get_groups(client: TestClient) -> List[UAMGroup]:
@@ -50,45 +58,11 @@ def add_users_to_group(
     return client.put(f"/groups/{group}/users", json=emails)
 
 
-def get_tree(client: TestClient) -> UAMGroup:
+def get_tree(client: TestClient) -> UAMTreeInfo:
     """Return the tree root. This must always succeed."""
     resp = client.get("/tree")
     assert resp.status_code == 200
-    return UAMGroup.model_validate(resp.json())
-
-
-class TestFakeData:
-    def test_create_and_delete_fake_dataset(self, client):
-        """Merely verify that flush_db helper works."""
-        # `client` fixture must have ensured that DB is empty.
-        assert len(get_groups(client)) == 0
-        assert len(get_users(client)) == 0
-        root = get_tree(client)
-        assert len(root.children) == len(root.users) == 0
-
-        # Must not create dummy users and groups buy default.
-        with mock.patch.object(dfh.api, "isLocalDev") as m_islocal:
-            m_islocal.return_value = False
-            deps.create_fake_uam_dataset()
-            assert len(get_groups(client)) == 0
-            assert len(get_users(client)) == 0
-
-        # Create dummy users and groups.
-        deps.create_fake_uam_dataset()
-
-        # We must now have a non-zero amount of groups (and users).
-        assert len(get_groups(client)) > 0
-        assert len(get_users(client)) > 0
-        root = get_tree(client)
-        assert len(root.children) > 0 and len(root.users) == 0
-
-        # Flush the DB and verify that all groups and users are gone again.
-        flush_db()
-
-        assert len(get_groups(client)) == 0
-        assert len(get_users(client)) == 0
-        root = get_tree(client)
-        assert len(root.children) == len(root.users) == 0
+    return UAMTreeInfo.model_validate(resp.json())
 
 
 class TestUserAccessManagement:
@@ -153,14 +127,16 @@ class TestUserAccessManagement:
 
     def test_groups_root(self, client: TestClient):
         """Must not allow to create or delete the root group."""
-        root_name = deps.UAM_DB.root.name
-        group = make_group(name=root_name)
+        group = make_group(name="Org")
+        c_user = create_root_client("/demo/api/uam/v1", "user-1@org.com")
 
-        # Must not allow to create a group with the name as the root group.
+        # Not even root must be allowed to create a group with the same name as the root group.
         assert client.post("/groups", json=group.model_dump()).status_code == 422
+        assert c_user.post("/groups", json=group.model_dump()).status_code == 422
 
-        # Must not allow to delete root group.
-        assert client.delete(f"/groups/{root_name}").status_code == 422
+        # Not even root can delete the `Org` group.
+        assert client.delete(f"/groups/Org").status_code == 422
+        assert c_user.delete(f"/groups/Org").status_code == 422
 
     def test_groups_duplicate(self, client: TestClient):
         groups = sorted([make_group() for _ in range(3)], key=lambda _: _.name)
@@ -205,7 +181,7 @@ class TestUserAccessManagement:
         resp = client.get("/groups/foo")
         assert resp.status_code == 200
         group = UAMGroup.model_validate(resp.json())
-        assert group.users == {demo_users[0].email: demo_users[0]}
+        assert group.users == [demo_users[0].email]
 
         # Setting multiple users must also work.
         resp = add_users_to_group(client, "foo", demo_users[1:])
@@ -213,7 +189,7 @@ class TestUserAccessManagement:
         resp = client.get("/groups/foo")
         assert resp.status_code == 200
         group = UAMGroup.model_validate(resp.json())
-        assert group.users == {_.email: _ for _ in demo_users[1:]}
+        assert set(group.users) == {_.email for _ in demo_users[1:]}
 
     def test_add_remove_children_basic(self, client: TestClient):
         """Add and remove child groups."""
@@ -239,9 +215,9 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root_name = deps.UAM_DB.root.name
+        root = get_root_group()
         assert (
-            client.put(f"/groups/{root_name}/children", json=foochild).status_code
+            client.put(f"/groups/{root.name}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
@@ -260,8 +236,7 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Must permit to remove `foo` from root node.
-        root_name = deps.UAM_DB.root.name
-        assert client.delete(f"/groups/{root_name}/children/foo").status_code == 204
+        assert client.delete(f"/groups/{root.name}/children/foo").status_code == 204
         assert len(get_groups(client)) == 2
 
     def test_add_remove_children(self, client: TestClient):
@@ -285,8 +260,8 @@ class TestUserAccessManagement:
             groups = get_groups(client)
             foogroup = [_ for _ in groups if _.name == "foo"][0]
             bargroup = [_ for _ in groups if _.name == "bar"][0]
-            assert set(foogroup.children.keys()) == {"bar"}
-            assert set(bargroup.children.keys()) == set()
+            assert set(foogroup.children) == {"bar"}
+            assert set(bargroup.children) == set()
 
         # Remove `bar` as a child from `foo`
         for _ in range(2):
@@ -303,7 +278,7 @@ class TestUserAccessManagement:
         assert client.put("/groups", json=group.model_dump()).status_code == 404
 
         # Must refuse to update the root group.
-        root = deps.UAM_DB.root
+        root = get_root_group()
         assert client.put("/groups", json=root.model_dump()).status_code == 422
 
     def test_put_groups_ok(self, client: TestClient):
@@ -329,27 +304,27 @@ class TestUserAccessManagement:
         # Must ignore changes to the `children` field.
         group.owner += "bar"
         group.description += "bar"
-        group.children["blah"] = make_group(name="blah")
+        group.children.append("blah")
         assert client.put("/groups", json=group.model_dump()).status_code == 204
         ret = get_groups(client)
         assert len(ret) == 1
         assert ret[0].owner == group.owner
         assert ret[0].description == group.description
-        assert ret[0].children == {}
-        assert ret[0].users == {}
+        assert len(ret[0].children) == 0
+        assert len(ret[0].users) == 0
 
         # Must ignore changes to the `users` field.
         group.owner += "foobar"
         group.description += "foobar"
         group.children.clear()
-        group.users[user.email] = user
+        group.users.append(user.email)
         assert client.put("/groups", json=group.model_dump()).status_code == 204
         ret = get_groups(client)
         assert len(ret) == 1
         assert ret[0].owner == group.owner
         assert ret[0].description == group.description
-        assert ret[0].children == {}
-        assert ret[0].users == {}
+        assert len(ret[0].children) == 0
+        assert len(ret[0].users) == 0
 
     def test_recursive_user_query(self, client: TestClient):
         """Create basic parent/child relationships *once*.
@@ -383,14 +358,17 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "bar", demo_users[1:]).status_code == 201
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = deps.UAM_DB.root.name
-        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
+        root = get_root_group()
+        assert (
+            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            == 201
+        )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
         groups = get_groups(client)
         foogroup = [_ for _ in groups if _.name == "foo"][0]
         bargroup = [_ for _ in groups if _.name == "bar"][0]
-        assert set(foogroup.children.keys()) == {"bar"}
-        assert set(bargroup.children.keys()) == set()
+        assert set(foogroup.children) == {"bar"}
+        assert set(bargroup.children) == set()
 
         # Users `foo` and `bar` must report just their members.
         resp = client.get("/groups/foo/users?recursive=0")
@@ -415,12 +393,11 @@ class TestUserAccessManagement:
         assert len(bar_users) == 3
 
         # Query root node.
-        root_name = deps.UAM_DB.root.name
-        resp = client.get(f"/groups/{root_name}/users?recursive=0")
+        resp = client.get(f"/groups/{root.name}/users?recursive=0")
         assert resp.status_code == 200
         assert len(resp.json()) == 0
 
-        resp = client.get(f"/groups/{root_name}/users?recursive=1")
+        resp = client.get(f"/groups/{root.name}/users?recursive=1")
         assert resp.status_code == 200
         bar_users = [UAMUser.model_validate(_) for _ in resp.json()]
         assert len(bar_users) == 4
@@ -463,9 +440,9 @@ class TestUserAccessManagement:
 
     def test_tree(self, client: TestClient):
         # Root node must always exist and be empty initially.
-        root = get_tree(client)
-        assert len(root.users) == 0
-        assert len(root.children) == 0
+        tree = get_tree(client)
+        assert len(tree.root.children) == 0
+        assert set(tree.groups) == {"Org"}
 
         groups = [
             make_group(name="foo"),
@@ -482,24 +459,27 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "bar", users[1:]).status_code == 201
 
         # Root node must still be empty because the groups have not been linked
-        # into the org.
-        root = get_tree(client)
-        assert len(root.users) == 0
-        assert len(root.children) == 0
+        # into the org. Consequently, the list of groups in the tree (which may
+        # be fewer than there are groups in the system) is still 1.
+        tree = get_tree(client)
+        assert len(tree.root.children) == 0
+        assert set(tree.groups) == {"Org"}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = deps.UAM_DB.root.name
+        root = get_root_group()
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
-        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
+        assert (
+            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            == 201
+        )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
 
         # Root node must now contain the `foo` group but without any of its
         # users to save space when transmitting this to the client.
-        root = get_tree(client)
-        assert len(root.users) == 0
-        assert set(root.children) == {"foo"}
-        assert len(root.children["foo"].users) == 0
+        tree = get_tree(client)
+        assert set(tree.root.children) == {"foo"}
+        assert set(tree.groups) == {"Org", "foo", "bar"}
 
     def test_reparent_multiple_times(self, client: TestClient):
         demo_groups = [
@@ -512,28 +492,31 @@ class TestUserAccessManagement:
         for group in demo_groups:
             assert client.post("/groups", json=group.model_dump()).status_code == 201
 
-        root = get_tree(client)
-        assert len(root.children) == 0
+        tree = get_tree(client)
+        assert len(tree.root.children) == 0
+        assert set(tree.groups) == {"Org"}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = deps.UAM_DB.root.name
+        root = get_root_group()
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         abcchild = UAMChild(child="abc").model_dump()
-        assert client.put(f"/groups/{root}/children", json=abcchild).status_code == 201
-        assert client.put(f"/groups/{root}/children", json=barchild).status_code == 201
-        assert client.put(f"/groups/{root}/children", json=foochild).status_code == 201
+        url = f"/groups/{root.name}/children"
+        assert client.put(url, json=abcchild).status_code == 201
+        assert client.put(url, json=barchild).status_code == 201
+        assert client.put(url, json=foochild).status_code == 201
 
         # Make `abc` a child of both `foo` and `bar`:
         # foo -> abc
         # bar -> abc
         assert client.put("/groups/foo/children", json=abcchild).status_code == 201
         assert client.put("/groups/bar/children", json=abcchild).status_code == 201
-        root = get_tree(client)
-        assert set(root.children) == {"foo", "bar", "abc"}
-        assert root.children["foo"].children == {"abc": demo_groups[2]}
-        assert root.children["bar"].children == {"abc": demo_groups[2]}
-        assert len(root.children["abc"].children) == 0
+        tree = get_tree(client)
+        assert set(tree.root.children) == {"foo", "bar", "abc"}
+        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.groups["foo"].children) == {"abc"}
+        assert set(tree.groups["bar"].children) == {"abc"}
+        assert len(tree.root.children["abc"].children) == 0
 
         # Must allow chaining foo -> bar to form the hierarchy
         # foo:
@@ -542,10 +525,11 @@ class TestUserAccessManagement:
         #     abc
         barchild = UAMChild(child="bar").model_dump()
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
-        root = get_tree(client)
-        assert set(root.children) == {"foo", "bar", "abc"}
-        assert set(root.children["foo"].children) == {"abc", "bar"}
-        assert len(root.children["abc"].children) == 0
+        tree = get_tree(client)
+        assert set(tree.root.children) == {"foo", "bar", "abc"}
+        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.root.children["foo"].children) == {"abc", "bar"}
+        assert len(tree.root.children["abc"].children) == 0
 
     def test_remove_groups_and_users(self, client: TestClient):
         demo_groups = [
@@ -578,10 +562,9 @@ class TestUserAccessManagement:
         abcchild = UAMChild(child="abc").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         foochild = UAMChild(child="foo").model_dump()
+        root = get_root_group()
         assert (
-            client.put(
-                f"/groups/{deps.UAM_DB.root.name}/children", json=foochild
-            ).status_code
+            client.put(f"/groups/{root.name}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=abcchild).status_code == 201
@@ -613,8 +596,8 @@ class TestUserAccessManagement:
         assert set(groups["abc"].users) == {"abc@blah.com"}
 
         # The `foo` group must only have `abc` as a child anymore.
-        root = get_tree(client)
-        assert set(root.children["foo"].children) == {"abc"}
+        tree = get_tree(client)
+        assert set(tree.root.children["foo"].children) == {"abc"}
 
         # The hierarchy starting at `foo` must only contain a single user
         # anymore because `foo` itself has none and the `bar` group was
@@ -683,6 +666,15 @@ class TestUsers:
         assert resp.status_code == 200
         assert UAMGroup.model_validate(resp.json()).roles == ["role-4"]
 
+    def test_put_group_members_bug(self, client: TestClient):
+        """Must not break if the list of members to update is empty."""
+        # Fixtures.
+        group = make_group(name="foo")
+
+        # Create the group.
+        assert client.post("/groups", json=group.model_dump()).status_code == 201
+        assert client.put("/groups/foo/users", json=[]).status_code == 201
+
     def test_get_user_roles(self, client: TestClient):
         # Fixtures.
         groups = [
@@ -725,7 +717,8 @@ class TestUsers:
         # Create hierarchy: Org -> foo -> bar
         # User must still not have any inherited roles because he is still not a
         # member of any group.
-        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=foochild)
+        root = get_root_group()
+        resp = client.put(f"/groups/{root.name}/children", json=foochild)
         assert resp.status_code == 201
         resp = client.put(f"/groups/{groups[0].name}/children", json=barchild)
         assert resp.status_code == 201
@@ -790,9 +783,10 @@ class TestUsers:
         #   foo
         #     xyz
         #   bar
-        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=foochild)
+        root = get_root_group()
+        resp = client.put(f"/groups/{root.name}/children", json=foochild)
         assert resp.status_code == 201
-        resp = client.put(f"/groups/{deps.UAM_DB.root.name}/children", json=barchild)
+        resp = client.put(f"/groups/{root.name}/children", json=barchild)
         assert resp.status_code == 201
         resp = client.put(f"/groups/foo/children", json=xyzchild)
         assert resp.status_code == 201
@@ -812,125 +806,174 @@ class TestUsers:
 
 
 class TestRBAC:
-    def make_clients(self) -> Tuple[TestClient, TestClient]:
+    @pytest.fixture(autouse=True)
+    def autoflush(self):
         flush_db()
-        c_user = create_authenticated_client("/demo/api/uam/v1")
-        c_root = create_authenticated_client("/demo/api/uam/v1")
-        return c_root, c_user
 
-    def test_can_edit_group(self):
-        group = make_group()
+    @pytest.mark.parametrize("org_edit", [True, False])
+    def test_can_edit_existing_group(self, org_edit: bool):
+        fun = uam.can_edit_existing_group
 
-        # Must not throw and error if we do not pass a group.
-        deps.can_edit_group(group.owner, None)
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        root = get_root_group()
+
+        # Deliberately chose a group that is not `Org` because that means the
+        # `allow_org_edit` must have no effect.
+        group = make_group(name="not-Org")
+
+        # Must not throw an error if we do not pass a group.
+        fun(db, group.owner, None, allow_org_edit=org_edit)
 
         # Root user and group owners must have access and thus not raise an exception.
-        deps.can_edit_group(deps.UAM_DB.root.owner, group)
-        deps.can_edit_group(group.owner, group)
+        fun(db, root.owner, group, allow_org_edit=org_edit)
+        fun(db, group.owner, group, allow_org_edit=org_edit)
 
         # Must reject all other users with 403.
         with pytest.raises(HTTPException) as err:
-            deps.can_edit_group(group.owner + "invalid", group)
+            fun(db, group.owner + "invalid", group, allow_org_edit=org_edit)
         assert err.value.status_code == 403
 
-        # If the root user is empty then no backdoor exists.
-        deps.UAM_DB.root.owner = ""
+        # Set the root owner to empty and verify that no backdoor exists.
+        set_root_group("")
         with pytest.raises(HTTPException) as err:
-            deps.can_edit_group("", group)
+            fun(db, "", group, allow_org_edit=org_edit)
 
         # If the root user is "*" then everyone can edit.
-        deps.UAM_DB.root.owner = "*"
-        deps.can_edit_group("", group)
+        set_root_group("*")
+        fun(db, "", group, allow_org_edit=org_edit)
+
+    def test_can_edit_existing_group_org_edit(self):
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        root = get_root_group()
+
+        # Deliberately choose the root group for this example because it is the
+        # only group on which the `allow_org_edit` option has an effect.
+        group = make_group(name="Org")
+
+        # Must not throw an error if we do not pass a group.
+        uam.can_edit_existing_group(db, group.owner, None, allow_org_edit=False)
+
+        # Even root must not have access.
+        with pytest.raises(HTTPException) as err:
+            uam.can_edit_existing_group(db, root.owner, group, allow_org_edit=False)
+        assert err.value.status_code == 422
+
+        with pytest.raises(HTTPException) as err:
+            uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=False)
+        assert err.value.status_code == 422
+
+    def test_can_edit_existing_group_missing_org(self):
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        group = make_group()
+
+        uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=True)
+
+        with db.batch() as batch:
+            batch.delete(table="OrgGroups", keyset=spanner.KeySet([["Org"]]))
+
+        with pytest.raises(HTTPException) as err:
+            uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=True)
+        assert err.value.status_code == 500
 
     def test_put_group(self):
-        c_root, c_user = self.make_clients()
+        user1, user2 = "user-1@org.com", "user-2@org.com"
+        c_root = create_root_client("/demo/api/uam/v1")
+        c_user1 = create_root_client("/demo/api/uam/v1", user1)
+        c_user2 = create_root_client("/demo/api/uam/v1", user2)
 
         # Create a group and user.
-        group, user = make_group(name="foo"), make_user()
-        assert c_root.post("/groups", json=group.model_dump()).status_code == 201
-        assert c_root.post("/users", json=user.model_dump()).status_code == 201
+        group, user = make_group(name="foo", owner=user1), make_user()
+        assert c_user1.post("/groups", json=group.model_dump()).status_code == 201
+        assert c_user1.post("/users", json=user.model_dump()).status_code == 201
 
         # Update the group as root user must succeed.
         assert c_root.put("/groups", json=group.model_dump()).status_code == 204
 
         # Update the group as owner must succeed.
-        c_user.cookies = create_session_cookie({"email": group.owner})
-        assert c_user.put("/groups", json=group.model_dump()).status_code == 204
+        assert c_user1.put("/groups", json=group.model_dump()).status_code == 204
 
         # Update group as any other user must fail.
-        invalid_emails = ["not-admin@org.com", "*"]
-        for email in invalid_emails:
-            c_user.cookies = create_session_cookie({"email": email})
-            assert c_user.put("/groups", json=group.model_dump()).status_code == 403
+        assert c_user2.put("/groups", json=group.model_dump()).status_code == 403
 
     def test_delete_group(self):
-        c_root, c_user = self.make_clients()
+        user1, user2 = "user-1@org.com", "user-2@org.com"
+        c_root = create_root_client("/demo/api/uam/v1")
+        c_user1 = create_root_client("/demo/api/uam/v1", user1)
+        c_user2 = create_root_client("/demo/api/uam/v1", user2)
 
         # Create a group.
-        group = make_group()
+        group = make_group(owner=user1)
         assert c_root.post("/groups", json=group.model_dump()).status_code == 201
 
         assert len(get_groups(c_root)) == 1
 
         # Must not process request from random user.
-        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
-        assert c_user.delete(f"/groups/{group.name}").status_code == 403
+        assert c_user2.delete(f"/groups/{group.name}").status_code == 403
         assert len(get_groups(c_root)) == 1
 
         # Must allow the group owner to delete the group.
-        c_user.cookies = create_session_cookie({"email": group.owner})
-        assert c_user.delete(f"/groups/{group.name}").status_code == 204
+        assert c_user1.delete(f"/groups/{group.name}").status_code == 204
         assert len(get_groups(c_root)) == 0
 
     def test_update_group_users(self):
-        c_root, c_user = self.make_clients()
+        user1, user2 = "user-1@org.com", "user-2@org.com"
+        c_root = create_root_client("/demo/api/uam/v1")
+        c_user1 = create_root_client("/demo/api/uam/v1", user1)
+        c_user2 = create_root_client("/demo/api/uam/v1", user2)
 
         # Create a group and a user.
-        group, user = make_group(), make_user()
+        group, user = make_group(owner=user1), make_user()
         assert c_root.post("/groups", json=group.model_dump()).status_code == 201
         assert c_root.post("/users", json=user.model_dump()).status_code == 201
 
         url = f"/groups/{group.name}/users"
 
         # Random user must not be able to update the users of a group.
-        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
-        assert c_user.put(url, json=[user.email]).status_code == 403
+        assert c_user2.put(url, json=[user.email]).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].users) == 0
 
         # Group owner must be able to update the users of a group.
-        c_user.cookies = create_session_cookie({"email": group.owner})
-        assert c_user.put(url, json=[user.email]).status_code == 201
+        assert c_user1.put(url, json=[user.email]).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].users) == 1
 
     def test_update_group_roles(self):
-        c_root, c_user = self.make_clients()
+        user1, user2 = "user-1@org.com", "user-2@org.com"
+        c_root = create_root_client("/demo/api/uam/v1")
+        c_user1 = create_root_client("/demo/api/uam/v1", user1)
+        c_user2 = create_root_client("/demo/api/uam/v1", user2)
 
         # Create a group.
-        group = make_group()
+        group = make_group(owner=user1)
         assert c_root.post("/groups", json=group.model_dump()).status_code == 201
 
         url = f"/groups/{group.name}/roles"
         roles: UAMRoles = ["role-1", "role-2"]
 
         # Random user must not be able to update the roles of a group.
-        c_user.cookies = create_session_cookie({"email": group.owner + "foo"})
-        assert c_user.put(url, json=roles).status_code == 403
+        assert c_user2.put(url, json=roles).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].roles) == 0
 
         # Group owner must be able to update the roles of a group.
-        c_user.cookies = create_session_cookie({"email": group.owner})
-        assert c_user.put(url, json=roles).status_code == 201
+        assert c_user1.put(url, json=roles).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 1 and len(groups[0].roles) == 2
 
     def test_update_group_children(self):
-        c_root, c_user = self.make_clients()
+        user1, user2 = "user-1@org.com", "user-2@org.com"
+        c_root = create_root_client("/demo/api/uam/v1")
+        c_user1 = create_root_client("/demo/api/uam/v1", user1)
+        c_user2 = create_root_client("/demo/api/uam/v1", user2)
 
         # Create a group and a user.
-        group_1, group_2 = sorted([make_group(), make_group()], key=lambda _: _.name)
+        group_1, group_2 = sorted(
+            [make_group(owner=user1), make_group(owner=user1)], key=lambda _: _.name
+        )
         assert c_root.post("/groups", json=group_1.model_dump()).status_code == 201
         assert c_root.post("/groups", json=group_2.model_dump()).status_code == 201
         child = UAMChild(child=group_2.name).model_dump()
@@ -938,16 +981,14 @@ class TestRBAC:
         url = f"/groups/{group_1.name}/children"
 
         # Random user must not be able to add child groups.
-        c_user.cookies = create_session_cookie({"email": group_1.owner + "foo"})
-        assert c_user.put(url, json=child).status_code == 403
+        assert c_user2.put(url, json=child).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 0
         assert len(groups[1].children) == 0
 
         # Group owner must be able to add child groups.
-        c_user.cookies = create_session_cookie({"email": group_1.owner})
-        assert c_user.put(url, json=child).status_code == 201
+        assert c_user1.put(url, json=child).status_code == 201
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 1
@@ -959,16 +1000,14 @@ class TestRBAC:
         url = f"/groups/{group_1.name}/children/{group_2.name}"
 
         # Random user must be unable to unlink a child.
-        c_user.cookies = create_session_cookie({"email": group_1.owner + "foo"})
-        assert c_user.delete(url).status_code == 403
+        assert c_user2.delete(url).status_code == 403
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 1
         assert len(groups[1].children) == 0
 
         # Group owner user must able to unlink a child.
-        c_user.cookies = create_session_cookie({"email": group_1.owner})
-        assert c_user.delete(url).status_code == 204
+        assert c_user1.delete(url).status_code == 204
         groups = get_groups(c_root)
         assert len(groups) == 2
         assert len(groups[0].children) == 0

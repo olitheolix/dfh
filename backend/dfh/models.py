@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Annotated
+from typing import Any, Dict, List
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -420,7 +420,7 @@ class DatabaseAppEntry(BaseModel):
     resources: Dict[str, WatchedResource] = factory_WatchedResource()
 
 
-class Database(BaseModel):
+class K8sDatabase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # appInfo[appname][env], eg appInfo['nginx']['stg']
@@ -472,8 +472,8 @@ class UAMGroup(BaseModel):
     owner: str
     provider: str
     description: str = ""
-    users: Dict[str, UAMUser] = Field(default_factory=dict)
-    children: Dict[str, "UAMGroup"] = Field(default_factory=dict)
+    users: List[str] = Field(default_factory=list)
+    children: List[str] = Field(default_factory=list)
     roles: UAMRoles = Field(default_factory=list)
 
     @field_validator("name", "owner")
@@ -488,16 +488,13 @@ class UAMGroup(BaseModel):
 
 
 class UAMTreeNode(BaseModel):
-    id: str
-    label: str
-    elId: str
-    children: List["UAMTreeNode"] | None = None
+    name: str
+    children: Dict[str, "UAMTreeNode"] = Field(default_factory=dict)
 
 
-class UAMDatabase(BaseModel):
-    users: Dict[str, UAMUser]
-    groups: Dict[str, UAMGroup]
-    root: UAMGroup = UAMGroup(name="Org", owner="none", provider="none")
+class UAMTreeInfo(BaseModel):
+    groups: Dict[str, UAMGroup] = Field(default_factory=dict)
+    root: UAMTreeNode = UAMTreeNode(name="")
 
 
 class UAMChild(BaseModel):

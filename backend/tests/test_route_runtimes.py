@@ -22,10 +22,10 @@ from dfh.models import (
     AppMetadata,
     AppPrimary,
     AppService,
-    Database,
     DeploymentInfo,
     JobDescription,
     JobStatus,
+    K8sDatabase,
     K8sEnvVar,
     PodList,
     WatchedResource,
@@ -33,7 +33,7 @@ from dfh.models import (
 from dfh.square_types import FrontendDeploymentPlan
 
 from .conftest import K8sConfig, get_server_config
-from .test_helpers import create_authenticated_client
+from .test_helpers import create_root_client
 from .test_runtime_helpers import (
     create_temporary_k8s_namespace,
     deploy_test_app,
@@ -44,14 +44,14 @@ cfg = get_server_config()
 
 @pytest.fixture
 async def client():
-    c = create_authenticated_client("/demo/api/crt")
+    c = create_root_client("/demo/api/crt")
     yield c
 
 
 @pytest.fixture
 async def clientls():
     # Invoke the lifespan handler (use `client` if you do not need that.)
-    with create_authenticated_client("/demo/api/crt") as client:
+    with create_root_client("/demo/api/crt") as client:
         yield client
 
 
@@ -200,7 +200,7 @@ class TestRuntimes:
 
         # Fixtures.
         name, ns, env = "demo", "default", "stg"
-        db: Database = client.app.extra["db"]  # type: ignore
+        db: K8sDatabase = client.app.extra["db"]  # type: ignore
         url = f"/v1/apps/{name}/{env}"
 
         # Insert a DFH deployment with 2 pods as well as an unrelated pod.
@@ -275,7 +275,7 @@ class TestRuntimes:
         )
 
         # Install the DB that the lifespan handler would otherwise create.
-        db = Database()
+        db = K8sDatabase()
         client.app.extra["db"] = db  # type: ignore
 
         # Pretend the watch reported two Deployments.

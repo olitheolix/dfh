@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Tuple
@@ -11,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.types import ASGIApp
 
@@ -19,10 +21,11 @@ import dfh.generate
 import dfh.k8s
 import dfh.routers.auth as auth
 import dfh.routers.basic as basic
+import dfh.routers.dependencies as deps
 import dfh.routers.runtimes as runtimes
-import dfh.routers.uam as deps
+import dfh.routers.uam as uam
 import dfh.watch
-from dfh.models import Database, ServerConfig
+from dfh.models import K8sDatabase, ServerConfig
 
 # Convenience.
 logit = logging.getLogger("app")
@@ -83,8 +86,6 @@ def compile_server_config() -> Tuple[ServerConfig, bool]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    deps.create_fake_uam_dataset()
-
     db = app.extra["db"]
     cfg: ServerConfig = app.extra["config"]
 
@@ -111,6 +112,23 @@ async def lifespan(app: FastAPI):
     logit.info("server shutdown complete")
 
 
+class MyMiddleware(BaseHTTPMiddleware):
+    def __init__(
+        self,
+        app,
+    ):
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.perf_counter()
+        response = await call_next(request)
+        etime = time.perf_counter() - start_time
+        etime = int(1000 * etime)
+        response.headers["X-Process-Time"] = str(etime)
+        # print(f"\n{etime:,} ms {request.method.upper()} {request.url} (timing)")
+        return response
+
+
 async def validation_error_handler(
     _: Request, exc: RequestValidationError
 ) -> JSONResponse:
@@ -133,6 +151,9 @@ def make_app() -> ASGIApp:
     if err1 or err2:
         raise RuntimeError("could not meet preconditions to start server")
 
+    _, database, _, err = deps.create_spanner_client()
+    assert not err and database
+
     app = FastAPI(
         title="Deployments for Humans",
         summary="",
@@ -147,7 +168,8 @@ def make_app() -> ASGIApp:
     app.extra["session-key"] = session_key
     app.extra["api-token-key"] = token_key
     app.extra["config"] = cfg
-    app.extra["db"] = Database()
+    app.extra["db"] = K8sDatabase()
+    app.extra["spanner"] = database
 
     # Session middleware to transparently encrypt/decrypt session cookies
     # available via `request.session` inside each handler.
@@ -157,6 +179,7 @@ def make_app() -> ASGIApp:
         max_age=8 * 3600,  # 8 hours
         https_only=False if isLocalDev() else True,
     )
+    app.add_middleware(MyMiddleware)
 
     # Static files of the frontend app.
     app.mount("/demo/static", StaticFiles(directory="static"), name="static")
@@ -171,7 +194,7 @@ def make_app() -> ASGIApp:
         dependencies=[Depends(auth.is_authenticated)],
     )
     app.include_router(
-        deps.router,
+        uam.router,
         prefix="/demo/api/uam",
         tags=["User Access Management"],
         dependencies=[Depends(auth.is_authenticated)],

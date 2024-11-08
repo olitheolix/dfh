@@ -16,10 +16,10 @@ from dfh.manifest_utilities import get_metainfo
 from dfh.models import (
     AppEnvOverview,
     AppInfo,
-    Database,
     DatabaseAppEntry,
     JobDescription,
     JobStatus,
+    K8sDatabase,
     PodList,
     ServerConfig,
     WatchedResource,
@@ -30,7 +30,7 @@ router = APIRouter()
 
 @router.get("/v1/pods")
 def get_pods(request: Request) -> PodList:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
 
     ret = PodList()
     for manifest in db.resources["Pod"].manifests.values():
@@ -43,7 +43,7 @@ def get_pods(request: Request) -> PodList:
 
 @router.get("/v1/pods/{name}/{env}")
 def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
 
     # Get the pods for the app or return 404 if there is no such app.
     try:
@@ -65,13 +65,13 @@ def get_pods_name_env(name: str, env: str, request: Request) -> PodList:
 
 @router.get("/v1/namespaces")
 def get_namespaces(request: Request) -> WatchedResource:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
     return db.resources["Namespace"]
 
 
 @router.get("/v1/apps")
 def get_apps(request: Request) -> List[AppEnvOverview]:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
 
     # Iterate over our app database in order to find the name of all apps and
     # the environments they are deployed in.
@@ -91,7 +91,7 @@ def get_apps(request: Request) -> List[AppEnvOverview]:
 
 @router.get("/v1/apps/{name}/{env}")
 def get_single_app(name: str, env: str, request: Request) -> AppInfo:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
     try:
         return db.apps[name][env].appInfo
     except KeyError:
@@ -103,7 +103,7 @@ def get_single_app(name: str, env: str, request: Request) -> AppInfo:
 @router.post("/v1/apps/{name}/{env}")
 async def post_single_app(name: str, env: str, app_info: AppInfo, request: Request):
     cfg: ServerConfig = request.app.extra["config"]
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
 
     # Sanity check: meta data in AppInfo must match path parameters.
     if not (app_info.metadata.name == name and app_info.metadata.env == env):
@@ -152,7 +152,7 @@ async def patch_single_app(
     name: str, env: str, app_info: AppInfo, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
     cfg: ServerConfig = request.app.extra["config"]
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
 
     # Sanity check: meta data in AppInfo must match path parameters.
     if not (app_info.metadata.name == name and app_info.metadata.env == env):
@@ -182,7 +182,7 @@ async def patch_single_app(
 async def delete_single_app(
     name: str, env: str, request: Request
 ) -> dfh.square_types.FrontendDeploymentPlan:
-    db: Database = request.app.extra["db"]
+    db: K8sDatabase = request.app.extra["db"]
     cfg: ServerConfig = request.app.extra["config"]
 
     try:

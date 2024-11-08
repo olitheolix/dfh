@@ -159,8 +159,8 @@ export function AddOrModifyGroupDialog({
             name: groupName,
             description: groupDescription,
             provider: "",
-            users: {},
-            children: {},
+            users: [],
+            children: [],
             roles: [],
         };
 
@@ -599,8 +599,8 @@ export default function UAMGroups() {
         owner: "",
         provider: "",
         description: "",
-        users: {},
-        children: {},
+        users: [],
+        children: [],
         roles: [],
     });
     const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));

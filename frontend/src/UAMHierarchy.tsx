@@ -19,7 +19,7 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { UAMUser, UAMGroup, DGUserRow, DGGroupRow, UAMChild } from "./UAMInterfaces";
+import { UAMUser, UAMGroup, DGUserRow, DGGroupRow, UAMChild, UAMTreeNode } from "./UAMInterfaces";
 import { GroupInfo } from "./UAMGroups";
 import {
     httpGet,
@@ -239,23 +239,19 @@ export default function UAMHierarchy() {
     const [showUnlinkGroupDialog, setShowUnlinkGroupDialog] = useState<boolean>(false);
     const [reloadGroups, setReloadGroups] = useState<boolean>(false);
     const [userGridColumns] = useState<GridColDef[]>(DataGridUserColumns);
-    const [groupHierarchy, setGroupHierarchy] = useState<UAMGroup>({
-        name: "n/a",
-        owner: "n/a",
-        provider: "",
-        description: "",
-        users: {},
+    const [groupHierarchy, setGroupHierarchy] = useState<UAMTreeNode>({
+        name: "",
         children: {},
-        roles: [],
     });
+    const [allGroups, setAllGroups] = useState<Map<string, UAMGroup>>(new Map());
     const [selectedGroup, setSelectedGroup] = useState<DGGroupRow>({
         id: "",
         name: "",
         owner: "",
         provider: "",
         description: "",
-        children: {},
-        users: {},
+        children: [],
+        users: [],
         roles: [],
     });
     const [linkInfo, setLinkInfo] = useState<ParentChildInfo>({
@@ -278,14 +274,15 @@ export default function UAMHierarchy() {
                 errCtx.showError(ret.err);
                 return;
             }
-            setGroupHierarchy(ret.data);
+            setGroupHierarchy(ret.data.root);
+            setAllGroups(ret.data.groups);
             setLoading(false);
         };
         fetchTree();
     }, [reloadGroups]);
 
     // User clicks on a group in the tree: load all its users into the data grid.
-    const onGroupTreeClick = async (group: UAMGroup) => {
+    const onGroupTreeClick = async (group: UAMTreeNode) => {
         const ret = await httpGet(`/demo/api/uam/v1/groups/${group.name}/users?recursive=1`);
         if (ret.err) {
             errCtx.showError(ret.err);
@@ -295,12 +292,14 @@ export default function UAMHierarchy() {
             return { id: user.email, ...user } as DGUserRow;
         });
         setUserGridRows(users);
-        setSelectedGroup({ id: "", ...group });
+
+        const selGroup = allGroups.get(group.name) as UAMGroup;
+        setSelectedGroup({ id: "", ...selGroup });
     };
 
     // Render the group hierarchy into a TreeView. The backend API has a
     // bespoke endpoint for this task.
-    const renderTree = (node: UAMGroup, keyPrefix: string = "", parentName: string = "") => {
+    const renderTree = (node: UAMTreeNode, keyPrefix: string = "", parentName: string = "") => {
         const cur = `${keyPrefix}/${node.name}`;
         return (
             <TreeItem

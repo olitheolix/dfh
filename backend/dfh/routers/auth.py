@@ -15,6 +15,7 @@ from fastapi import (
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
 from dfh.routers.dependencies import can_login, is_authenticated
 
+from .dependencies import d_db
 from .shared import get_config
 
 # Request a token to query the user's email.
@@ -34,6 +35,7 @@ async def google_auth_bearer(
     cfg: Annotated[ServerConfig, Depends(get_config)],
     request: Request,
     response: Response,
+    db: d_db,
 ):
     """Query user info from Google and mark the user as logged in."""
     # Official Google endpoint to query user information.
@@ -46,7 +48,7 @@ async def google_auth_bearer(
     email = resp.json()["email"]
 
     # Verify the user is allowed to login.
-    can_login(email)
+    can_login(db, email)
 
     request.session["email"] = email
     response.set_cookie(key="email", value=email)

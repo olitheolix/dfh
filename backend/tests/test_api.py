@@ -9,6 +9,18 @@ import dfh.api
 import dfh.k8s
 
 
+@pytest.fixture
+async def client():
+    yield TestClient(dfh.api.make_app())
+
+
+@pytest.fixture
+async def clientls():
+    # Invoke the lifespan handler (use `client` if you do not need that.)
+    with TestClient(dfh.api.make_app()) as client:
+        yield client
+
+
 class TestBasic:
     def test_islocaldev(self):
         with mock.patch.dict("os.environ", values={}, clear=True):
@@ -150,6 +162,7 @@ class TestConfiguration:
             "api-token-key",
             "config",
             "db",
+            "spanner",
         }
         assert extra["api-token-key"] == "api"
         assert extra["session-key"] == "sess"

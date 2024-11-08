@@ -12,9 +12,19 @@ export interface UAMGroup {
     owner: string;
     provider: string;
     description: string;
-    users: { [key: string]: UAMUser };
-    children: { [key: string]: UAMGroup };
+    users: string[];
+    children: string[];
     roles: string[];
+}
+
+export interface UAMTreeNode {
+    name: string; // uid
+    children: { [key: string]: UAMTreeNode };
+}
+
+export interface UAMTreeInfo {
+    groups: { [key: string]: UAMGroup };
+    root: UAMTreeNode;
 }
 
 export interface UAMUserRoles {
@@ -26,8 +36,8 @@ export const UAMGroupDefault: UAMGroup = {
     name: "",
     description: "",
     provider: "",
-    users: {},
-    children: {},
+    users: [],
+    children: [],
     roles: [],
 };
 
@@ -38,6 +48,11 @@ export interface DGGroupRow extends UAMGroup {
 
 // Each row in the user data grid is just a user with a unique ID.
 export interface DGUserRow extends UAMUser {
+    id: string;
+}
+
+// Each row in the tree view is just a tree node with a unique ID.
+export interface DGTreeNodeRow extends UAMTreeNode {
     id: string;
 }
 
