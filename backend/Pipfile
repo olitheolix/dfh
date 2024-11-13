@@ -17,6 +17,10 @@ google-auth = "*"
 google-auth-oauthlib = "*"
 google-auth-httplib2 = "*"
 google-api-python-client = "*"
+google-cloud-storage = "*"
+google-cloud-spanner = "*"
+google-cloud-secret-manager = "*"
+google-cloud-pubsub = "*"
 
 [dev-packages]
 isort = "*"
