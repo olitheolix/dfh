@@ -47,11 +47,15 @@ def can_login(email: str):
     )
 
     # Abort if the email is empty.
-    if email in ("", "*"):
+    if email == "":
         raise err
 
     # Root user can always login.
     if email == db.root.owner:
+        return
+
+    # Special case: disable authorisation.
+    if db.root.owner == "*":
         return
 
     # `email` must be a member of the magic `dfhlogin` group. Grant access only

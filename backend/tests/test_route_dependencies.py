@@ -104,3 +104,15 @@ class TestDependencies:
         # User must now be allowed to login because he is now implicitly a part
         # of `dfhlogin` since he belongs to a group that has `dfhlogin` as a parent.
         assert can_login(user.email) is None
+
+    def test_can_login_disable_authorisation(self):
+        """Special case: root owner is `*` means authorisation is disabled."""
+        flush_db()
+        deps.UAM_DB.root.owner = "user@org.com"
+
+        with pytest.raises(HTTPException) as err:
+            can_login("foo@bar.com")
+        assert err.value.status_code == 401
+
+        deps.UAM_DB.root.owner = "*"
+        can_login("foo@bar.com")
