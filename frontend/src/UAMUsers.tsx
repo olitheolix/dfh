@@ -45,8 +45,8 @@ export default function UAMUsers() {
         owner: "",
         provider: "",
         description: "",
-        users: {},
-        children: {},
+        users: [],
+        children: [],
         roles: [],
     });
     const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));

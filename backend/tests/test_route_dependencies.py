@@ -1,33 +1,61 @@
+from unittest import mock
+
 import pytest
 from fastapi import HTTPException
+from google.api_core.exceptions import GoogleAPIError
+from google.cloud import spanner
 
 import dfh.routers.dependencies as deps
 from dfh.models import UAMChild
-from dfh.routers.dependencies import can_login
+from tests.test_route_uam import get_root_group
 
 from .test_helpers import (
-    create_authenticated_client,
+    create_root_client,
     flush_db,
     make_group,
     make_user,
+    set_root_group,
 )
 
 
 class TestDependencies:
+    @pytest.fixture(autouse=True)
+    def autoflush(self):
+        flush_db()
+
+    def test_create_spanner_client(self):
+        new_env = {
+            "DFH_SPANNER_DATABASE": "my-database",
+            "DFH_SPANNER_INSTANCE": "my-instance",
+            "DFH_GCP_PROJECT": "my-project",
+        }
+        with mock.patch.dict("os.environ", values=new_env):
+            client, db, iid, err = deps.create_spanner_client()
+            assert not err
+            assert client is not None
+            assert db is not None
+            assert iid == "my-instance"
+
+        with mock.patch.dict("os.environ", values={}, clear=True):
+            assert deps.create_spanner_client() == (None, None, "", True)
+
     def test_can_login_direct_member(self):
         """All users in the `dfhlogin` group must be able to login."""
-        flush_db()
-        client = create_authenticated_client("/demo/api/uam/v1")
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
 
-        invalid_emails = ["", "*"]
+        client = create_root_client("/demo/api/uam/v1")
+        root = get_root_group()
+
+        invalid_emails = ["", "*", f"not-{root.owner}"]
         for email in invalid_emails:
-            with pytest.raises(HTTPException) as err:
-                can_login(email)
-            assert err.value.status_code == 401
+            with pytest.raises(HTTPException) as err:  # type: ignore
+                deps.can_login(db, email)
+                assert err.value.status_code == 401  # type: ignore
             del email
 
-        # Root user must always be able to login.
-        can_login(deps.UAM_DB.root.owner)
+        # Owner of root group must always be able to login.
+        deps.can_login(db, root.owner)
 
         # Create the magic `dfhlogin` group.
         group, user = make_group(name="dfhlogin"), make_user(email="foo@bar.com")
@@ -37,42 +65,23 @@ class TestDependencies:
         # Normal user must still be unable to login because he is not a member of
         # `dfhlogin` yet.
         with pytest.raises(HTTPException) as err:
-            can_login(user.email)
+            deps.can_login(db, user.email)
         assert err.value.status_code == 401
 
         # Make the user a member of `dfhlogin`.
         resp = client.put(f"/groups/{group.name}/users", json=[user.email])
         assert resp.status_code == 201
 
-        # User must still be unable to login because `dfhlogin` is not a direct
-        # descendant of `root`.
-        with pytest.raises(HTTPException) as err:
-            can_login(user.email)
-        assert err.value.status_code == 401
-
-        # Parent `dfhlogin` to `root`.
-        loginchild = UAMChild(child="dfhlogin").model_dump()
-        root_name = deps.UAM_DB.root.name
-        resp = client.put(f"/groups/{root_name}/children", json=loginchild)
-        assert resp.status_code == 201
-
         # User must now be allowed to login.
-        assert can_login(user.email) is None
+        assert deps.can_login(db, user.email) is None
 
     def test_can_login_indirect_member(self):
-        """All members in child groups of `dfhlogin` must be able to login."""
-        flush_db()
-        client = create_authenticated_client("/demo/api/uam/v1")
+        """Inherited members of `dfhlogin` must not be able to login."""
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        client = create_root_client("/demo/api/uam/v1")
 
-        invalid_emails = ["", "*"]
-        for email in invalid_emails:
-            with pytest.raises(HTTPException) as err:
-                can_login(email)
-            assert err.value.status_code == 401
-            del email
-
-        # Root user must always be able to login.
-        can_login(deps.UAM_DB.root.owner)
+        root = get_root_group()
 
         # Create the magic `dfhlogin` group.
         group1, group2 = make_group(name="dfhlogin"), make_group(name="other")
@@ -86,21 +95,132 @@ class TestDependencies:
 
         # Add user to the `other` group.
         resp = client.put("/groups/other/users", json=[user.email])
+        assert resp.status_code == 201
 
-        # Parent `dfhlogin` to root.
-        root_name = deps.UAM_DB.root.name
-        client.put(f"/groups/{root_name}/children", json=loginchild).status_code
-
-        # User must still be unable to login because his group is not a descendant
-        # of `dfhlogin` yet.
-        with pytest.raises(HTTPException) as err:
-            can_login(user.email)
-        assert err.value.status_code == 401
-
-        # Parent `other` to `dfhlogin`.
+        # Create root -> `dfhlogin` -> `other`.
+        root = get_root_group()
+        client.put(f"/groups/{root.name}/children", json=loginchild).status_code
         client.put(f"/groups/dfhlogin/children", json=otherchild).status_code
         assert resp.status_code == 201
 
-        # User must now be allowed to login because he is now implicitly a part
-        # of `dfhlogin` since he belongs to a group that has `dfhlogin` as a parent.
-        assert can_login(user.email) is None
+        # User must not be allowed to login because he is not a direct member
+        # of `dfhlogin`.
+        with pytest.raises(HTTPException) as err:
+            deps.can_login(db, user.email)
+        assert err.value.status_code == 401
+
+    def test_can_login_disable_authorisation(self):
+        """Special case: root owner is `*` means authorisation is disabled."""
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        set_root_group("user@org.com")
+
+        with pytest.raises(HTTPException) as err:
+            deps.can_login(db, "foo@bar.com")
+        assert err.value.status_code == 401
+
+        set_root_group("*")
+        deps.can_login(db, "foo@bar.com")
+
+    def test_get_login_group_error(self):
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+
+        email = "user@org.com"
+        set_root_group(email)
+
+        root_owner, _, err = deps.get_login_groups(db)
+        assert not err
+        assert root_owner == email
+
+        with db.batch() as batch:
+            batch.delete(table="OrgGroups", keyset=spanner.KeySet([["Org"]]))
+
+        root_owner, _, err = deps.get_login_groups(db)
+        assert err
+        assert root_owner == "@invalid"
+
+    @mock.patch.object(deps, "get_login_groups")
+    def test_can_login_get_login_group_error(self, m_glg):
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+
+        email = "user@org.com"
+        set_root_group(email)
+
+        # Must allow access since `get_login_groups` did not return an error.
+        m_glg.return_value = email, [], False
+        deps.can_login(db, email)
+
+        # Must deny access if `get_login_groups` returns an error.
+        m_glg.return_value = email, [], True
+        with pytest.raises(HTTPException) as err:
+            deps.can_login(db, email)
+        assert err.value.status_code == 401
+
+    def test_handle_spanner_exceptions(self):
+        """Verify the Spanner wrapper intercepts the relevant errors.
+
+        The possible errors here are not exhaustive but illustrative only. This
+        will still produce full coverage since the logic is shared for all of
+        them.
+
+        """
+        _, db, _, err = deps.create_spanner_client()
+        assert not err and db
+        wrapper = deps.handle_spanner_exceptions
+
+        @wrapper
+        def unhandled_error():
+            raise KeyError()
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            unhandled_error()
+        assert err.value.status_code == 500  # type: ignore
+
+        @wrapper
+        def generic_google_error():
+            raise GoogleAPIError()
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            generic_google_error()
+        assert err.value.status_code == 500  # type: ignore
+
+        @wrapper
+        def not_found():
+            with db.batch() as batch:
+                batch.insert(table="invalid", columns=["foo"], values=[["foo"]])
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            not_found()
+        assert err.value.status_code == 404  # type: ignore
+
+        @wrapper
+        def failed_precondition():
+            with db.batch() as batch:
+                batch.insert(table="OrgGroups", columns=["email"], values=[["Org"]])
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            failed_precondition()
+        assert err.value.status_code == 400  # type: ignore
+
+        @wrapper
+        def already_exists():
+            with db.batch() as batch:
+                batch.insert(
+                    table="OrgGroups",
+                    columns=["email", "owner", "provider", "description"],
+                    values=[["Org", "owner", "provider", ""]],
+                )
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            already_exists()
+        assert err.value.status_code == 409  # type: ignore
+
+        @wrapper
+        def http_error():
+            raise HTTPException(200, detail="")
+
+        with pytest.raises(HTTPException) as err:  # type: ignore
+            http_error()
+        assert err.value.status_code == 200  # type: ignore

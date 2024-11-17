@@ -19,8 +19,8 @@ from dfh.models import (
     AppInfo,
     AppMetadata,
     AppPrimary,
-    Database,
     DeploymentInfo,
+    K8sDatabase,
 )
 
 from .conftest import get_server_config
@@ -585,12 +585,12 @@ class TestWatchWithBackgroundTask:
 
 class TestResourceTracking:
     def test_upsert_resource(self):
-        db: Database = Database()
+        db: K8sDatabase = K8sDatabase()
         gen = dfh.generate
 
         # Must silently ignore invalid manifests.
         dfh.watch.upsert_resource(cfg, db, {})
-        assert db == Database()
+        assert db == K8sDatabase()
 
         # Generate test manifests.
         manifests = {}
@@ -608,7 +608,7 @@ class TestResourceTracking:
                     ),
                 )
                 data, err = gen.manifests_from_appinfo(
-                    cfg, app_infos[name][env], Database()
+                    cfg, app_infos[name][env], K8sDatabase()
                 )
                 assert not err
 
@@ -656,7 +656,7 @@ class TestResourceTracking:
 
     def test_track_resource_lifecycle(self):
         """Add, modify and remove a Deployment."""
-        db: Database = Database()
+        db: K8sDatabase = K8sDatabase()
         res = db.resources["Deployment"]
         manifest = yaml.safe_load(Path("tests/support/deployment.yaml").read_text())
 
@@ -686,7 +686,7 @@ class TestResourceTracking:
 
     def test_track_resource_namespace(self):
         """Namespace manifests are slightly special and deserve a dedicated test."""
-        db: Database = Database()
+        db: K8sDatabase = K8sDatabase()
         res = db.resources["Namespace"]
         manifest = yaml.safe_load(Path("tests/support/namespace.yaml").read_text())
 
@@ -698,7 +698,7 @@ class TestResourceTracking:
         assert res.manifests[key] == manifest
 
     def test_track_resource_err(self):
-        db: Database = Database()
+        db: K8sDatabase = K8sDatabase()
         res = db.resources["Deployment"]
         manifest = yaml.safe_load(Path("tests/support/deployment.yaml").read_text())
 

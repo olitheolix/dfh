@@ -6,27 +6,61 @@ import httpx
 import itsdangerous
 from faker import Faker
 from fastapi.testclient import TestClient
+from google.cloud import spanner
 
 import dfh.api
-import dfh.routers.dependencies as dep
+import dfh.routers.dependencies as deps
+import dfh.routers.uam as uam
 from dfh.models import UAMGroup, UAMUser
 
 faker = Faker()
 
 
+def set_root_group(
+    owner: str,
+    provider: str = "provider",
+    description: str = "description",
+):
+    # fixme: docu
+    _, db, _, err = deps.create_spanner_client()
+    assert not err and db
+    with db.batch() as batch:
+        batch.insert_or_update(
+            table="OrgGroups",
+            columns=["email", "owner", "provider", "description"],
+            values=[("Org", owner, provider, description)],
+        )
+
+
+def get_root_group() -> UAMGroup:
+    _, db, _, err = deps.create_spanner_client()
+    assert not err and db
+    return uam.spanner_get_group(db, "Org")
+
+
 def flush_db():
-    dep.UAM_DB.users.clear()
-    dep.UAM_DB.groups.clear()
-    dep.UAM_DB.root = UAMGroup(name="Org", owner="none", provider="none")
+    _, db, _, err = deps.create_spanner_client()
+    assert not err and db
+    with db.batch() as batch:
+        batch.delete("OrgUsers", spanner.KeySet(all_=True))
+        batch.delete("OrgGroups", spanner.KeySet(all_=True))
+        batch.delete("OrgGroupsUsers", spanner.KeySet(all_=True))
+        batch.delete("OrgGroupsGroups", spanner.KeySet(all_=True))
+        batch.delete("OrgGroupsRoles", spanner.KeySet(all_=True))
 
-
-def create_authenticated_client(prefix: str) -> TestClient:
-    # Create a random root user.
+    # Create a random owner of the root group to ensure we have no hard coded
+    # names anywhere.
     name, org = faker.unique.first_name(), faker.unique.first_name()
-    dep.UAM_DB.root.owner = f"{name}@{org}.com"
+    owner = f"{name}@{org}.com"
+    set_root_group(owner)
+
+
+def create_root_client(prefix: str, owner: str | None = None) -> TestClient:
+    if not owner:
+        owner = get_root_group().owner
 
     # Create valid session cookies to indicate we are the root user.
-    cookies: dict = {"email": dep.UAM_DB.root.owner}
+    cookies: dict = {"email": owner}
 
     client = TestClient(dfh.api.make_app(), cookies=create_session_cookie(cookies))
     client.base_url = client.base_url.join(prefix)

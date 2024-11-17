@@ -28,7 +28,7 @@ from square.dtypes import ConnectionParameters, K8sConfig
 import dfh.generate
 import dfh.k8s
 from dfh.manifest_utilities import get_metainfo
-from dfh.models import AppMetadata, Database, ServerConfig, WatchedResource
+from dfh.models import AppMetadata, K8sDatabase, ServerConfig, WatchedResource
 
 # Convenience.
 logit = logging.getLogger("app")
@@ -354,7 +354,7 @@ def create_cluster_config(kubeconf: Path, context: str) -> Tuple[K8sConfig, bool
 
 
 async def setup_k8s_watch(
-    cfg: ServerConfig, k8scfg: K8sConfig, db: Database, res: WatchedResource
+    cfg: ServerConfig, k8scfg: K8sConfig, db: K8sDatabase, res: WatchedResource
 ):
     # Setup log stream with INFO severity.
     logit.info(f"watch started for {res.apiVersion}/{res.kind}")
@@ -392,7 +392,7 @@ def get_resource_key(manifest: dict) -> Tuple[str, str, bool]:
     return key, kind, False
 
 
-def upsert_resource(cfg: ServerConfig, db: Database, manifest: dict):
+def upsert_resource(cfg: ServerConfig, db: K8sDatabase, manifest: dict):
     key, kind, err = get_resource_key(manifest)
     if err:
         return
@@ -411,7 +411,7 @@ def upsert_resource(cfg: ServerConfig, db: Database, manifest: dict):
         pass
 
 
-def remove_resource(cfg: ServerConfig, db: Database, manifest: dict):
+def remove_resource(cfg: ServerConfig, db: K8sDatabase, manifest: dict):
     key, kind, err1 = get_resource_key(manifest)
 
     # Track the resource in our general DB.
@@ -428,7 +428,7 @@ def remove_resource(cfg: ServerConfig, db: Database, manifest: dict):
 
 
 def track_resource(
-    cfg: ServerConfig, db: Database, res: WatchedResource, data: dict
+    cfg: ServerConfig, db: K8sDatabase, res: WatchedResource, data: dict
 ) -> bool:
     # Extract meta data and abort on error.
     try:

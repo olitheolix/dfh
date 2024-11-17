@@ -21,9 +21,9 @@ from dfh.models import (
     AppMetadata,
     AppPrimary,
     AppService,
-    Database,
     DeploymentInfo,
     GeneratedManifests,
+    K8sDatabase,
     K8sDeployment,
     K8sDestinationRule,
     K8sEnvVar,
@@ -145,7 +145,7 @@ def deployment_manifest(
 
 
 def service_manifests(
-    cfg: ServerConfig, db: Database, app_info: AppInfo
+    cfg: ServerConfig, db: K8sDatabase, app_info: AppInfo
 ) -> Dict[str, dict]:
     svc_info = app_info.primary
 
@@ -263,7 +263,7 @@ def istio_manifests(cfg: ServerConfig, app_info: AppInfo) -> Tuple[dict, dict, b
 
 
 def manifests_from_appinfo(
-    cfg: ServerConfig, app_info: AppInfo, db: Database
+    cfg: ServerConfig, app_info: AppInfo, db: K8sDatabase
 ) -> Tuple[GeneratedManifests, bool]:
     """Produce all app manifests for the `userapp`.
 
@@ -433,7 +433,7 @@ def appinfo_from_manifests(
 
 
 async def compile_plan(
-    cfg: ServerConfig, new_app: AppInfo, db: Database, remove: bool = False
+    cfg: ServerConfig, new_app: AppInfo, db: K8sDatabase, remove: bool = False
 ) -> Tuple[square.dtypes.DeploymentPlan, bool]:
 
     # Convenience.

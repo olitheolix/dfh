@@ -14,9 +14,9 @@ from dfh.models import (
     AppMetadata,
     AppPrimary,
     AppService,
-    Database,
     DatabaseAppEntry,
     DeploymentInfo,
+    K8sDatabase,
     K8sEnvVar,
     K8sProbe,
     K8sProbeHttp,
@@ -426,7 +426,7 @@ class TestBasic:
     @pytest.mark.parametrize("has_canary", [False, True])
     def test_generate_service_manifests_new(self, has_canary: bool):
         # Input.
-        db = Database()
+        db = K8sDatabase()
         name, ns, env = "demo", "default", "stg"
         app_info = AppInfo(
             metadata=AppMetadata(name=name, env=env, namespace=ns),
@@ -498,7 +498,7 @@ class TestBasic:
 
     def test_generate_service_manifests_update(self):
         # Input.
-        db = Database()
+        db = K8sDatabase()
         name, ns, env = "demo", "default", "stg"
         app_info = AppInfo(
             metadata=AppMetadata(name=name, env=env, namespace=ns),
@@ -657,10 +657,10 @@ class TestBasic:
 
         # Generate brand new application manifests since our database is still
         # empty. Must also not have touched the database.
-        db = Database()
+        db = K8sDatabase()
         obj, err = gen.manifests_from_appinfo(cfg, app_info, db)
         assert not err
-        assert db == Database()
+        assert db == K8sDatabase()
 
         # Must have produced one Deployment and one Service manifest.
         res_name = gen.watch_key(app_info.metadata, False)
@@ -711,10 +711,10 @@ class TestBasic:
 
         # Generate brand new application manifests since our database is still
         # empty. Must also not have touched the database.
-        db = Database()
+        db = K8sDatabase()
         obj, err = gen.manifests_from_appinfo(cfg, app_info, db)
         assert not err
-        assert db == Database()
+        assert db == K8sDatabase()
 
         # Must have produced two deployment manifest.
         deployments = obj.resources["Deployment"].manifests
@@ -756,7 +756,7 @@ class TestBasic:
         )
 
         # Generate brand new Istio manifests.
-        obj, err = gen.manifests_from_appinfo(cfg, app_info, Database())
+        obj, err = gen.manifests_from_appinfo(cfg, app_info, K8sDatabase())
         assert not err
 
         # Must have produced one `VirtualService` and one `DestinationRule` manifest.
@@ -765,7 +765,7 @@ class TestBasic:
 
         # Must abort for invalid traffic percentages.
         app_info.canary.trafficPercent = 200
-        obj, err = gen.manifests_from_appinfo(cfg, app_info, Database())
+        obj, err = gen.manifests_from_appinfo(cfg, app_info, K8sDatabase())
         assert err
 
     @pytest.mark.parametrize("has_canary", [False, True])
@@ -781,7 +781,7 @@ class TestBasic:
         for DFH itself.
 
         """
-        db = Database()
+        db = K8sDatabase()
         name, ns, env = "demo", "default", "stg"
 
         # Base application with just a primary deployment.
@@ -899,7 +899,7 @@ class TestGenerateIntegration:
         )
 
         # Must create one Deployment because the DB is empty.
-        sq_plan, err = await gen.compile_plan(cfg, app_info, Database())
+        sq_plan, err = await gen.compile_plan(cfg, app_info, K8sDatabase())
         assert not err
         assert len(sq_plan.create) == 1
         assert len(sq_plan.patch) == len(sq_plan.delete) == 0
@@ -909,7 +909,7 @@ class TestGenerateIntegration:
         assert len(fe_plan.patch) == len(fe_plan.delete) == 0
 
         # Insert an app into our DB.
-        db = Database()
+        db = K8sDatabase()
         manifests, err = gen.manifests_from_appinfo(cfg, app_info, db)
         assert not err
 
@@ -949,7 +949,7 @@ class TestGenerateIntegration:
         )
 
         # Manually add a Pod to or app.
-        db = Database()
+        db = K8sDatabase()
         db.apps = {name: {env: DatabaseAppEntry(appInfo=app_info)}}
         db_res = db.apps[name][env].resources["Pod"].manifests
         db_res[gen.watch_key(app_info.metadata, False)] = {"kind": "Pod"}
