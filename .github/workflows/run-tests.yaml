@@ -28,6 +28,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Start Spanner Emulator
+        run: |
+          docker run -d --rm --name emulator -p 9010:9010 -p 9020:9020 gcr.io/cloud-spanner-emulator/emulator
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: Setup GCP Environment for Emulator
+        run: |
+          gcloud config configurations create emulator
+          gcloud config set auth/disable_credentials true
+          gcloud config set project my-project
+          gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
+          gcloud spanner instances create my-instance --config=emulator-config --nodes=1 --description="foo" 
+
       - name: Start KinD Cluster
         run: |
           mkdir ~/bin
@@ -65,6 +82,12 @@ jobs:
         run: |
           cd backend
           pytest --cov=dfh --cov-report=term-missing --cov-report=xml --cov-fail-under=100 --durations=10
+
+      - name: Cleanup
+        if: ${{ always() }}
+        run: |
+          docker stop emulator
+          kind delete cluster
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
