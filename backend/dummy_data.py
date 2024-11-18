@@ -10,7 +10,7 @@ import dfh.api
 import dfh.routers.auth as auth
 import tests.conftest
 from dfh.models import UAMChild, UAMGroup, UAMUser
-from tests.test_helpers import set_root_user
+from tests.test_helpers import set_root_user, flush_db
 
 
 def create_hierarchy(
@@ -117,8 +117,8 @@ def publish_hierarchy(
 
 
 def main():
-    tests.conftest.create_spanner_tables()
-    set_root_user(os.environ["DFH_ROOT"])
+    flush_db()
+    set_root_user("*")
 
     users, groups = create_fake_uam_dataset()
 
