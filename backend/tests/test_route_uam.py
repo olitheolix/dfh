@@ -3,7 +3,6 @@ from typing import Dict, List
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from google.cloud import spanner
 from httpx import Response
 
 import dfh.routers.dependencies as deps
@@ -20,11 +19,13 @@ from dfh.models import (
 from .test_helpers import (
     create_root_client,
     flush_db,
-    get_root_group,
+    get_root_users,
     make_group,
     make_user,
-    set_root_group,
+    set_root_user,
 )
+
+ROOT_NAME = deps.ROOT_NAME
 
 
 @pytest.fixture
@@ -215,9 +216,8 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = get_root_group()
         assert (
-            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            client.put(f"/groups/{ROOT_NAME}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
@@ -236,7 +236,7 @@ class TestUserAccessManagement:
         assert len(get_groups(client)) == 2
 
         # Must permit to remove `foo` from root node.
-        assert client.delete(f"/groups/{root.name}/children/foo").status_code == 204
+        assert client.delete(f"/groups/{ROOT_NAME}/children/foo").status_code == 204
         assert len(get_groups(client)) == 2
 
     def test_add_remove_children(self, client: TestClient):
@@ -278,7 +278,7 @@ class TestUserAccessManagement:
         assert client.put("/groups", json=group.model_dump()).status_code == 404
 
         # Must refuse to update the root group.
-        root = get_root_group()
+        root = UAMGroup(name=ROOT_NAME, owner="foo@org.com", provider="")
         assert client.put("/groups", json=root.model_dump()).status_code == 422
 
     def test_put_groups_ok(self, client: TestClient):
@@ -358,9 +358,8 @@ class TestUserAccessManagement:
         assert add_users_to_group(client, "bar", demo_users[1:]).status_code == 201
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = get_root_group()
         assert (
-            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            client.put(f"/groups/{ROOT_NAME}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
@@ -393,11 +392,11 @@ class TestUserAccessManagement:
         assert len(bar_users) == 3
 
         # Query root node.
-        resp = client.get(f"/groups/{root.name}/users?recursive=0")
+        resp = client.get(f"/groups/{ROOT_NAME}/users?recursive=0")
         assert resp.status_code == 200
         assert len(resp.json()) == 0
 
-        resp = client.get(f"/groups/{root.name}/users?recursive=1")
+        resp = client.get(f"/groups/{ROOT_NAME}/users?recursive=1")
         assert resp.status_code == 200
         bar_users = [UAMUser.model_validate(_) for _ in resp.json()]
         assert len(bar_users) == 4
@@ -466,11 +465,10 @@ class TestUserAccessManagement:
         assert set(tree.groups) == {"Org"}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = get_root_group()
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         assert (
-            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            client.put(f"/groups/{ROOT_NAME}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
@@ -497,11 +495,10 @@ class TestUserAccessManagement:
         assert set(tree.groups) == {"Org"}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
-        root = get_root_group()
         foochild = UAMChild(child="foo").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         abcchild = UAMChild(child="abc").model_dump()
-        url = f"/groups/{root.name}/children"
+        url = f"/groups/{ROOT_NAME}/children"
         assert client.put(url, json=abcchild).status_code == 201
         assert client.put(url, json=barchild).status_code == 201
         assert client.put(url, json=foochild).status_code == 201
@@ -562,9 +559,8 @@ class TestUserAccessManagement:
         abcchild = UAMChild(child="abc").model_dump()
         barchild = UAMChild(child="bar").model_dump()
         foochild = UAMChild(child="foo").model_dump()
-        root = get_root_group()
         assert (
-            client.put(f"/groups/{root.name}/children", json=foochild).status_code
+            client.put(f"/groups/{ROOT_NAME}/children", json=foochild).status_code
             == 201
         )
         assert client.put("/groups/foo/children", json=abcchild).status_code == 201
@@ -717,8 +713,7 @@ class TestUsers:
         # Create hierarchy: Org -> foo -> bar
         # User must still not have any inherited roles because he is still not a
         # member of any group.
-        root = get_root_group()
-        resp = client.put(f"/groups/{root.name}/children", json=foochild)
+        resp = client.put(f"/groups/{ROOT_NAME}/children", json=foochild)
         assert resp.status_code == 201
         resp = client.put(f"/groups/{groups[0].name}/children", json=barchild)
         assert resp.status_code == 201
@@ -783,10 +778,9 @@ class TestUsers:
         #   foo
         #     xyz
         #   bar
-        root = get_root_group()
-        resp = client.put(f"/groups/{root.name}/children", json=foochild)
+        resp = client.put(f"/groups/{ROOT_NAME}/children", json=foochild)
         assert resp.status_code == 201
-        resp = client.put(f"/groups/{root.name}/children", json=barchild)
+        resp = client.put(f"/groups/{ROOT_NAME}/children", json=barchild)
         assert resp.status_code == 201
         resp = client.put(f"/groups/foo/children", json=xyzchild)
         assert resp.status_code == 201
@@ -816,7 +810,7 @@ class TestRBAC:
 
         _, db, _, err = deps.create_spanner_client()
         assert not err and db
-        root = get_root_group()
+        root_user = get_root_users()[0]
 
         # Deliberately chose a group that is not `Org` because that means the
         # `allow_org_edit` must have no effect.
@@ -826,7 +820,7 @@ class TestRBAC:
         fun(db, group.owner, None, allow_org_edit=org_edit)
 
         # Root user and group owners must have access and thus not raise an exception.
-        fun(db, root.owner, group, allow_org_edit=org_edit)
+        fun(db, root_user, group, allow_org_edit=org_edit)
         fun(db, group.owner, group, allow_org_edit=org_edit)
 
         # Must reject all other users with 403.
@@ -835,18 +829,18 @@ class TestRBAC:
         assert err.value.status_code == 403
 
         # Set the root owner to empty and verify that no backdoor exists.
-        set_root_group("")
+        set_root_user("")
         with pytest.raises(HTTPException) as err:
             fun(db, "", group, allow_org_edit=org_edit)
 
         # If the root user is "*" then everyone can edit.
-        set_root_group("*")
+        set_root_user("*")
         fun(db, "", group, allow_org_edit=org_edit)
 
     def test_can_edit_existing_group_org_edit(self):
         _, db, _, err = deps.create_spanner_client()
         assert not err and db
-        root = get_root_group()
+        root_user = get_root_users()[0]
 
         # Deliberately choose the root group for this example because it is the
         # only group on which the `allow_org_edit` option has an effect.
@@ -857,26 +851,12 @@ class TestRBAC:
 
         # Even root must not have access.
         with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, root.owner, group, allow_org_edit=False)
+            uam.can_edit_existing_group(db, root_user, group, allow_org_edit=False)
         assert err.value.status_code == 422
 
         with pytest.raises(HTTPException) as err:
             uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=False)
         assert err.value.status_code == 422
-
-    def test_can_edit_existing_group_missing_org(self):
-        _, db, _, err = deps.create_spanner_client()
-        assert not err and db
-        group = make_group()
-
-        uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=True)
-
-        with db.batch() as batch:
-            batch.delete(table="OrgGroups", keyset=spanner.KeySet([["Org"]]))
-
-        with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=True)
-        assert err.value.status_code == 500
 
     def test_put_group(self):
         user1, user2 = "user-1@org.com", "user-2@org.com"

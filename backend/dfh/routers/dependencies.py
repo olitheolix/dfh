@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from functools import wraps
-from typing import Annotated, List, Tuple
+from typing import Annotated, Tuple, Set
 
 import google.cloud.spanner as spanner
 import itsdangerous
@@ -28,6 +28,9 @@ from google.cloud.spanner_v1.transaction import Transaction
 from dfh.models import UserToken
 
 logit = logging.getLogger("app")
+
+# Name of root group that anchors the tree. This cannot be changed ever.
+ROOT_NAME = "Org"
 
 
 def is_authenticated(request: Request) -> str:
@@ -55,14 +58,13 @@ def is_authenticated(request: Request) -> str:
     )
 
 
-def get_login_groups(db: Database) -> Tuple[str, List[str], bool]:
-    def runme(transaction: Transaction) -> Tuple[str | None, List[str]]:
+def get_login_groups(db: Database) -> Tuple[Set[str], Set[str]]:
+    def runme(transaction: Transaction) -> Tuple[Set[str], Set[str]]:
         # Retrieve the owner of the root group.
         rows = transaction.read(
-            table="OrgGroups", columns=["owner"], keyset=spanner.KeySet([["Org"]])
+            table="OrgRootUsers", columns=["email"], keyset=spanner.KeySet(all_=True)
         )
-        rows = list(rows)
-        root_owner = rows[0][0] if len(rows) == 1 else None
+        root_users = {_[0] for _ in rows}
 
         # Retrieve the members of the `dfhlogin` group.
         # NOTE: this group may legitimately not exist.
@@ -71,14 +73,11 @@ def get_login_groups(db: Database) -> Tuple[str, List[str], bool]:
             params={"group": "dfhlogin"},
             param_types={"group": spanner.param_types.STRING},
         )
-        user_emails = [row[0] for row in rows]
-        return root_owner, user_emails
+        login_users = {row[0] for row in rows}
+        return root_users, login_users
 
-    root_owner, user_emails = handle_spanner_exceptions(db.run_in_transaction)(runme)
-    if root_owner is None:
-        return "@invalid", [], True
-
-    return root_owner, user_emails, False
+    root_users, login_users = handle_spanner_exceptions(db.run_in_transaction)(runme)
+    return root_users, login_users
 
 
 def can_login(db: Database, email: str):
@@ -91,16 +90,14 @@ def can_login(db: Database, email: str):
     if email == "":
         raise denied
 
-    root_owner, allowed_users, err = get_login_groups(db)
-    if err:
-        raise denied
+    root_users, login_users = get_login_groups(db)
 
     # Root user can always login.
-    if email == root_owner or email in allowed_users:
+    if email in (root_users | login_users):
         return
 
     # Special case: disable authorisation.
-    if root_owner == "*":
+    if "*" in root_users:
         return
 
     raise denied
