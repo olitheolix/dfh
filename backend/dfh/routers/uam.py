@@ -76,7 +76,7 @@ def can_edit_existing_group(db: Database, user: str, group: UAMGroup | None):
 async def get_groups(db: d_db) -> List[UAMGroup]:
     """Return all known groups."""
     groups = await run_async(spanner_get_all_groups, db)
-    return [_ for _ in groups.values() if _.name != ROOT_NAME]
+    return [_ for _ in groups.values()]
 
 
 @router.post(

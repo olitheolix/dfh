@@ -40,6 +40,9 @@ def get_groups(client: TestClient) -> List[UAMGroup]:
     assert resp.status_code == 200
     out = [UAMGroup.model_validate(_) for _ in resp.json()]
     out.sort(key=lambda _: _.name)
+
+    # Remove the `Org` group because it tends to get in the way during the tests.
+    out = [_ for _ in out if _.name != ROOT_NAME]
     return out
 
 
@@ -67,6 +70,16 @@ def get_tree(client: TestClient) -> UAMTreeInfo:
 
 
 class TestUserAccessManagement:
+    def test_get_groups(self, client: TestClient):
+        resp = client.get("/groups")
+        assert resp.status_code == 200
+        out = [UAMGroup.model_validate(_) for _ in resp.json()]
+
+        # Response must contain only the root group that the `client` fixture
+        # automatically inserted into the dataset.
+        assert len(out) == 1
+        assert out[0].name == "Org"
+
     def test_add_unique_users(self, client: TestClient):
         # Sanity check: DB is empty.
         assert len(get_users(client)) == 0
