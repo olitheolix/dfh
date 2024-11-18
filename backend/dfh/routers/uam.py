@@ -55,29 +55,20 @@ def can_edit_existing_group(
 
     with db.snapshot() as snapshot:
         rows = snapshot.read(
-            table="OrgGroups",
-            columns=["email", "owner"],
-            keyset=spanner.KeySet([["Org"]]),
+            table="OrgRootUsers", columns=["email"], keyset=spanner.KeySet(all_=True)
         )
-        out = {_[0]: _[1] for _ in rows}
-
-    if "Org" not in out:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="cannot find root group",
-        )
-    root_owner = out["Org"]
+        root_users = {_[0] for _ in rows if _[0] != ""}
 
     # Reject the request if we are not permitting changes to the root group.
     if group.name == "Org" and not allow_org_edit:
         raise HTTPException(status_code=422, detail="not allowed to edit root node")
 
     # Special case: everybody is root.
-    if root_owner == "*":
+    if "*" in root_users:
         return
 
     # Root user always has EDIT permissions.
-    if root_owner != "" and user == root_owner:
+    if user in root_users:
         return
 
     # Group owner has EDIT permissions.
@@ -100,6 +91,7 @@ async def get_groups(db: d_db) -> List[UAMGroup]:
 )
 async def post_group(db: d_db, group: UAMGroup):
     """Create a new group. Returns 409 if the group already exists."""
+    spanner_get_group(db, "Org")
     root = await run_async(spanner_get_group, db, "Org")
 
     # Special case: abort immediately if the group name matches the root group name.

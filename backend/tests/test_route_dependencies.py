@@ -7,14 +7,14 @@ from google.cloud import spanner
 
 import dfh.routers.dependencies as deps
 from dfh.models import UAMChild
-from tests.test_route_uam import get_root_group
+from tests.test_route_uam import get_root_users
 
 from .test_helpers import (
     create_root_client,
     flush_db,
     make_group,
     make_user,
-    set_root_group,
+    set_root_user,
 )
 
 
@@ -45,9 +45,9 @@ class TestDependencies:
         assert not err and db
 
         client = create_root_client("/demo/api/uam/v1")
-        root = get_root_group()
+        root_user = get_root_users()[0]
 
-        invalid_emails = ["", "*", f"not-{root.owner}"]
+        invalid_emails = ["", "*", f"not-{root_user}"]
         for email in invalid_emails:
             with pytest.raises(HTTPException) as err:  # type: ignore
                 deps.can_login(db, email)
@@ -55,7 +55,7 @@ class TestDependencies:
             del email
 
         # Owner of root group must always be able to login.
-        deps.can_login(db, root.owner)
+        deps.can_login(db, root_user)
 
         # Create the magic `dfhlogin` group.
         group, user = make_group(name="dfhlogin"), make_user(email="foo@bar.com")
@@ -81,8 +81,6 @@ class TestDependencies:
         assert not err and db
         client = create_root_client("/demo/api/uam/v1")
 
-        root = get_root_group()
-
         # Create the magic `dfhlogin` group.
         group1, group2 = make_group(name="dfhlogin"), make_group(name="other")
         user = make_user(email="foo@bar.com")
@@ -98,8 +96,8 @@ class TestDependencies:
         assert resp.status_code == 201
 
         # Create root -> `dfhlogin` -> `other`.
-        root = get_root_group()
-        client.put(f"/groups/{root.name}/children", json=loginchild).status_code
+        root_user = get_root_users()[0]
+        client.put(f"/groups/{root_user}/children", json=loginchild).status_code
         client.put(f"/groups/dfhlogin/children", json=otherchild).status_code
         assert resp.status_code == 201
 
@@ -113,50 +111,14 @@ class TestDependencies:
         """Special case: root owner is `*` means authorisation is disabled."""
         _, db, _, err = deps.create_spanner_client()
         assert not err and db
-        set_root_group("user@org.com")
+        set_root_user("user@org.com")
 
         with pytest.raises(HTTPException) as err:
             deps.can_login(db, "foo@bar.com")
         assert err.value.status_code == 401
 
-        set_root_group("*")
+        set_root_user("*")
         deps.can_login(db, "foo@bar.com")
-
-    def test_get_login_group_error(self):
-        _, db, _, err = deps.create_spanner_client()
-        assert not err and db
-
-        email = "user@org.com"
-        set_root_group(email)
-
-        root_owner, _, err = deps.get_login_groups(db)
-        assert not err
-        assert root_owner == email
-
-        with db.batch() as batch:
-            batch.delete(table="OrgGroups", keyset=spanner.KeySet([["Org"]]))
-
-        root_owner, _, err = deps.get_login_groups(db)
-        assert err
-        assert root_owner == "@invalid"
-
-    @mock.patch.object(deps, "get_login_groups")
-    def test_can_login_get_login_group_error(self, m_glg):
-        _, db, _, err = deps.create_spanner_client()
-        assert not err and db
-
-        email = "user@org.com"
-        set_root_group(email)
-
-        # Must allow access since `get_login_groups` did not return an error.
-        m_glg.return_value = email, [], False
-        deps.can_login(db, email)
-
-        # Must deny access if `get_login_groups` returns an error.
-        m_glg.return_value = email, [], True
-        with pytest.raises(HTTPException) as err:
-            deps.can_login(db, email)
-        assert err.value.status_code == 401
 
     def test_handle_spanner_exceptions(self):
         """Verify the Spanner wrapper intercepts the relevant errors.

@@ -108,6 +108,11 @@ def create_spanner_tables():
             FOREIGN KEY (group_id) REFERENCES OrgGroups(email) ON DELETE CASCADE
         ) PRIMARY KEY (group_id)
         """,
+            """
+        CREATE TABLE OrgRootUsers (
+            email STRING(128) NOT NULL,
+        ) PRIMARY KEY (email)
+        """,
         ],
     )
 

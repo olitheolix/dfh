@@ -10,32 +10,32 @@ from google.cloud import spanner
 
 import dfh.api
 import dfh.routers.dependencies as deps
-import dfh.routers.uam as uam
 from dfh.models import UAMGroup, UAMUser
+from typing import List
 
 faker = Faker()
 
 
-def set_root_group(
-    owner: str,
-    provider: str = "provider",
-    description: str = "description",
-):
+def set_root_user(name: str):
     # fixme: docu
     _, db, _, err = deps.create_spanner_client()
     assert not err and db
     with db.batch() as batch:
-        batch.insert_or_update(
-            table="OrgGroups",
-            columns=["email", "owner", "provider", "description"],
-            values=[("Org", owner, provider, description)],
-        )
+        batch.delete(table="OrgRootUsers", keyset=spanner.KeySet(all_=True))
+        batch.insert(table="OrgRootUsers", columns=["email"], values=[(name,)])
 
 
-def get_root_group() -> UAMGroup:
+def get_root_users() -> List[str]:
     _, db, _, err = deps.create_spanner_client()
     assert not err and db
-    return uam.spanner_get_group(db, "Org")
+    with db.snapshot() as snapshot:
+        rows = snapshot.read(
+            table="OrgRootUsers",
+            columns=["email"],
+            keyset=spanner.KeySet(all_=True),
+        )
+    root_users = [_[0] for _ in rows]
+    return root_users
 
 
 def flush_db():
@@ -47,17 +47,26 @@ def flush_db():
         batch.delete("OrgGroupsUsers", spanner.KeySet(all_=True))
         batch.delete("OrgGroupsGroups", spanner.KeySet(all_=True))
         batch.delete("OrgGroupsRoles", spanner.KeySet(all_=True))
+        batch.delete("OrgRootUsers", spanner.KeySet(all_=True))
+
+    # Create the Org node which is the root of the tree.
+    with db.batch() as batch:
+        batch.insert_or_update(
+            table="OrgGroups",
+            columns=["email", "owner", "provider", "description"],
+            values=[("Org", "owner", "some provider", "some description")],
+        )
 
     # Create a random owner of the root group to ensure we have no hard coded
     # names anywhere.
     name, org = faker.unique.first_name(), faker.unique.first_name()
     owner = f"{name}@{org}.com"
-    set_root_group(owner)
+    set_root_user(owner)
 
 
 def create_root_client(prefix: str, owner: str | None = None) -> TestClient:
     if not owner:
-        owner = get_root_group().owner
+        owner = get_root_users()[0]
 
     # Create valid session cookies to indicate we are the root user.
     cookies: dict = {"email": owner}

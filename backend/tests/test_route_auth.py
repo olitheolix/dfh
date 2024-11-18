@@ -24,7 +24,7 @@ from .test_helpers import (
     get_session_cookie,
     make_group,
     make_user,
-    set_root_group,
+    set_root_user,
 )
 
 
@@ -60,7 +60,7 @@ class TestGoogleAuthentication:
         assert resp.status_code == 401
         assert get_session_cookie(resp) is None
 
-        set_root_group("not-us@us.com")
+        set_root_user("not-us@us.com")
 
         # Simulate a successful response from Google API.
         with mock.patch("httpx.AsyncClient.get", new=mock.AsyncMock()) as m_get:
@@ -68,7 +68,7 @@ class TestGoogleAuthentication:
             resp = client.post("/validate-google-bearer-token", json=data)
             assert resp.status_code == 401
 
-        set_root_group(email)
+        set_root_user(email)
 
         # Simulate a successful response from Google API.
         with mock.patch("httpx.AsyncClient.get", new=mock.AsyncMock()) as m_get:
