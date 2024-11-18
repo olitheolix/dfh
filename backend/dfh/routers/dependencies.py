@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from functools import wraps
-from typing import Annotated, Tuple, Set
+from typing import Annotated, Set, Tuple
 
 import google.cloud.spanner as spanner
 import itsdangerous

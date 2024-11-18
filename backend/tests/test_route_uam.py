@@ -128,7 +128,7 @@ class TestUserAccessManagement:
 
     def test_groups_root(self, client: TestClient):
         """Must not allow to create or delete the root group."""
-        group = make_group(name="Org")
+        group = make_group(name=ROOT_NAME)
         c_user = create_root_client("/demo/api/uam/v1", "user-1@org.com")
 
         # Not even root must be allowed to create a group with the same name as the root group.
@@ -276,10 +276,6 @@ class TestUserAccessManagement:
 
         # Must refuse to update a non-existing group.
         assert client.put("/groups", json=group.model_dump()).status_code == 404
-
-        # Must refuse to update the root group.
-        root = UAMGroup(name=ROOT_NAME, owner="foo@org.com", provider="")
-        assert client.put("/groups", json=root.model_dump()).status_code == 422
 
     def test_put_groups_ok(self, client: TestClient):
         group = make_group(name="foo")
@@ -441,7 +437,7 @@ class TestUserAccessManagement:
         # Root node must always exist and be empty initially.
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         groups = [
             make_group(name="foo"),
@@ -462,7 +458,7 @@ class TestUserAccessManagement:
         # be fewer than there are groups in the system) is still 1.
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         foochild = UAMChild(child="foo").model_dump()
@@ -477,7 +473,7 @@ class TestUserAccessManagement:
         # users to save space when transmitting this to the client.
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo"}
-        assert set(tree.groups) == {"Org", "foo", "bar"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar"}
 
     def test_reparent_multiple_times(self, client: TestClient):
         demo_groups = [
@@ -492,7 +488,7 @@ class TestUserAccessManagement:
 
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         foochild = UAMChild(child="foo").model_dump()
@@ -510,7 +506,7 @@ class TestUserAccessManagement:
         assert client.put("/groups/bar/children", json=abcchild).status_code == 201
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo", "bar", "abc"}
-        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar", "abc"}
         assert set(tree.groups["foo"].children) == {"abc"}
         assert set(tree.groups["bar"].children) == {"abc"}
         assert len(tree.root.children["abc"].children) == 0
@@ -524,7 +520,7 @@ class TestUserAccessManagement:
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo", "bar", "abc"}
-        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar", "abc"}
         assert set(tree.root.children["foo"].children) == {"abc", "bar"}
         assert len(tree.root.children["abc"].children) == 0
 
@@ -804,8 +800,7 @@ class TestRBAC:
     def autoflush(self):
         flush_db()
 
-    @pytest.mark.parametrize("org_edit", [True, False])
-    def test_can_edit_existing_group(self, org_edit: bool):
+    def test_can_edit_existing_group(self):
         fun = uam.can_edit_existing_group
 
         _, db, _, err = deps.create_spanner_client()
@@ -817,46 +812,25 @@ class TestRBAC:
         group = make_group(name="not-Org")
 
         # Must not throw an error if we do not pass a group.
-        fun(db, group.owner, None, allow_org_edit=org_edit)
+        fun(db, group.owner, None)
 
         # Root user and group owners must have access and thus not raise an exception.
-        fun(db, root_user, group, allow_org_edit=org_edit)
-        fun(db, group.owner, group, allow_org_edit=org_edit)
+        fun(db, root_user, group)
+        fun(db, group.owner, group)
 
         # Must reject all other users with 403.
         with pytest.raises(HTTPException) as err:
-            fun(db, group.owner + "invalid", group, allow_org_edit=org_edit)
+            fun(db, group.owner + "invalid", group)
         assert err.value.status_code == 403
 
         # Set the root owner to empty and verify that no backdoor exists.
         set_root_user("")
         with pytest.raises(HTTPException) as err:
-            fun(db, "", group, allow_org_edit=org_edit)
+            fun(db, "", group)
 
         # If the root user is "*" then everyone can edit.
         set_root_user("*")
-        fun(db, "", group, allow_org_edit=org_edit)
-
-    def test_can_edit_existing_group_org_edit(self):
-        _, db, _, err = deps.create_spanner_client()
-        assert not err and db
-        root_user = get_root_users()[0]
-
-        # Deliberately choose the root group for this example because it is the
-        # only group on which the `allow_org_edit` option has an effect.
-        group = make_group(name="Org")
-
-        # Must not throw an error if we do not pass a group.
-        uam.can_edit_existing_group(db, group.owner, None, allow_org_edit=False)
-
-        # Even root must not have access.
-        with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, root_user, group, allow_org_edit=False)
-        assert err.value.status_code == 422
-
-        with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=False)
-        assert err.value.status_code == 422
+        fun(db, "", group)
 
     def test_put_group(self):
         user1, user2 = "user-1@org.com", "user-2@org.com"
