@@ -277,10 +277,6 @@ class TestUserAccessManagement:
         # Must refuse to update a non-existing group.
         assert client.put("/groups", json=group.model_dump()).status_code == 404
 
-        # Must refuse to update the root group.
-        root = UAMGroup(name=ROOT_NAME, owner="foo@org.com", provider="")
-        assert client.put("/groups", json=root.model_dump()).status_code == 422
-
     def test_put_groups_ok(self, client: TestClient):
         group = make_group(name="foo")
         user = make_user()
@@ -804,8 +800,7 @@ class TestRBAC:
     def autoflush(self):
         flush_db()
 
-    @pytest.mark.parametrize("org_edit", [True, False])
-    def test_can_edit_existing_group(self, org_edit: bool):
+    def test_can_edit_existing_group(self):
         fun = uam.can_edit_existing_group
 
         _, db, _, err = deps.create_spanner_client()
@@ -817,46 +812,25 @@ class TestRBAC:
         group = make_group(name="not-Org")
 
         # Must not throw an error if we do not pass a group.
-        fun(db, group.owner, None, allow_org_edit=org_edit)
+        fun(db, group.owner, None)
 
         # Root user and group owners must have access and thus not raise an exception.
-        fun(db, root_user, group, allow_org_edit=org_edit)
-        fun(db, group.owner, group, allow_org_edit=org_edit)
+        fun(db, root_user, group)
+        fun(db, group.owner, group)
 
         # Must reject all other users with 403.
         with pytest.raises(HTTPException) as err:
-            fun(db, group.owner + "invalid", group, allow_org_edit=org_edit)
+            fun(db, group.owner + "invalid", group)
         assert err.value.status_code == 403
 
         # Set the root owner to empty and verify that no backdoor exists.
         set_root_user("")
         with pytest.raises(HTTPException) as err:
-            fun(db, "", group, allow_org_edit=org_edit)
+            fun(db, "", group)
 
         # If the root user is "*" then everyone can edit.
         set_root_user("*")
-        fun(db, "", group, allow_org_edit=org_edit)
-
-    def test_can_edit_existing_group_org_edit(self):
-        _, db, _, err = deps.create_spanner_client()
-        assert not err and db
-        root_user = get_root_users()[0]
-
-        # Deliberately choose the root group for this example because it is the
-        # only group on which the `allow_org_edit` option has an effect.
-        group = make_group(name="Org")
-
-        # Must not throw an error if we do not pass a group.
-        uam.can_edit_existing_group(db, group.owner, None, allow_org_edit=False)
-
-        # Even root must not have access.
-        with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, root_user, group, allow_org_edit=False)
-        assert err.value.status_code == 422
-
-        with pytest.raises(HTTPException) as err:
-            uam.can_edit_existing_group(db, group.owner, group, allow_org_edit=False)
-        assert err.value.status_code == 422
+        fun(db, "", group)
 
     def test_put_group(self):
         user1, user2 = "user-1@org.com", "user-2@org.com"

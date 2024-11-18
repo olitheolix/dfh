@@ -18,7 +18,7 @@ from dfh.models import (
     UAMUserRoles,
 )
 
-from .dependencies import d_db, d_user, handle_spanner_exceptions
+from .dependencies import ROOT_NAME, d_db, d_user, handle_spanner_exceptions
 
 # Convenience.
 RESPONSE_404 = {"description": "not found", "model": UAMChild}
@@ -41,9 +41,7 @@ def user_must_exist(db: Database, name: str) -> UAMUser:
     return spanner_get_user(db, name)
 
 
-def can_edit_existing_group(
-    db: Database, user: str, group: UAMGroup | None, allow_org_edit: bool
-):
+def can_edit_existing_group(db: Database, user: str, group: UAMGroup | None):
     """FastAPI to fixture to determine if a user has edit rights on the group.
 
     Only the group owners and root will pass the test.
@@ -53,22 +51,19 @@ def can_edit_existing_group(
     if not group:
         return
 
+    # Fetch root users.
     with db.snapshot() as snapshot:
         rows = snapshot.read(
             table="OrgRootUsers", columns=["email"], keyset=spanner.KeySet(all_=True)
         )
         root_users = {_[0] for _ in rows if _[0] != ""}
 
-    # Reject the request if we are not permitting changes to the root group.
-    if group.name == "Org" and not allow_org_edit:
-        raise HTTPException(status_code=422, detail="not allowed to edit root node")
+    # Root users always have EDIT permissions.
+    if user in root_users:
+        return
 
     # Special case: everybody is root.
     if "*" in root_users:
-        return
-
-    # Root user always has EDIT permissions.
-    if user in root_users:
         return
 
     # Group owner has EDIT permissions.
@@ -91,12 +86,9 @@ async def get_groups(db: d_db) -> List[UAMGroup]:
 )
 async def post_group(db: d_db, group: UAMGroup):
     """Create a new group. Returns 409 if the group already exists."""
-    spanner_get_group(db, "Org")
-    root = await run_async(spanner_get_group, db, "Org")
-
     # Special case: abort immediately if the group name matches the root group name.
-    if group.name == root.name:
-        raise HTTPException(status_code=422, detail="cannot create root group")
+    if group.name == ROOT_NAME:
+        raise HTTPException(status_code=422, detail="cannot create <Org> group")
 
     @handle_spanner_exceptions
     def work():
@@ -123,7 +115,7 @@ async def put_group(db: d_db, user: d_user, group: UAMGroup):
 
     """
     group_must_exist(db, group.name)
-    can_edit_existing_group(db, user, group, allow_org_edit=False)
+    can_edit_existing_group(db, user, group)
 
     @handle_spanner_exceptions
     def work():
@@ -146,7 +138,7 @@ async def set_group_permissions(user: d_user, db: d_db, name: str, roles: UAMRol
     """Sets the permissions of the group. The new permissions are canonical."""
     # Authorisation check.
     group = group_must_exist(db, name)
-    can_edit_existing_group(db, user, group, allow_org_edit=True)
+    can_edit_existing_group(db, user, group)
 
     roles = list(sorted(set(roles)))
 
@@ -178,13 +170,18 @@ async def delete_group(user: d_user, db: d_db, name: str):
     NOTE: This will not remove any users from the database.
 
     """
+    if name == ROOT_NAME:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, detail="cannot delete <Org> group"
+        )
+
     # Fetch the group. Do nothing if the group does not exist.
     try:
         group = await run_async(spanner_get_group, db, name)
     except HTTPException:
         return
 
-    can_edit_existing_group(db, user, group, allow_org_edit=False)
+    can_edit_existing_group(db, user, group)
 
     @handle_spanner_exceptions
     def work():
@@ -212,7 +209,7 @@ async def put_group_members(user: d_user, db: d_db, name: str, emails: List[str]
         return
 
     group = group_must_exist(db, name)
-    can_edit_existing_group(db, user, group, allow_org_edit=False)
+    can_edit_existing_group(db, user, group)
 
     # Abort unless all emails exist in our database.
     all_users = spanner_get_all_users(db)
@@ -258,7 +255,7 @@ async def put_add_child_group(db: d_db, user: d_user, name: str, new: UAMChild):
 
     """
     parent = group_must_exist(db, name)
-    can_edit_existing_group(db, user, parent, allow_org_edit=True)
+    can_edit_existing_group(db, user, parent)
 
     all_groups = await run_async(spanner_get_all_groups, db)
 
@@ -300,7 +297,7 @@ async def unlink_child_from_group(db: d_db, user: d_user, parent: str, child: st
 
     """
     group = group_must_exist(db, parent)
-    can_edit_existing_group(db, user, group, allow_org_edit=True)
+    can_edit_existing_group(db, user, group)
 
     @handle_spanner_exceptions
     def work():
