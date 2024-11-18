@@ -3,7 +3,6 @@ from unittest import mock
 import pytest
 from fastapi import HTTPException
 from google.api_core.exceptions import GoogleAPIError
-from google.cloud import spanner
 
 import dfh.routers.dependencies as deps
 from dfh.models import UAMChild
@@ -16,6 +15,8 @@ from .test_helpers import (
     make_user,
     set_root_user,
 )
+
+ROOT_NAME = deps.ROOT_NAME
 
 
 class TestDependencies:
@@ -160,7 +161,7 @@ class TestDependencies:
         @wrapper
         def failed_precondition():
             with db.batch() as batch:
-                batch.insert(table="OrgGroups", columns=["email"], values=[["Org"]])
+                batch.insert(table="OrgGroups", columns=["email"], values=[[ROOT_NAME]])
 
         with pytest.raises(HTTPException) as err:  # type: ignore
             failed_precondition()
@@ -172,7 +173,7 @@ class TestDependencies:
                 batch.insert(
                     table="OrgGroups",
                     columns=["email", "owner", "provider", "description"],
-                    values=[["Org", "owner", "provider", ""]],
+                    values=[[ROOT_NAME, "owner", "provider", ""]],
                 )
 
         with pytest.raises(HTTPException) as err:  # type: ignore

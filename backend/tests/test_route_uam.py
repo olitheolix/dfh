@@ -128,7 +128,7 @@ class TestUserAccessManagement:
 
     def test_groups_root(self, client: TestClient):
         """Must not allow to create or delete the root group."""
-        group = make_group(name="Org")
+        group = make_group(name=ROOT_NAME)
         c_user = create_root_client("/demo/api/uam/v1", "user-1@org.com")
 
         # Not even root must be allowed to create a group with the same name as the root group.
@@ -437,7 +437,7 @@ class TestUserAccessManagement:
         # Root node must always exist and be empty initially.
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         groups = [
             make_group(name="foo"),
@@ -458,7 +458,7 @@ class TestUserAccessManagement:
         # be fewer than there are groups in the system) is still 1.
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         foochild = UAMChild(child="foo").model_dump()
@@ -473,7 +473,7 @@ class TestUserAccessManagement:
         # users to save space when transmitting this to the client.
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo"}
-        assert set(tree.groups) == {"Org", "foo", "bar"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar"}
 
     def test_reparent_multiple_times(self, client: TestClient):
         demo_groups = [
@@ -488,7 +488,7 @@ class TestUserAccessManagement:
 
         tree = get_tree(client)
         assert len(tree.root.children) == 0
-        assert set(tree.groups) == {"Org"}
+        assert set(tree.groups) == {ROOT_NAME}
 
         # Create root -> `foo` -> `bar` for basic deletion tests.
         foochild = UAMChild(child="foo").model_dump()
@@ -506,7 +506,7 @@ class TestUserAccessManagement:
         assert client.put("/groups/bar/children", json=abcchild).status_code == 201
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo", "bar", "abc"}
-        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar", "abc"}
         assert set(tree.groups["foo"].children) == {"abc"}
         assert set(tree.groups["bar"].children) == {"abc"}
         assert len(tree.root.children["abc"].children) == 0
@@ -520,7 +520,7 @@ class TestUserAccessManagement:
         assert client.put("/groups/foo/children", json=barchild).status_code == 201
         tree = get_tree(client)
         assert set(tree.root.children) == {"foo", "bar", "abc"}
-        assert set(tree.groups) == {"Org", "foo", "bar", "abc"}
+        assert set(tree.groups) == {ROOT_NAME, "foo", "bar", "abc"}
         assert set(tree.root.children["foo"].children) == {"abc", "bar"}
         assert len(tree.root.children["abc"].children) == 0
 

@@ -76,7 +76,7 @@ def can_edit_existing_group(db: Database, user: str, group: UAMGroup | None):
 async def get_groups(db: d_db) -> List[UAMGroup]:
     """Return all known groups."""
     groups = await run_async(spanner_get_all_groups, db)
-    return [_ for _ in groups.values() if _.name != "Org"]
+    return [_ for _ in groups.values() if _.name != ROOT_NAME]
 
 
 @router.post(
@@ -436,7 +436,7 @@ async def get_user_permissions(db: d_db, username: str) -> UAMUserRoles:
             walk(child, parents)
         parents.pop()
 
-    walk("Org", [])
+    walk(ROOT_NAME, [])
     del username
 
     # ----------------------------------------------------------------------
@@ -476,7 +476,7 @@ async def get_tree(db: d_db) -> UAMTreeInfo:
             node.children[child_name] = _walk(child_name)
         return node
 
-    tree = _walk("Org")
+    tree = _walk(ROOT_NAME)
     return UAMTreeInfo(groups=groups, root=tree)
 
 

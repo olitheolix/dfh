@@ -1,6 +1,7 @@
 import base64
 import json
 import random
+from typing import List
 
 import httpx
 import itsdangerous
@@ -11,7 +12,6 @@ from google.cloud import spanner
 import dfh.api
 import dfh.routers.dependencies as deps
 from dfh.models import UAMGroup, UAMUser
-from typing import List
 
 faker = Faker()
 
@@ -54,7 +54,7 @@ def flush_db():
         batch.insert_or_update(
             table="OrgGroups",
             columns=["email", "owner", "provider", "description"],
-            values=[("Org", "owner", "some provider", "some description")],
+            values=[(deps.ROOT_NAME, "owner", "some provider", "some description")],
         )
 
     # Create a random owner of the root group to ensure we have no hard coded
