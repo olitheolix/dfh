@@ -58,28 +58,6 @@ def is_authenticated(request: Request) -> str:
     )
 
 
-def get_login_groups(db: Database) -> Tuple[Set[str], Set[str]]:
-    def runme(transaction: Transaction) -> Tuple[Set[str], Set[str]]:
-        # Retrieve the owner of the root group.
-        rows = transaction.read(
-            table="OrgRootUsers", columns=["email"], keyset=spanner.KeySet(all_=True)
-        )
-        root_users = {_[0] for _ in rows}
-
-        # Retrieve the members of the `dfhlogin` group.
-        # NOTE: this group may legitimately not exist.
-        rows = transaction.execute_sql(
-            "select user_id from OrgGroupsUsers where group_id=@group",
-            params={"group": "dfhlogin"},
-            param_types={"group": spanner.param_types.STRING},
-        )
-        login_users = {row[0] for row in rows}
-        return root_users, login_users
-
-    root_users, login_users = handle_spanner_exceptions(db.run_in_transaction)(runme)
-    return root_users, login_users
-
-
 def can_login(db: Database, email: str):
     # Convenience.
     denied = HTTPException(
@@ -90,14 +68,27 @@ def can_login(db: Database, email: str):
     if email == "":
         raise denied
 
-    root_users, login_users = get_login_groups(db)
+    def work(transaction: Transaction) -> Tuple[bool, bool]:
+        # Determine if `email` is a root user.
+        rows = transaction.read(
+            table="OrgRootUsers", columns=["email"], keyset=spanner.KeySet(all_=True)
+        )
+        root_users = {_[0] for _ in rows}
+        is_root = (email in root_users) or ("*" in root_users)
 
-    # Root user can always login.
-    if email in (root_users | login_users):
-        return
+        # Determine if `email` exists in `dfhlogin` group.
+        rows = transaction.read(
+            table="OrgGroupsUsers",
+            columns=["user_id"],
+            keyset=spanner.KeySet([("dfhlogin", email)]),
+        )
+        can_login = len(list(rows)) > 0
+        return is_root, can_login
 
-    # Special case: disable authorisation.
-    if "*" in root_users:
+    is_root, can_login = handle_spanner_exceptions(db.run_in_transaction)(work)
+
+    # Admit root and members of `dfhlogin`.
+    if is_root or can_login:
         return
 
     raise denied
