@@ -72,3 +72,32 @@ export interface DFHToken {
 export interface UAMChild {
     child: string;
 }
+
+export interface WorkspaceInfo {
+    name: string; // uid
+    owner: string;
+    ok: boolean;
+}
+
+export interface WorkspaceResource {
+    group: string;
+    version: string;
+    kind: string;
+    name: string;
+    namespace: string;
+    ok: boolean;
+    status: string;
+    linkGCPObject: string;
+    linkGCPLogs: string;
+    linkJSON: string;
+}
+
+// Each row in the user data grid is just a user with a unique ID.
+export interface DGWorkspaceRow extends WorkspaceInfo {
+    id: string;
+}
+
+export interface DGResourceRow extends WorkspaceResource {
+    id: string;
+    groupversion: string;
+}

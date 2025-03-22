@@ -1,8 +1,15 @@
 package main
 
-import "workspaceApi/pkg/server"
+import (
+	"workspaceApi/pkg/server"
+	"workspaceApi/pkg/wswatch"
+
+	"k8s.io/apimachinery/pkg/watch"
+)
 
 func main() {
-	router := server.SetupRouter()
-	router.Run("0.0.0.0:5002")
+	config := server.Config{Value: 5, WatchCh: make(chan watch.Event)}
+	wswatch.Start(config)
+	app := server.Setup(config)
+	server.Run(app)
 }

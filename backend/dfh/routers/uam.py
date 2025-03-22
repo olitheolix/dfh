@@ -1,9 +1,10 @@
+import urllib.parse
 import asyncio
 import logging
 from collections import defaultdict
 from typing import Dict, List, Set
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
 from google.cloud import spanner
 from google.cloud.spanner_v1.database import Database
 from google.cloud.spanner_v1.transaction import Transaction
@@ -629,3 +630,107 @@ def spanner_make_group(db: Database, group_name: str) -> UAMGroup:
         return group
 
     return db.run_in_transaction(work)
+
+
+from pydantic import BaseModel
+
+
+class WorkspaceInfo(BaseModel):
+    name: str  # uid
+    owner: str
+    ok: bool
+
+
+class WorkspaceResource(BaseModel):
+    group: str
+    version: str
+    kind: str
+    name: str
+    namespace: str
+    ok: bool
+    status: str
+    linkGCPObject: str
+    linkGCPLogs: str
+    linkJSON: str
+
+
+@router.get("/v1/workspaces/info", status_code=status.HTTP_200_OK)
+async def get_workspace() -> List[WorkspaceInfo]:
+    """Return list of all workspaces in the system."""
+    workspaces = (("foo", True), ("bar", False))
+    return [WorkspaceInfo(name=name, owner=name, ok=ok) for (name, ok) in workspaces]
+
+
+@router.get("/v1/workspaces/json", status_code=status.HTTP_200_OK)
+async def get_workspace_resource_json(
+    name, namespace, kind, group, version: str
+) -> dict:
+    doc = {
+        "apiVersion": f"{group}/{version}",
+        "kind": kind,
+        "metadata": {
+            "name": name,
+            "namespace": namespace,
+        },
+    }
+    return doc
+
+
+@router.get("/v1/workspaces/resources/{name}", status_code=status.HTTP_200_OK)
+async def get_workspace_resources(name: str) -> List[WorkspaceResource]:
+    """Return list of all workspaces in the system."""
+    # Query parameters as a dictionary
+    params = {
+        "group": "security.istio.io",
+        "version": "v1beta",
+        "kind": "PriorityClass",
+        "namespace": "default",
+        "name": "somename",
+    }
+
+    url_with_params = urllib.parse.urlencode(params)
+
+    R = WorkspaceResource
+    resources = [
+        R(
+            group="apps",
+            version="v1",
+            kind="Deployment",
+            name="res-1",
+            namespace="default",
+            ok=True,
+            status="Ready",
+            linkGCPObject="https://example.com/obj",
+            linkGCPLogs="https://example.com/log",
+            linkJSON=url_with_params,
+        ),
+        R(
+            group="security.istio.io",
+            version="v1beta",
+            kind="PriorityClass",
+            name="res-2",
+            namespace="default",
+            ok=False,
+            status="Reconcile error",
+            linkGCPObject="https://example.com/obj",
+            linkGCPLogs="https://example.com/log",
+            linkJSON=url_with_params,
+        ),
+    ]
+    extra = [
+        R(
+            group="iam.cnrm.cloud.google.com",
+            version="v1beta",
+            kind="IAMPartialPolicy",
+            name=f"policy-{idx}",
+            namespace="default",
+            ok=(idx > 5),
+            status="Reconcile error",
+            linkGCPObject="https://example.com/obj",
+            linkGCPLogs="https://example.com/log",
+            linkJSON=url_with_params,
+        )
+        for idx in range(20_000)
+    ]
+
+    return resources + extra

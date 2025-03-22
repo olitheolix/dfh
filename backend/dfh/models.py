@@ -272,7 +272,7 @@ class WatchedResource(BaseModel):
 
 
 def factory_WatchedResource() -> Dict[str, WatchedResource]:
-    """Aggregate all the monitored resources["
+    """Aggregate all the monitored resources.
 
     There is one `Watch` instance for each resource.
     """

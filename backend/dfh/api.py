@@ -197,7 +197,6 @@ def make_app() -> ASGIApp:
         uam.router,
         prefix="/demo/api/uam",
         tags=["User Access Management"],
-        dependencies=[Depends(auth.is_authenticated)],
     )
 
     # Basic routes *must* come last because one of them will serve the

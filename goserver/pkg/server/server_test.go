@@ -1,72 +1,65 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
+	"github.com/gofiber/fiber/v2"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestGetHealthz(t *testing.T) {
-	// Boiler plate setup.
-	router := SetupRouter()
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
+func getApp() *fiber.App {
+	return Setup(Config{Value: 5})
 }
 
-func TestGetRepositories(t *testing.T) {
-	// Boiler plate setup.
-	router := SetupRouter()
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/repos", nil)
-	router.ServeHTTP(w, req)
-
-	// Request must succeed and have the expected payload type.
-	assert.Equal(t, http.StatusOK, w.Code)
-	var payload []Repository
-	err := json.Unmarshal(w.Body.Bytes(), &payload)
+func unpackResponse[T any](t *testing.T, got *http.Response) T {
+	defer got.Body.Close()
+	body, err := io.ReadAll(got.Body)
 	assert.NoError(t, err)
 
-	// Must have returned a list of repos.
-	assert.Equal(t, len(payload), 2)
-	assert.Equal(t, payload[0].Name, "Repo 1")
-	assert.Equal(t, payload[1].Name, "Repo 2")
+	var gotData T
+	err = json.Unmarshal(body, &gotData)
+	assert.NoError(t, err)
+	return gotData
 }
 
-func TestPostRepository(t *testing.T) {
-	tests := []struct {
-		name    string
-		payload any
-		isValid bool
-	}{
-		{name: "valid POST /repos", payload: Repository{Name: "New Repo"}, isValid: true},
-		{name: "invalid POST /repos", payload: "invalid payload", isValid: false},
-	}
+func TestGetHealth(t *testing.T) {
+	app := getApp()
+	req, _ := http.NewRequest("GET", "/demo/api/uam/v1/workspaces/health", nil)
+	got, err := app.Test(req, -1)
+	assert.NoError(t, err)
+	assert.Equal(t, fiber.StatusOK, got.StatusCode)
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			err := json.NewEncoder(&buf).Encode(tt.payload)
-			assert.NoError(t, err)
+func TestGetWorkspaces(t *testing.T) {
+	app := getApp()
+	req, _ := http.NewRequest("GET", "/demo/api/uam/v1/workspaces/info", nil)
+	resp, err := app.Test(req, -1)
+	assert.NoError(t, err)
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
 
-			// Boiler plate setup.
-			router := SetupRouter()
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodPost, "/repos", &buf)
-			router.ServeHTTP(w, req)
+	got := unpackResponse[[]WorkspaceInfo](t, resp)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(got))
+}
 
-			// Request must succeed.
-			if tt.isValid {
-				assert.Equal(t, http.StatusOK, w.Code)
-			} else {
-				assert.Equal(t, http.StatusBadRequest, w.Code)
-			}
-		})
+func TestGetResources(t *testing.T) {
+	app := getApp()
+
+	for _, name := range []string{"foo", "bar"} {
+		url := fmt.Sprintf("/demo/api/uam/v1/workspaces/resources/%s", name)
+		req, _ := http.NewRequest("GET", url, nil)
+		resp, err := app.Test(req, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+		got := unpackResponse[[]WorkspaceResource](t, resp)
+		require.Equal(t, 20002, len(got))
+		assert.Equal(t, fmt.Sprintf("res-%s", name), got[0].Name)
 	}
 }

@@ -6,12 +6,7 @@ import theme from "./theme";
 import ErrorPage from "./error-page";
 import Dashboard from "./Dashboard";
 
-import ClusterOverview from "./ClusterOverview";
-import K8sAppConfigurationDashboard from "./K8sAppConfigurationDashboard";
-import K8sNewAppDialog from "./K8sNewAppDialog";
-import UAMHierarchy from "./UAMHierarchy";
-import UAMGroups from "./UAMGroups";
-import UAMUsers from "./UAMUsers";
+import Workspaces from "./Workspaces";
 import { HTTPErrorProvider } from "./WebRequests";
 
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -25,27 +20,11 @@ const router = createBrowserRouter(
             children: [
                 {
                     path: "/",
-                    element: <ClusterOverview />,
+                    element: <Workspaces />,
                 },
                 {
-                    path: "app/:appId/:envId",
-                    element: <K8sAppConfigurationDashboard />,
-                },
-                {
-                    path: "new/",
-                    element: <K8sNewAppDialog />,
-                },
-                {
-                    path: "uam/",
-                    element: <UAMHierarchy />,
-                },
-                {
-                    path: "uamgroups/",
-                    element: <UAMGroups />,
-                },
-                {
-                    path: "uamusers/",
-                    element: <UAMUsers />,
+                    path: "workspaces/",
+                    element: <Workspaces />,
                 },
             ],
         },

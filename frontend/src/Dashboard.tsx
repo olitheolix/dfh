@@ -5,7 +5,6 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Cookies from "js-cookie";
 
 import MuiDrawer from "@mui/material/Drawer";
-import AccountTree from "@mui/icons-material/AccountTree";
 import { alpha, styled, createTheme, ThemeProvider } from "@mui/material/styles";
 import {
     Box,
@@ -38,14 +37,9 @@ import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
 import MenuIcon from "@mui/icons-material/Menu";
 import ApiIcon from "@mui/icons-material/Api";
 import Person from "@mui/icons-material/Person";
-import GroupIcon from "@mui/icons-material/Group";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { httpGet, httpPost, HTTPErrorContext, HTTPErrorContextType } from "./WebRequests";
-
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const StyledMenu = styled((props: MenuProps) => (
     <Menu
@@ -89,19 +83,6 @@ const StyledMenu = styled((props: MenuProps) => (
         }),
     },
 }));
-
-function Copyright(props: any) {
-    return (
-        <Typography variant="body2" color="text.secondary" align="center" {...props}>
-            {"Copyright © "}
-            <Link color="inherit" href="https://github.com/olitheolix/dfh">
-                Oliver Nagy
-            </Link>{" "}
-            {new Date().getFullYear()}
-            {"."}
-        </Typography>
-    );
-}
 
 const drawerWidth: number = 240;
 
@@ -156,384 +137,95 @@ const Drawer = styled(MuiDrawer, {
 // TODO remove, this demo shouldn't need to reset the theme.
 const defaultTheme = createTheme();
 
-// Show a Google signin button to trigger the
-const GoogleSignInButton = ({
-    setUserEmail,
-    errCtx,
-}: {
-    setUserEmail: React.Dispatch<React.SetStateAction<string>>;
-    errCtx: HTTPErrorContextType;
-}) => {
-    const handleSuccess = async (response: any) => {
-        console.log("Login Success:", response);
-        // You can use the access token or profile data as per your need
-
-        const token = response.access_token; // This is the ID token
-
-        const ret = await httpPost("/demo/api/auth/validate-google-bearer-token", {
-            body: JSON.stringify({ token: token }),
-        });
-        if (ret.err) {
-            errCtx.showError(ret.err);
-            return;
-        }
-        console.log("User authenticated:", ret.data);
-        setUserEmail(Cookies.get("email") || "");
-    };
-
-    const handleError = () => {
-        console.error("Login Failed");
-    };
-
-    // Use the useGoogleLogin hook to handle login functionality
-    const login = useGoogleLogin({
-        onSuccess: handleSuccess,
-        onError: handleError,
-    });
-
-    return (
-        <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-            <Button variant="contained" color="primary" onClick={() => login()}>
-                Sign in with Google
-            </Button>
-        </Box>
-    );
-};
-
-function ContextMenuLogout({
-    userEmail,
-    setUserEmail,
-    errCtx,
-}: {
-    userEmail: string;
-    setUserEmail: React.Dispatch<React.SetStateAction<string>>;
-    errCtx: HTTPErrorContextType;
-}) {
-    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    const [openTokenDialog, setOpenTokenDialog] = React.useState<boolean>(false);
-    const [tokenValue, setTokenValue] = React.useState<string>("");
-    const open = Boolean(anchorEl);
-
-    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-
-    const onLogout = async () => {
-        handleClose();
-
-        const ret = await httpGet("/demo/api/auth/clear-session");
-        if (ret.err) {
-            errCtx.showError(ret.err);
-            return;
-        }
-        setUserEmail("");
-    };
-
-    const onLoadToken = async () => {
-        const ret = await httpGet("/demo/api/auth/users/token");
-        if (ret.err) {
-            errCtx.showError(ret.err);
-            return;
-        }
-
-        const data: DFHToken = ret.data;
-        setOpenTokenDialog(true);
-        setTokenValue(data.token);
-        handleClose();
-    };
-
-    return (
-        <div>
-            <ShowAPITokenDialog
-                isOpen={openTokenDialog}
-                setIsOpen={setOpenTokenDialog}
-                tokenValue={tokenValue}
-            />
-            <Button
-                id="demo-customized-button"
-                aria-controls={open ? "demo-customized-menu" : undefined}
-                aria-haspopup="true"
-                aria-expanded={open ? "true" : undefined}
-                variant="contained"
-                disableElevation
-                onClick={handleClick}
-                endIcon={<KeyboardArrowDownIcon />}
-            >
-                {userEmail}
-            </Button>
-            <StyledMenu
-                id="demo-customized-menu"
-                MenuListProps={{
-                    "aria-labelledby": "demo-customized-button",
-                }}
-                anchorEl={anchorEl}
-                open={open}
-                onClose={handleClose}
-            >
-                <MenuItem onClick={onLoadToken} disableRipple>
-                    <ApiIcon />
-                    API Token
-                </MenuItem>
-                <MenuItem onClick={onLogout} disableRipple>
-                    <Person />
-                    Logout
-                </MenuItem>
-            </StyledMenu>
-        </div>
-    );
-}
-
-function ShowAPITokenDialog({
-    isOpen,
-    setIsOpen,
-    tokenValue,
-}: {
-    isOpen: boolean;
-    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-    tokenValue: string;
-}) {
-    const [curlExample, setCurlExample] = React.useState(Cookies.get("email") || "");
-
-    const handleClose = () => {
-        setIsOpen(false);
-    };
-
-    const handleCopyToken = () => {
-        navigator.clipboard.writeText(tokenValue);
-    };
-
-    const handleCopyCurlExample = () => {
-        navigator.clipboard.writeText(curlExample);
-    };
-
-    useEffect(() => {
-        setCurlExample(
-            `export DFHTOKEN=${tokenValue}` +
-                "\n" +
-                `curl ${window.location.origin}` +
-                '/demo/api/auth/users/me -H "Authorization: Bearer ${DFHTOKEN}"',
-        );
-    }, [tokenValue]);
-
-    return (
-        <Dialog open={isOpen} onClose={handleClose} maxWidth="xl" fullWidth={true}>
-            <DialogTitle>API Token</DialogTitle>
-            <DialogContent>
-                <Typography variant="body1" gutterBottom>
-                    Bearer Token:
-                </Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography
-                        component="pre"
-                        variant="body2"
-                        flexGrow={1}
-                        style={{
-                            margin: 0,
-                            fontFamily: "monospace",
-                            backgroundColor: "#f5f5f5",
-                            padding: 10,
-                        }}
-                    >
-                        {tokenValue}
-                    </Typography>
-                    <Tooltip title="Copy to Clipboard" arrow>
-                        <IconButton onClick={handleCopyToken} size="small" style={{ padding: 10 }}>
-                            <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-
-                <Typography variant="body1" gutterBottom sx={{ mt: 5 }}>
-                    Example usage:
-                </Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography
-                        component="pre"
-                        variant="body2"
-                        flexGrow={1}
-                        style={{
-                            margin: 0,
-                            fontFamily: "monospace",
-                            backgroundColor: "#f5f5f5",
-                            padding: 10,
-                        }}
-                    >
-                        {curlExample}
-                    </Typography>
-                    <Tooltip title="Copy to Clipboard" arrow>
-                        <IconButton
-                            onClick={handleCopyCurlExample}
-                            size="small"
-                            style={{ padding: 10 }}
-                        >
-                            <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleClose} color="primary" variant="contained">
-                    OK
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-}
-
 export default function Dashboard() {
     const [open, setOpen] = React.useState(true);
-    const [userEmail, setUserEmail] = React.useState(Cookies.get("email") || "");
-    const [errCtx, _] = React.useState<HTTPErrorContextType>(useContext(HTTPErrorContext));
 
     const toggleDrawer = () => {
         setOpen(!open);
     };
     const navigate = useNavigate();
-    const gotoCreateApp = () => {
-        navigate("/new");
-    };
-    const gotoK8sOverviewDashboard = () => {
-        navigate("/");
-    };
-    const gotoGroupHierarchy = () => {
-        navigate("/uam");
-    };
-    const gotoGroupManagement = () => {
-        navigate("/uamgroups");
-    };
-    const gotoUserManagement = () => {
-        navigate("/uamusers");
-    };
-    const gotoAPIDocs = () => {
-        window.location.href = "/demo/api/redoc";
+    const gotoWorkspaces = () => {
+        navigate("/workspaces");
     };
 
     const mainListItems = (
         <React.Fragment>
-            <ListItemButton onClick={gotoK8sOverviewDashboard}>
-                <ListItemIcon>
-                    <DashboardIcon />
-                </ListItemIcon>
-                <ListItemText primary="App Overview" />
-            </ListItemButton>
-            <ListItemButton onClick={gotoCreateApp}>
-                <ListItemIcon>
-                    <ShoppingCartIcon />
-                </ListItemIcon>
-                <ListItemText primary="Deploy in 60s" />
-            </ListItemButton>
-            <ListItemButton onClick={gotoGroupHierarchy}>
-                <ListItemIcon>
-                    <AccountTree />
-                </ListItemIcon>
-                <ListItemText primary="Group Hierarchy" />
-            </ListItemButton>
-            <ListItemButton onClick={gotoGroupManagement}>
-                <ListItemIcon>
-                    <GroupIcon />
-                </ListItemIcon>
-                <ListItemText primary="Groups" />
-            </ListItemButton>
-            <ListItemButton onClick={gotoUserManagement}>
+            <ListItemButton onClick={gotoWorkspaces}>
                 <ListItemIcon>
                     <Person />
                 </ListItemIcon>
-                <ListItemText primary="Users" />
-            </ListItemButton>
-            <Divider />
-            <ListItemButton onClick={gotoAPIDocs}>
-                <ListItemIcon>
-                    <ApiIcon />
-                </ListItemIcon>
-                <ListItemText primary="API Docs" />
+                <ListItemText primary="Workspaces" />
             </ListItemButton>
         </React.Fragment>
     );
 
     return (
         <ThemeProvider theme={defaultTheme}>
-            <GoogleOAuthProvider clientId={googleClientId}>
-                <Box sx={{ display: "flex" }}>
-                    <CssBaseline />
-                    <AppBar position="absolute" open={open}>
-                        <Toolbar
-                            sx={{
-                                pr: "24px", // keep right padding when drawer closed
-                            }}
-                        >
-                            <IconButton
-                                edge="start"
-                                color="inherit"
-                                aria-label="open drawer"
-                                onClick={toggleDrawer}
-                                sx={{
-                                    marginRight: "36px",
-                                    ...(open && { display: "none" }),
-                                }}
-                            >
-                                <MenuIcon />
-                            </IconButton>
-                            <Typography
-                                component="h1"
-                                variant="h6"
-                                color="inherit"
-                                noWrap
-                                sx={{ flexGrow: 1 }}
-                            >
-                                Deployments For Humans
-                            </Typography>
-                            {userEmail != "" ? (
-                                <ContextMenuLogout
-                                    userEmail={userEmail}
-                                    setUserEmail={setUserEmail}
-                                    errCtx={errCtx}
-                                />
-                            ) : null}
-                        </Toolbar>
-                    </AppBar>
-                    <Drawer variant="permanent" open={open}>
-                        <Toolbar
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "flex-end",
-                                px: [1],
-                            }}
-                        >
-                            <IconButton onClick={toggleDrawer}>
-                                <ChevronLeftIcon />
-                            </IconButton>
-                        </Toolbar>
-                        <Divider />
-                        <List component="nav">{mainListItems}</List>
-                    </Drawer>
-                    <Box
-                        component="main"
+            <Box sx={{ display: "flex" }}>
+                <CssBaseline />
+                <AppBar position="absolute" open={open}>
+                    <Toolbar
                         sx={{
-                            backgroundColor: (theme) =>
-                                theme.palette.mode === "light"
-                                    ? theme.palette.grey[100]
-                                    : theme.palette.grey[900],
-                            flexGrow: 1,
-                            height: "100vh",
-                            overflow: "auto",
+                            pr: "24px", // keep right padding when drawer closed
                         }}
                     >
-                        <Toolbar />
-                        <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
-                            {userEmail == "" ? (
-                                <GoogleSignInButton setUserEmail={setUserEmail} errCtx={errCtx} />
-                            ) : (
-                                <Outlet />
-                            )}
-                            <Copyright sx={{ pt: 4 }} />
-                        </Container>
-                    </Box>
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            aria-label="open drawer"
+                            onClick={toggleDrawer}
+                            sx={{
+                                marginRight: "36px",
+                                ...(open && { display: "none" }),
+                            }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                        <Typography
+                            component="h1"
+                            variant="h6"
+                            color="inherit"
+                            noWrap
+                            sx={{ flexGrow: 1 }}
+                        >
+                            Workspaces
+                        </Typography>
+                    </Toolbar>
+                </AppBar>
+                <Drawer variant="permanent" open={open}>
+                    <Toolbar
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            px: [1],
+                        }}
+                    >
+                        <IconButton onClick={toggleDrawer}>
+                            <ChevronLeftIcon />
+                        </IconButton>
+                    </Toolbar>
+                    <Divider />
+                    <List component="nav">{mainListItems}</List>
+                </Drawer>
+                <Box
+                    component="main"
+                    sx={{
+                        backgroundColor: (theme) =>
+                            theme.palette.mode === "light"
+                                ? theme.palette.grey[100]
+                                : theme.palette.grey[900],
+                        flexGrow: 1,
+                        height: "100vh",
+                        overflow: "auto",
+                    }}
+                >
+                    <Toolbar />
+                    <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
+                        <Outlet />
+                    </Container>
                 </Box>
-            </GoogleOAuthProvider>
+            </Box>
         </ThemeProvider>
     );
 }

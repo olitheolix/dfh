@@ -1,57 +1,140 @@
 package server
 
 import (
-	"net/http"
+	"fmt"
+	"log"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
-type Repository struct {
-	Name string `json:"name"`
+type GVKMeta struct {
+	Group     string
+	Version   string
+	Kind      string
+	Name      string
+	Namespace string
+}
+
+type Config struct {
+	Value     int64
+	WatchCh   chan watch.Event
+	Resources map[GVKMeta]runtime.Object
+}
+
+type WorkspaceInfo struct {
+	Name  string `json:"name"`
+	Owner string `json:"owner"`
+	Ok    bool   `json:"ok"`
+}
+
+type WorkspaceResource struct {
+	Group         string `json:"group"`
+	Version       string `json:"version"`
+	Kind          string `json:"kind"`
+	Name          string `json:"name"`
+	Namespace     string `json:"namespace"`
+	Status        string `json:"status"`
+	LinkGCPObject string `json:"linkGCPObject"`
+	LinkGCPLogs   string `json:"linkGCPLogs"`
+	LinkJSON      string `json:"linkJSON"`
+	Ok            bool   `json:"ok"`
+}
+
+/* Setup configures the web server. */
+func Setup(config Config) *fiber.App {
+	app := fiber.New(fiber.Config{})
+
+	// Install a dummy middleware to inject our shared `config` into every
+	// request. This avoids singletons in the code base.
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("config", config)
+		return c.Next()
+	})
+
+	// Configure routes.
+	v1 := app.Group("/demo/api/uam/v1/workspaces")
+	v1.Get("/health", getHealth)
+	v1.Get("/info", getWorkspaceInfo)
+	v1.Get("/resources/:name", getWorkspaceResources)
+	return app
+}
+
+/* Start the server */
+func Run(app *fiber.App) {
+	log.Fatal(app.Listen(":5001"))
 }
 
 /* getHealthz unconditionally returns a 200 response.*/
-func getHealthz(c *gin.Context) {
-	c.JSON(http.StatusOK, nil)
+func getHealth(c *fiber.Ctx) error {
+	value := c.Locals("config").(Config)
+	resp := fmt.Sprintf("value is %d", value.Value)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
-/*
-getRepositories returns a list of repositories in JSON format.
-
-The repositories are represented by the Repository struct and returns
-something like [{"Name": "Repo 1"}, {"Name": "Repo 2"}].
-
-NOTE: the value are currently hard coded for demonstration purposes.
-*/
-func getRepositories(c *gin.Context) {
-	payload := []Repository{
-		{Name: "Repo 1"},
-		{Name: "Repo 2"},
+func getWorkspaceInfo(c *fiber.Ctx) error {
+	dummy := []WorkspaceInfo{
+		{
+			Name:  "foo",
+			Owner: "foo",
+			Ok:    true,
+		},
+		{
+			Name:  "bar",
+			Owner: "bar",
+			Ok:    false,
+		},
 	}
-	c.JSON(http.StatusOK, payload)
+
+	return c.Status(fiber.StatusOK).JSON(dummy)
 }
 
-/*
-postRepository creates a new repository.
-
-Returns 400 (Bad Request) if the payload is invalid.
-*/
-func postRepository(c *gin.Context) {
-	var payload Repository
-	if err := c.BindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+func getWorkspaceResources(c *fiber.Ctx) error {
+	name := c.Params("name")
+	url_with_params := "not-yet-implemented"
+	res := []WorkspaceResource{
+		{
+			Group:         "apps",
+			Version:       "v1",
+			Kind:          "Deployment",
+			Name:          fmt.Sprintf("res-%s", name),
+			Namespace:     "default",
+			Ok:            true,
+			Status:        "Ready",
+			LinkGCPObject: "https://example.com/obj",
+			LinkGCPLogs:   "https://example.com/log",
+			LinkJSON:      url_with_params,
+		},
+		{
+			Group:         "security.istio.io",
+			Version:       "v1beta",
+			Kind:          "PriorityClass",
+			Name:          fmt.Sprintf("res-%s", name),
+			Namespace:     "default",
+			Ok:            false,
+			Status:        "Reconcile error",
+			LinkGCPObject: "https://example.com/obj",
+			LinkGCPLogs:   "https://example.com/log",
+			LinkJSON:      url_with_params,
+		},
 	}
-	c.JSON(http.StatusOK, nil)
-}
 
-/*
-SetupRouter adds the handlers and returns the configured `gin.Engine` routing object.
-*/
-func SetupRouter() *gin.Engine {
-	router := gin.Default()
-	router.GET("/healthz", getHealthz)
-	router.GET("/repos", getRepositories)
-	router.POST("/repos", postRepository)
-	return router
+	for i := range 20000 {
+		pp := WorkspaceResource{
+			Group:         "iam.cnrm.cloud.google.com",
+			Version:       "v1beta",
+			Kind:          "IAMPartialPolicy",
+			Name:          fmt.Sprintf("policy-%d", i),
+			Namespace:     "default",
+			Status:        "Reconcile error",
+			LinkGCPObject: "https://example.com/obj",
+			LinkGCPLogs:   "https://example.com/log",
+			LinkJSON:      url_with_params,
+			Ok:            (i > 5),
+		}
+		res = append(res, pp)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(res)
 }

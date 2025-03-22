@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: my-virtualservice
+  namespace: default
+spec:
+  hosts:
+    - "example.com"  # Specify the hostname that the VirtualService will manage
+  http:
+    - match:
+        - uri:
+            exact: /path
+      route:
+        - destination:
+            host: example-service  # The destination service to route to
+            port:
+              number: 80
