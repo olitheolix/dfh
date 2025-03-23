@@ -20,6 +20,11 @@ which label scheme to use. Example:
 Start the frontend and backend. Optionally, import the resources from the
 integration test cluster if you have it running.
 
+    # Start Spanner emulator, create the database and populate it with dummy data.
+    docker run --rm --name emulator -p 9010:9010 -p 9020:9020 gcr.io/cloud-spanner-emulator/emulator
+    pipenv run gcloud spanner instances create my-instance --config=emulator-config --nodes=1 --description="foo"
+    pipenv python dummy_data.py
+
     # Start frontend API.
     cd frontend
     npm install

@@ -1,4 +1,3 @@
-import os
 import random
 from typing import Dict, Set, Tuple
 
@@ -8,7 +7,6 @@ from tqdm import tqdm
 
 import dfh.api
 import dfh.routers.auth as auth
-import tests.conftest
 from dfh.models import UAMChild, UAMGroup, UAMUser
 from tests.test_helpers import set_root_user, flush_db
 
