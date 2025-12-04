@@ -10,16 +10,9 @@ import itsdangerous
 import pydantic
 from fastapi import Depends, HTTPException, Request, status
 from google.api_core.exceptions import (
-    Aborted,
-    AlreadyExists,
-    DeadlineExceeded,
-    FailedPrecondition,
-    GoogleAPIError,
-    InternalServerError,
-    NotFound,
-    PermissionDenied,
-    ResourceExhausted,
-    ServiceUnavailable,
+    Aborted, AlreadyExists, DeadlineExceeded, FailedPrecondition,
+    GoogleAPIError, InternalServerError, NotFound, PermissionDenied,
+    ResourceExhausted, ServiceUnavailable,
 )
 from google.cloud.spanner_v1 import Client
 from google.cloud.spanner_v1.database import Database
@@ -68,6 +61,7 @@ def can_login(db: Database, email: str):
     if email == "":
         raise denied
 
+    return
     def work(transaction: Transaction) -> Tuple[bool, bool]:
         # Determine if `email` is a root user.
         rows = transaction.read(

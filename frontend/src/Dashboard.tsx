@@ -47,6 +47,7 @@ import { httpGet, httpPost, HTTPErrorContext, HTTPErrorContextType } from "./Web
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+
 const StyledMenu = styled((props: MenuProps) => (
     <Menu
         elevation={0}
@@ -155,6 +156,66 @@ const Drawer = styled(MuiDrawer, {
 
 // TODO remove, this demo shouldn't need to reset the theme.
 const defaultTheme = createTheme();
+
+
+
+
+const GitHubSignInButton = ({
+    setUserEmail,
+    errCtx,
+}: {
+    setUserEmail: React.Dispatch<React.SetStateAction<string>>;
+    errCtx: HTTPErrorContextType;
+}) => {
+    const handleSuccess = async (code: string) => {
+        console.log("GitHub Login Success: Authorization Code:", code);
+
+        // Exchange the authorization code for an access token
+        const ret = await httpPost("/demo/api/auth/validate-github-token", {
+            body: JSON.stringify({ code: code }),
+        });
+
+        if (ret.err) {
+            errCtx.showError(ret.err);
+            return;
+        }
+
+        console.log("User authenticated:", ret.data);
+        setUserEmail(Cookies.get("email") || "");
+    };
+
+    const handleError = () => {
+        console.error("GitHub Login Failed");
+    };
+
+    // fixme: replicate the mechanics of how `googleClientId` is defined.
+    const CLIENT_ID = "Ov23liYTV9HqYxBfVqcy";
+    const REDIRECT_URI = "http://localhost:5000/demo";
+
+    const handleLogin = () => {
+        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=read:user`;
+        window.location.href = githubAuthUrl;
+    };
+
+    React.useEffect(() => {
+        // Check if the URL contains the authorization code
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+
+        if (code) {
+            handleSuccess(code);
+        }
+    }, []);
+
+    return (
+        <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
+            <Button variant="contained" color="primary" onClick={handleLogin}>
+                Sign in with GitHub
+            </Button>
+        </Box>
+    );
+};
+
 
 // Show a Google signin button to trigger the
 const GoogleSignInButton = ({
@@ -525,7 +586,7 @@ export default function Dashboard() {
                         <Toolbar />
                         <Container maxWidth={false} sx={{ mt: 6, mb: 6 }}>
                             {userEmail == "" ? (
-                                <GoogleSignInButton setUserEmail={setUserEmail} errCtx={errCtx} />
+                                <GitHubSignInButton setUserEmail={setUserEmail} errCtx={errCtx} />
                             ) : (
                                 <Outlet />
                             )}

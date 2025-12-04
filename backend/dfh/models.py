@@ -442,7 +442,8 @@ class GeneratedManifests(BaseModel):
 
 
 class GoogleToken(BaseModel):
-    token: str
+    token: str = ""
+    code: str = ""
 
 
 class UAMUser(BaseModel):

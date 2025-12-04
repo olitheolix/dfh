@@ -1,15 +1,11 @@
+import os
 import base64
 import logging
 from typing import Annotated
 
 import itsdangerous
 from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    Response,
-    status,
+    APIRouter, Depends, HTTPException, Request, Response, status,
 )
 
 from dfh.models import GoogleToken, ServerConfig, UserMe, UserToken
@@ -52,6 +48,61 @@ async def google_auth_bearer(
 
     request.session["email"] = email
     response.set_cookie(key="email", value=email)
+
+
+# fixme: good idea but will not work if replicated across pods. Need to replace
+# it with a database lookup.
+seen_codes = set()
+
+@router.post("/validate-github-token")
+async def validate_github_token(
+    data: GoogleToken,
+    cfg: Annotated[ServerConfig, Depends(get_config)],
+    request: Request,
+    response: Response,
+):
+    """Exchange the authorization code for an access token."""
+    if data.code in seen_codes:
+        return
+    seen_codes.add(data.code)
+
+    # fixme: remove hard coded.
+    CLIENT_SECRET = os.environ["GITHUB_CLIENT_SECRET"]
+    CLIENT_ID = "Ov23liYTV9HqYxBfVqcy"
+
+    url = "https://github.com/login/oauth/access_token"
+    payload = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "code": data.code,
+    }
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+
+    resp = await cfg.httpclient.post(url, json=payload, headers=headers)
+    body = resp.json()
+    resp.raise_for_status()
+
+    # fixme: raise proper HTTP exception
+    if "access_token" not in body:
+        raise Exception("Failed to retrieve access token: " + str(body))
+
+    email = get_user_info(body["access_token"])
+    request.session["email"] = email
+    response.set_cookie(key="email", value=email)
+
+    logit.info(f"succesfully authenticated user {email}")
+
+# fixme: function is a hack currently.
+def get_user_info(access_token):
+    """Query GitHub API for user information."""
+    url = "https://api.github.com/user"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    import httpx
+    response = httpx.get(url, headers=headers)
+    response.raise_for_status()  # Raise an error for HTTP issues
+    print("*** email: ", response.json())
+    return response.json()["login"]
 
 
 @router.get("/clear-session")

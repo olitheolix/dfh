@@ -29,7 +29,7 @@ rm $KINDCONFIG
 printf "### Deploy test resources into the cluster:\n"
 
 # Install Istio.
-istio-1.23.2/bin/istioctl install --kubeconfig $KUBECONFIG --skip-confirmation --verify
+istio-1.23.3/bin/istioctl install --kubeconfig $KUBECONFIG --skip-confirmation --verify
 
 kubectl --kubeconfig $KUBECONFIG label namespace default istio-injection=enabled
 
