@@ -43,7 +43,7 @@ jobs:
           gcloud config set auth/disable_credentials true
           gcloud config set project my-project
           gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
-          gcloud spanner instances create my-instance --config=emulator-config --nodes=1 --description="foo" 
+          gcloud spanner instances create my-instance --config=emulator-config --nodes=1 --description="foo"
 
       - name: Start KinD Cluster
         run: |
