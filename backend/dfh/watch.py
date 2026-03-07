@@ -262,8 +262,11 @@ class WatchResource:
 
             # A 410 (Gone) error is harmless and expected. We therefore
             # return without error to signal to the caller that we can (and
-            # probably should) resume the watch immediately.
+            # probably should) resume the watch immediately. We also need
+            # to set the last seen resource version to -1 to ensure we start
+            # fresh.
             if event.upper() == "ERROR" and manifest["code"] == 410:
+                self.last_rv = -1
                 return False
 
             # Let the caller know that something unexpectedly happened. The
@@ -306,26 +309,28 @@ class WatchResource:
                     await self.parse_line(line_raw)
         except dfh.k8s.WEB_EXCEPTIONS:
             meta_log = self.get_logging_metadata()
-            self.logit.exception("Watch aborted due to an web exception", meta_log)
+            self.logit.exception("Watch aborted due to a web exception", meta_log)
             return True
         return False
 
     async def background_runner(self) -> None:
         """Watch the K8s resource indefinitely.
 
-        This method perpetually restarts `read_k8s_stream` and does
-        not return unless it receives a `CancelledError` or encounters an
-        unhandled exception (ie bug).
+        This method perpetually restarts `read_k8s_stream` and does not return
+        unless it receives a `CancelledError` or encounters an unhandled
+        exception (ie bug).
 
         """
         meta_log = self.get_logging_metadata()
         try:
             # Perpetually restart the background runner.
             while True:
+                # Always wait a bit before we start/resume a watch. This is
+                # purely to avoid accidental log and API spamming in case we
+                # introduce a bug here (learned that the hard way).
                 self.logit.info("Reconnect", meta_log)
-                if await self.read_k8s_stream():
-                    # Wait a bit before we try to resume the watch.
-                    await asyncio.sleep(5 + random.uniform(-2, 2))
+                await self.read_k8s_stream()
+                await asyncio.sleep(5 + random.uniform(-2, 2))
         except asyncio.CancelledError:
             self.logit.info("Background task was cancelled", meta_log)
             await self.queue.put("__CANCELLED__")
@@ -342,7 +347,9 @@ def create_cluster_config(kubeconf: Path, context: str) -> Tuple[K8sConfig, bool
         return K8sConfig(), True
 
     # Create HTTPX client.
-    params = ConnectionParameters(read=600, write=600, pool=600)
+    params = ConnectionParameters(
+        read=600, write=600, pool=600, disable_x509_strict=True
+    )
     cfg, err = square.k8s.create_httpx_client(cfg, params)
     if err:
         return K8sConfig(), True

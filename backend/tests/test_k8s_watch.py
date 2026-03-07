@@ -68,7 +68,7 @@ class TestWatchMockedBackgroundTask:
         assert watch.last_rv == -1
         assert watch.queue.qsize() == 0
         assert watch.list_path == path
-        assert watch.watch_path == f"/api/crt/v1/namespaces?watch=true&timeoutSeconds=5"
+        assert watch.watch_path == "/api/crt/v1/namespaces?watch=true&timeoutSeconds=5"
         assert watch.logit == logging.getLogger("Watch")
         assert len(watch.tasks) == 1
 
@@ -82,7 +82,7 @@ class TestWatchMockedBackgroundTask:
         assert watch.queue.qsize() == 0
         assert watch.list_path == path
         assert (
-            watch.watch_path == f"/api/crt/v1/namespaces?watch=true&timeoutSeconds=20"
+            watch.watch_path == "/api/crt/v1/namespaces?watch=true&timeoutSeconds=20"
         )
         assert watch.logit == custom_logger
         assert len(watch.tasks) == 1
@@ -115,10 +115,10 @@ class TestWatchMockedBackgroundTask:
         path = "/api/crt/v1/namespaces"
 
         watch = dfh.watch.WatchResource(k8scfg, path)
-        assert not watch.tasks[0].cancel.called
+        assert not watch.tasks[0].cancel.called  # type: ignore
         async with watch:
             pass
-        assert watch.tasks[0].cancel.called
+        assert watch.tasks[0].cancel.called  # type: ignore
 
     async def test_WatchResource_iterator_basic(self, k8scfg: K8sConfig):
         """The class must yield the content of the queue."""
@@ -327,10 +327,12 @@ class TestWatchMockedBackgroundTask:
         watch = dfh.watch.WatchResource(k8scfg, path)
         assert watch.last_rv == -1
 
-        # All errors except 410 must signal an error.
-        ret = await watch.parse_line(line)
-        assert ret is False if is_410 else True
-        assert watch.last_rv == -1
+        # All errors except 410 must propagate to the caller.
+        # 410 errors must not propagate to the caller but the resource version must have been reset to -1.
+        watch.last_rv = 123
+        err = await watch.parse_line(line)
+        assert err is False if is_410 else True
+        assert watch.last_rv == -1 if is_410 else 123
         assert watch.queue.qsize() == 0
 
     async def test_parse_line_json_err(self, k8scfg: K8sConfig):
@@ -432,32 +434,37 @@ class TestWatchMockedBackgroundTask:
         watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         await watch.background_runner()
 
-        m_sleep.assert_called_once_with(5 + 1.5)
-        m_rand.assert_called_once_with(-2, 2)
+        assert m_sleep.call_count == m_rand.call_count == 2
+        m_sleep.assert_called_with(5 + 1.5)
+        m_rand.assert_called_with(-2, 2)
 
+    @mock.patch.object(dfh.watch.asyncio, "sleep")
     @mock.patch.object(dfh.watch.WatchResource, "read_k8s_stream")
-    async def test_background_runner_cancelled(self, m_bgs, k8scfg: K8sConfig):
+    async def test_background_runner_cancelled(self, m_bgs, m_sleep, k8scfg: K8sConfig):
         """Runner task must emit __CANCELLED__ and shut down cleanly."""
         path = "/api/crt/v1/namespaces"
 
         # The background function must raise the unhandled exception but only
         # after it queued the __CANCELLED__ message.
         m_bgs.side_effect = asyncio.CancelledError
+        m_sleep.return_value = None
 
         watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         await watch.background_runner()
         assert await watch.queue.get() == "__CANCELLED__"
         assert watch.queue.qsize() == 0
 
+    @mock.patch.object(dfh.watch.asyncio, "sleep")
     @mock.patch.object(dfh.watch.WatchResource, "read_k8s_stream")
     async def test_background_runner_unhandled_exception(
-        self, m_bgs, k8scfg: K8sConfig
+            self, m_bgs, m_sleep, k8scfg: K8sConfig
     ):
         """Runner task must emit __EXCEPTION__ and shut down cleanly."""
         path = "/api/crt/v1/namespaces"
 
         # Pretend the background task aborted with an exception.
         m_bgs.side_effect = ValueError
+        m_sleep.return_value = None
 
         # The background function must raise the unhandled exception but only
         # after it queued the __EXCEPTION__ message.
@@ -564,8 +571,9 @@ class TestWatchMockedBackgroundTask:
 
 
 class TestWatchWithBackgroundTask:
+    @mock.patch.object(dfh.watch.asyncio, "sleep")
     @mock.patch.object(dfh.watch.WatchResource, "read_k8s_stream")
-    async def test_background_runner(self, m_bgs, k8scfg: K8sConfig):
+    async def test_background_runner(self, m_bgs, m_sleep, k8scfg: K8sConfig):
         """Ensure that `WatchResource` actually starts the runner.
 
         To verify that, we will instantiate `WatchResource` with a mocked
@@ -577,6 +585,7 @@ class TestWatchWithBackgroundTask:
         path = "/api/crt/v1/namespaces"
 
         m_bgs.side_effect = asyncio.CancelledError
+        m_sleep.return_value = None
 
         watch = dfh.watch.WatchResource(k8scfg, path, rv=-1)
         results = [_ async for _ in watch]
